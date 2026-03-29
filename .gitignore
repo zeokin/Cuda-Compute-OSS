@@ -20,6 +20,8 @@ run.log
 *.json
 
 LOCAL.md
+design-overview.md
+assets/*
 
 .ruff_cache/
 .pytest_cache/
