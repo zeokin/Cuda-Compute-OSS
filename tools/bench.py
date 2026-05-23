@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import json
 import os
 import signal
 import sys
@@ -31,6 +32,86 @@ from typing import Callable, Dict, Tuple
 import torch
 
 from kernel_configs import KERNEL_CONFIGS
+
+
+def _emit_json(metrics: dict, stream=None) -> None:
+    print(json.dumps(metrics, sort_keys=True), file=stream or sys.stdout)
+
+
+def _build_json_metrics(
+    kernel_type: str,
+    correctness_results: dict,
+    primary: dict | None,
+    perf_results: dict,
+    gpu: GPUSpec,
+    peak_vram_mb: float,
+    t_elapsed: float,
+) -> dict:
+    metrics = {
+        "kernel_type": kernel_type,
+        "gpu_name": gpu.name,
+        "gpu_sm_count": gpu.sm_count,
+        "gpu_memory_gb": gpu.memory_gb,
+        "gpu_peak_tflops_fp16": gpu.peak_tflops_fp16,
+        "gpu_peak_tflops_bf16": gpu.peak_tflops_bf16,
+        "gpu_peak_tflops_fp32": gpu.peak_tflops_fp32,
+        "gpu_peak_bandwidth_gb_s": gpu.peak_bandwidth_gb_s,
+        "gpu_l2_cache_mb": gpu.l2_cache_mb,
+        "gpu_compute_capability": f"{gpu.compute_capability[0]}.{gpu.compute_capability[1]}",
+        "correctness": correctness_results["correctness"],
+        "smoke_test": correctness_results.get("smoke_test", "N/A"),
+        "shape_sweep": correctness_results.get("shape_sweep", "N/A"),
+        "numerical_stability": correctness_results.get("numerical_stability", "N/A"),
+        "determinism": correctness_results.get("determinism", "N/A"),
+        "edge_cases": correctness_results.get("edge_cases", "N/A"),
+        "throughput_tflops": 0.0,
+        "bandwidth_gb_s": 0.0,
+        "pct_peak_compute": 0.0,
+        "pct_peak_bandwidth": 0.0,
+        "bottleneck": "",
+        "speedup_vs_pytorch": 0.0,
+        "peak_vram_mb": peak_vram_mb,
+        "bench_time_seconds": t_elapsed,
+        "performance_all": perf_results.get("all", []),
+    }
+
+    if primary:
+        metrics.update({
+            "latency_us": primary["kernel_latency_us"],
+            "latency_ms": primary["kernel_latency_us"] / 1000.0,
+            "pytorch_latency_us": primary["pytorch_latency_us"],
+            "pytorch_latency_ms": primary["pytorch_latency_us"] / 1000.0,
+            "kernel_latency_us": primary["kernel_latency_us"],
+            "kernel_latency_ms": primary["kernel_latency_us"] / 1000.0,
+            "throughput_tflops": primary["throughput_tflops"],
+            "bandwidth_gb_s": primary["bandwidth_gb_s"],
+            "pct_peak_compute": primary["pct_peak_compute"],
+            "pct_peak_bandwidth": primary["pct_peak_bandwidth"],
+            "arithmetic_intensity": primary["arithmetic_intensity"],
+            "ridge_point": primary["ridge_point"],
+            "bottleneck": primary["bottleneck"],
+            "flops": primary["flops"],
+            "bytes": primary["bytes"],
+            "speedup_vs_pytorch": primary["speedup_vs_pytorch"],
+            "pytorch_tflops": primary["ref_throughput_tflops"],
+            "kernel_tflops": primary["throughput_tflops"],
+            "primary_label": primary["label"],
+            "primary_size": primary["size"],
+            "dtype": primary["dtype"],
+        })
+        metrics.update({k: v for k, v in primary.items() if k.startswith("ncu_")})
+    else:
+        metrics.update({
+            "latency_us": 0.0,
+            "latency_ms": 0.0,
+            "pytorch_latency_us": 0.0,
+            "pytorch_latency_ms": 0.0,
+            "kernel_latency_us": 0.0,
+            "kernel_latency_ms": 0.0,
+        })
+
+    return metrics
+
 
 # ---------------------------------------------------------------------------
 # Timeout helper
@@ -809,7 +890,12 @@ def main():
                         help="Quick mode: skip correctness stages 3-5, bench only large size")
     parser.add_argument("--profile", action="store_true",
                         help="Enable torch profiler trace")
+    parser.add_argument("--json", action="store_true",
+                        help="Emit one JSON metrics object to stdout")
     args = parser.parse_args()
+    json_stdout = sys.stdout
+    if args.json:
+        sys.stdout = sys.stderr
 
     # ------------------------------------------------------------------
     # Import the kernel module
@@ -1016,6 +1102,18 @@ def main():
 
     if t_elapsed > 90:
         print(f"WARNING: bench.py took {t_elapsed:.1f}s (budget: 90s)")
+
+    if args.json:
+        metrics = _build_json_metrics(
+            kernel_type,
+            correctness_results,
+            primary,
+            perf_results,
+            gpu,
+            peak_vram_mb,
+            t_elapsed,
+        )
+        _emit_json(metrics, json_stdout)
 
 
 if __name__ == "__main__":
