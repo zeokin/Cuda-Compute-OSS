@@ -28,7 +28,7 @@ def check_cuda():
 
         device_name = torch.cuda.get_device_name(0)
         capability = torch.cuda.get_device_capability(0)
-        vram_mb = torch.cuda.get_device_properties(0).total_mem / (1024**2)
+        vram_mb = torch.cuda.get_device_properties(0).total_memory / (1024**2)
         print(f"[✓] CUDA available: {device_name} (SM {capability[0]}{capability[1]}, {vram_mb:.0f} MB)")
     except ImportError:
         print("[✗] PyTorch not installed. Run: uv sync")
