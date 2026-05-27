@@ -49,8 +49,12 @@ def check_tools():
         path = shutil.which(tool)
         if path:
             print(f"[✓] {desc}: {path}")
+            if tool == "nvidia-smi":
+                print("nvidia_smi=ok")
         else:
             print(f"[!] {desc} ({tool}) not found in PATH — profiling features may be limited")
+            if tool == "nvidia-smi":
+                print("nvidia_smi=missing")
 
 
 def check_git():
