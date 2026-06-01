@@ -44,6 +44,18 @@ def check_triton():
         print("[!] Triton not installed — Triton kernels will not be available")
 
 
+
+def check_nvidia_smi():
+    path = shutil.which("nvidia-smi")
+    if path:
+        print(f"[✓] nvidia-smi: {path}")
+        print("nvidia_smi=ok")
+    else:
+        print("[✗] nvidia-smi not found in PATH.")
+        print("[✗] Install the NVIDIA driver: https://docs.nvidia.com/cuda/cuda-installation-guide-linux/")
+        print("nvidia_smi=missing")
+        sys.exit(1)
+
 def check_tools():
     for tool, desc in [("nvcc", "CUDA Compiler"), ("ncu", "Nsight Compute"), ("nsys", "Nsight Systems")]:
         path = shutil.which(tool)
@@ -137,6 +149,8 @@ def main():
 
     check_python()
     check_cuda()
+    check_nvidia_smi()
+    print()
     check_triton()
     print()
     check_tools()
