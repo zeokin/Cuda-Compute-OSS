@@ -107,24 +107,28 @@ The simplest, most obviously-correct implementation wins. If `torch.nn.functiona
 
 ### 3. Benchmark config — `kernel_configs/<name>.toml` + `kernel_configs/<name>.py`
 
-The TOML declares shapes, dtypes, tolerances:
+The TOML declares sizes, dtypes, tolerances. Copy the annotated example at
+`kernel_configs/SCHEMA.toml` as your template — all fields are documented inline.
 
 ```toml
-[[shapes]]
-name = "tiny"
-M = 128
-N = 256
-dtype = "bf16"
+[meta]
+multi_output = false
+test_dtypes = ["float16", "float32", "bfloat16"]
+
+[[test_sizes]]
+label = "tiny"
+params = { M = 128, N = 256 }
+
+[tolerances.float16]
 atol = 1e-2
 rtol = 1e-2
 
-[[shapes]]
-name = "production"
-M = 4096
-N = 5120
-dtype = "bf16"
-atol = 1e-2
-rtol = 1e-2
+[[edge_sizes]]
+label = "edge_1023"
+params = { M = 1023, N = 256 }
+```
+
+See `kernel_configs/SCHEMA.toml` for the full reference with all fields documented.
 ```
 
 The companion `.py` provides callables matching the contract `kernel_configs/_utils.py` expects:

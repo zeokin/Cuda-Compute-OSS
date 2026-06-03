@@ -1,0 +1,46 @@
+# =============================================================================
+# kernel_configs/<name>.toml — Schema Reference
+# =============================================================================
+# This file documents the schema for kernel benchmark configuration files.
+# Copy this file as a template when adding a new kernel.
+# See CONTRIBUTING.md § Adding a New Kernel for the full workflow.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# REQUIRED FIELDS
+# -----------------------------------------------------------------------------
+
+[meta]
+# Optional. Set to true for multi-output kernels (default: false)
+multi_output = false
+
+# Optional. List of allowed input dtypes for reference implementation validation.
+# If omitted, no dtype validation is performed.
+# Valid values (from _utils.py DTYPE_NAMES): float16, float32, float64, bfloat16
+test_dtypes = ["float16", "float32", "bfloat16"]
+
+# Required. Test sizes for benchmarking.
+[[test_sizes]]
+# Required. At least one entry required.
+label = "tiny"        # Human-readable name (e.g. "tiny", "small", "medium", "large")
+params = { M = 32, N = 128 }  # Matrix dimensions: M=rows, N=columns
+
+# Example additional size:
+[[test_sizes]]
+label = "small"
+params = { M = 256, N = 768 }
+
+# Required. Tolerances per dtype. Keys must match dtype names in _utils.py DTYPE_NAMES.
+[tolerances.float16]
+atol = 1e-2  # absolute tolerance
+rtol = 1e-2  # relative tolerance
+
+[tolerances.float32]
+atol = 1e-5
+rtol = 1e-3
+
+# Optional. Edge case sizes for additional boundary testing.
+# If omitted, no edge sizes are tested.
+[[edge_sizes]]
+label = "edge_1023"  # Convention: "edge_<M_value>" or descriptive name
+params = { M = 1023, N = 768 }
