@@ -15,6 +15,11 @@ params = {M = 1024, N = 3584}
 label = "large"
 params = {M = 4096, N = 7168}
 
+# Multi-output (SwiGLU `out` bf16 + FP8-e4m3 `x_fp8` + fp32 `x_scale`) shares one tolerance. The
+# e4m3 output forces a relative tolerance of ~1 ULP (kernel vs torch may round-half oppositely,
+# up to ~12.5% at an octave floor), so rtol=0.2 covers it with margin. atol is tightened from the
+# old 5e-1 to 1e-2 so small-magnitude outputs (e.g. a degraded SwiGLU `out`) can no longer pass.
+# (Per-output tolerances would let `out` be tighter still — a noted future refinement.)
 [tolerances.bfloat16]
-atol = 5e-1
-rtol = 5e-1
+atol = 1e-2
+rtol = 2e-1

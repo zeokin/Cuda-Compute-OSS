@@ -320,7 +320,7 @@ def _do_compare(output, expected, atol, rtol, multi_output):
     return _compare(output, expected, atol, rtol)
 
 
-def run_correctness(kernel_fn: Callable, config: dict, quick: bool = False) -> dict:
+def run_correctness(kernel_fn: Callable, config: dict, quick: bool = False, seed: int = 42) -> dict:
     device = "cuda"
     multi_output = config.get("multi_output", False)
     results = {
@@ -347,7 +347,7 @@ def run_correctness(kernel_fn: Callable, config: dict, quick: bool = False) -> d
     try:
         _, tiny_size = sizes[0]
         dtype0 = dtypes[0]
-        inputs = gen_fn(tiny_size, dtype0, device, seed=42)
+        inputs = gen_fn(tiny_size, dtype0, device, seed=seed)
         expected = ref_fn(inputs)
         with _Timeout(30):
             output = kernel_fn(**inputs)
@@ -405,7 +405,7 @@ def run_correctness(kernel_fn: Callable, config: dict, quick: bool = False) -> d
         for dtype in dtypes:
             sweep_count += 1
             try:
-                inputs = gen_fn(sz, dtype, device, seed=42)
+                inputs = gen_fn(sz, dtype, device, seed=seed)
                 expected = ref_fn(inputs)
                 with _Timeout(30):
                     output = kernel_fn(**inputs)
@@ -510,7 +510,7 @@ def run_correctness(kernel_fn: Callable, config: dict, quick: bool = False) -> d
 
     for case_name, transform_fn in adversarial_cases:
         try:
-            inputs = gen_fn(stab_size, stab_dtype, device, seed=42)
+            inputs = gen_fn(stab_size, stab_dtype, device, seed=seed)
             transformed = {}
             for k, v in inputs.items():
                 if isinstance(v, torch.Tensor) and v.is_floating_point():
@@ -575,20 +575,25 @@ def run_correctness(kernel_fn: Callable, config: dict, quick: bool = False) -> d
 
         outputs = []
         for _ in range(3):
-            inputs_i = gen_fn(det_size, det_dtype, device, seed=42)
+            inputs_i = gen_fn(det_size, det_dtype, device, seed=seed)
             with _Timeout(30):
                 out_i = kernel_fn(**inputs_i)
             outputs.append(_flatten(out_i))
 
+        # Within-tolerance reproducibility, NOT bitwise. A correct kernel that uses atomics /
+        # split-K / nondeterministic reductions varies by ~fp rounding run-to-run (far below the
+        # correctness tolerance); bitwise-equality would wrongly reject those legitimately-fast
+        # kernels. A gross race (output differing beyond tolerance) is still caught.
+        det_tol = config["tolerances"].get(det_dtype, {"atol": 1e-2, "rtol": 1e-2})
         for i in range(1, 3):
-            if not torch.equal(outputs[0], outputs[i]):
+            if not torch.allclose(outputs[0], outputs[i], atol=det_tol["atol"], rtol=det_tol["rtol"]):
                 determinism_pass = False
                 diff = (outputs[0] - outputs[i]).abs()
-                details.append(f"  determinism: run 0 vs run {i} differ (max_diff={diff.max().item():.6e})")
-                print(f"  FAIL: run 0 vs run {i} differ (max_diff={diff.max().item():.6e})")
+                details.append(f"  determinism: run 0 vs run {i} differ beyond tol (max_diff={diff.max().item():.6e})")
+                print(f"  FAIL: run 0 vs run {i} differ beyond tol (max_diff={diff.max().item():.6e})")
 
         if determinism_pass:
-            print("  PASS: 3 runs are bitwise identical")
+            print("  PASS: 3 runs reproducible within tolerance")
         results["determinism"] = "PASS" if determinism_pass else "FAIL"
     except Exception as e:
         results["determinism"] = f"FAIL ({type(e).__name__})"
@@ -614,7 +619,7 @@ def run_correctness(kernel_fn: Callable, config: dict, quick: bool = False) -> d
         for label, sz in edge_sizes:
             for dtype in dtypes[:1]:
                 try:
-                    inputs = gen_fn(sz, dtype, device, seed=42)
+                    inputs = gen_fn(sz, dtype, device, seed=seed)
                     expected = ref_fn(inputs)
                     with _Timeout(30):
                         output = kernel_fn(**inputs)
@@ -699,7 +704,7 @@ def _do_bench(fn: Callable, warmup: int = 25, rep: int = 100) -> float:
 
 
 def run_performance(kernel_fn: Callable, config: dict, gpu: GPUSpec,
-                    sizes_filter: str = "all") -> dict:
+                    sizes_filter: str = "all", seed: int = 42) -> dict:
     device = "cuda"
     gen_fn = config["input_generator"]
     ref_fn = config["reference_fn"]
@@ -744,7 +749,7 @@ def run_performance(kernel_fn: Callable, config: dict, gpu: GPUSpec,
             flops = flops_fn(sz)
             nbytes = bytes_fn(sz, dtype)
 
-            inputs = gen_fn(sz, dtype, device, seed=42)
+            inputs = gen_fn(sz, dtype, device, seed=seed)
 
             _k_inputs = inputs
             with _Timeout(30):
@@ -833,7 +838,98 @@ def run_performance(kernel_fn: Callable, config: dict, gpu: GPUSpec,
 # 4. PROFILER (optional)
 # =========================================================================
 
-def run_profile(kernel_fn: Callable, config: dict):
+def _tensor_storage_ptrs(x) -> set:
+    """Underlying data pointers of a tensor or tuple/list of tensors (for the anti-alias guard)."""
+    ptrs = set()
+    items = x if isinstance(x, (tuple, list)) else [x]
+    for t in items:
+        if torch.is_tensor(t):
+            ptrs.add(t.data_ptr())
+    return ptrs
+
+
+def run_scored_sample(kernel_fn: Callable, config: dict, seed: int = 42,
+                      n_blocks: int = 30, warmup: int = 25, rep: int = 100,
+                      n_buffers: int = 4) -> dict:
+    """Competition scoring measurement (Step 7).
+
+    Emits a SAMPLE of per-call latencies on the primary (scored) size + dtype for the maintainer's
+    challenger-vs-champion significance test (cco/significance.py). Anti-cheat properties baked in:
+      * input buffers ROTATE across reps (distinct seeds -> distinct values & storage), so a kernel
+        can't win via warm-L2 residency or memoize-by-pointer;
+      * CORRECTNESS is re-verified on the scored size on 2 distinct buffers (a kernel that memoizes
+        buffer-0's answer fails on buffer-1) -> closes "fast garbage at the scored size";
+      * the output must not alias an input (anti-elision guard).
+    The latencies are n_blocks block-means (mean over `rep` rotated calls), each a fresh timed
+    window so the sample captures run-to-run / thermal variation for the nonparametric test.
+    """
+    import statistics
+
+    device = "cuda"
+    gen_fn = config["input_generator"]
+    ref_fn = config["reference_fn"]
+    multi = config.get("multi_output", False)
+    dtype = config["test_dtypes"][0]
+    tols = config["tolerances"].get(dtype, {"atol": 1e-2, "rtol": 1e-2})
+
+    sizes = config["test_sizes"]
+    size_label, size = None, None
+    for label, sz in sizes:
+        if label == "large":
+            size_label, size = label, sz
+            break
+    if size is None:
+        size_label, size = sizes[-1]
+
+    # rotating buffer pool: distinct seeds -> distinct values & storage addresses
+    buffers = [gen_fn(size, dtype, device, seed=seed + i) for i in range(n_buffers)]
+
+    # fused correctness on the scored size, on up to 2 distinct buffers, + anti-alias guard
+    correct, worst_err, aliased = True, 0.0, False
+    for i in range(min(2, n_buffers)):
+        inp = buffers[i]
+        out = kernel_fn(**inp)
+        cmp = _do_compare(out, ref_fn(inp), tols["atol"], tols["rtol"], multi)
+        correct = correct and bool(cmp["match"])
+        worst_err = max(worst_err, cmp.get("max_abs_error", 0.0))
+        if i == 0:
+            in_ptrs = set()
+            for t in inp.values():
+                in_ptrs |= _tensor_storage_ptrs(t)
+            aliased = bool(_tensor_storage_ptrs(out) & in_ptrs)
+    correct = correct and not aliased
+
+    # timing: n_blocks block-means, rotating buffers, fp32 CUDA events
+    for _ in range(warmup):
+        kernel_fn(**buffers[0])
+    torch.cuda.synchronize()
+
+    start = torch.cuda.Event(enable_timing=True)
+    end = torch.cuda.Event(enable_timing=True)
+    latencies_us = []
+    for _blk in range(n_blocks):
+        start.record()
+        for r in range(rep):
+            kernel_fn(**buffers[r % n_buffers])
+        end.record()
+        torch.cuda.synchronize()
+        latencies_us.append(start.elapsed_time(end) * 1000.0 / rep)  # ms total -> per-call us
+
+    return {
+        "size_label": size_label,
+        "dtype": str(dtype),
+        "correct": bool(correct),
+        "max_abs_error": worst_err,
+        "output_aliased_input": bool(aliased),
+        "n_blocks": n_blocks, "rep": rep, "warmup": warmup, "n_buffers": n_buffers,
+        "latencies_us": latencies_us,
+        "median_us": statistics.median(latencies_us) if latencies_us else 0.0,
+        "mean_us": statistics.fmean(latencies_us) if latencies_us else 0.0,
+        "stdev_us": statistics.pstdev(latencies_us) if len(latencies_us) > 1 else 0.0,
+    }
+
+
+def run_profile(kernel_fn: Callable, config: dict, seed: int = 42):
     device = "cuda"
     gen_fn = config["input_generator"]
     sizes = config["test_sizes"]
@@ -847,7 +943,7 @@ def run_profile(kernel_fn: Callable, config: dict):
         prof_size = sizes[0][1]
 
     dtype = config["test_dtypes"][0]
-    inputs = gen_fn(prof_size, dtype, device, seed=42)
+    inputs = gen_fn(prof_size, dtype, device, seed=seed)
 
     trace_dir = os.environ.get("CUDA_EVOLVE_TRACE_DIR", "./traces")
     os.makedirs(trace_dir, exist_ok=True)
@@ -898,6 +994,15 @@ def main():
                         help="Enable torch profiler trace")
     parser.add_argument("--json", action="store_true",
                         help="Emit one JSON metrics object to stdout; human-readable output goes to stderr")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="Base seed for input generation. Self-score: 42 (default). Canonical "
+                             "rerun: derive from the PR-HEAD SHA via cco/seed.py so inputs are unpredictable.")
+    parser.add_argument("--score", action="store_true",
+                        help="Emit the competition latency SAMPLE (n_blocks block-means) on the primary "
+                             "size, with fused correctness + buffer rotation, for the significance test.")
+    parser.add_argument("--blob", action="store_true",
+                        help="Emit the bound score blob (sample + correctness + identity hashes + "
+                             "blob_sha256) the maintainer agent verifies. Implies the scored sample.")
     args = parser.parse_args()
     json_stdout = sys.stdout
     if args.json:
@@ -978,7 +1083,7 @@ def main():
     # ------------------------------------------------------------------
     print("\n=== CORRECTNESS ===")
     try:
-        correctness_results = run_correctness(kernel_fn, config, quick=args.quick)
+        correctness_results = run_correctness(kernel_fn, config, quick=args.quick, seed=args.seed)
     except Exception as e:
         print(f"\nFATAL: Correctness testing crashed: {type(e).__name__}: {e}")
         traceback.print_exc()
@@ -1017,7 +1122,7 @@ def main():
         if args.quick:
             sizes_filter = "large"
         torch.cuda.reset_peak_memory_stats()
-        perf_results = run_performance(kernel_fn, config, gpu, sizes_filter=sizes_filter)
+        perf_results = run_performance(kernel_fn, config, gpu, sizes_filter=sizes_filter, seed=args.seed)
         peak_vram_mb = torch.cuda.max_memory_allocated() / 1024 / 1024
     except Exception as e:
         print(f"\nFATAL: Performance benchmarking crashed: {type(e).__name__}: {e}")
@@ -1077,11 +1182,35 @@ def main():
                   f"{entry['throughput_tflops']:>10.3f} {entry['pct_peak_compute']:>7.1f}%")
 
     # ------------------------------------------------------------------
+    # Scored sample (competition; --score / --blob)
+    # ------------------------------------------------------------------
+    score_sample = None
+    if args.score or args.blob:
+        try:
+            score_sample = run_scored_sample(kernel_fn, config, seed=args.seed)
+        except Exception as e:
+            print(f"score_error: {type(e).__name__}: {e}")
+            traceback.print_exc()
+        if args.score and score_sample is not None:
+            sc = score_sample
+            print("\n=== SCORE ===")
+            print(f"score_size: {sc['size_label']}")
+            print(f"score_dtype: {sc['dtype']}")
+            print(f"score_correct: {sc['correct']}")
+            print(f"score_output_aliased_input: {sc['output_aliased_input']}")
+            print(f"score_max_abs_error: {sc['max_abs_error']:.6e}")
+            print(f"score_median_us: {sc['median_us']:.4f}")
+            print(f"score_mean_us: {sc['mean_us']:.4f}")
+            print(f"score_stdev_us: {sc['stdev_us']:.4f}")
+            print(f"score_n_blocks: {sc['n_blocks']}")
+            print(f"score_latencies_us: {','.join(f'{x:.4f}' for x in sc['latencies_us'])}")
+
+    # ------------------------------------------------------------------
     # Profiling (optional)
     # ------------------------------------------------------------------
     if args.profile:
         try:
-            run_profile(kernel_fn, config)
+            run_profile(kernel_fn, config, seed=args.seed)
         except Exception as e:
             print(f"\nWARNING: Profiling failed: {type(e).__name__}: {e}")
 
@@ -1093,6 +1222,7 @@ def main():
 
     print("\n=== FINAL ===")
     print(f"kernel_type: {kernel_type}")
+    print(f"input_seed: {args.seed}")
     print(f"correctness: {correctness_results['correctness']}")
     print(f"throughput_tflops: {throughput:.3f}")
     if primary:
@@ -1108,6 +1238,40 @@ def main():
 
     if t_elapsed > 90:
         print(f"WARNING: bench.py took {t_elapsed:.1f}s (budget: 90s)")
+
+    if args.blob:
+        from cco.blob import build_score_blob
+        correctness_blob = {
+            "overall": correctness_results.get("correctness"),
+            "smoke_test": correctness_results.get("smoke_test"),
+            "shape_sweep": correctness_results.get("shape_sweep"),
+            "numerical_stability": correctness_results.get("numerical_stability"),
+            "determinism": correctness_results.get("determinism"),
+            "edge_cases": correctness_results.get("edge_cases"),
+            "scored_correct": score_sample.get("correct") if score_sample else None,
+            "scored_max_abs_error": score_sample.get("max_abs_error") if score_sample else None,
+            "output_aliased_input": score_sample.get("output_aliased_input") if score_sample else None,
+        }
+        scored_blob = None
+        if score_sample is not None:
+            scored_blob = {k: score_sample[k] for k in (
+                "size_label", "dtype", "n_blocks", "rep", "warmup",
+                "median_us", "mean_us", "stdev_us", "latencies_us")}
+        gpu_blob = {
+            "name": gpu.name,
+            "compute_capability": f"{gpu.compute_capability[0]}.{gpu.compute_capability[1]}",
+            "sm_count": gpu.sm_count,
+            "memory_gb": gpu.memory_gb,
+        }
+        blob = build_score_blob(
+            competition="CCO", version=1, kernel_type=kernel_type, seed=args.seed,
+            correctness=correctness_blob, scored=scored_blob, gpu=gpu_blob,
+            repo_root=repo_root, harness_path=os.path.abspath(__file__),
+            kernel_path=getattr(kernel_module, "__file__", None),
+        )
+        print("\n=== SCORE BLOB ===")
+        print(json.dumps(blob, sort_keys=True, indent=2))
+        print("=== END SCORE BLOB ===")
 
     if args.json:
         metrics = _build_json_metrics(
