@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint-and-import:
-    name: lint + import (py${{ matrix.python-version }})
+  lint:
+    name: lint (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 5
     strategy:
@@ -34,5 +34,38 @@ jobs:
       - name: Lint with ruff
         run: ruff check .
 
-      - name: Verify kernel_configs registry imports cleanly
-        run: python -c "import kernel_configs; print('ok')"
+  gates:
+    # The cheap, CPU-only gates the scoring pipeline runs before any GPU spend. No torch/triton/GPU
+    # needed, so they run on a free ubuntu runner. The scored GPU rerun (Gate 4) is NOT run here —
+    # it requires the pinned canonical GPU host.
+    name: cheap gates (CPU-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Registry imports cleanly (torch-free discovery of all tracks)
+        run: python -c "import kernel_configs; print('tracks:', sorted(kernel_configs._DISCOVERED_PATHS))"
+
+      - name: Enforcement self-tests (anti-cheat + scorer logic)
+        run: |
+          set -e
+          for m in guard_kernel manifest_tool seed significance blob gate; do
+            echo "::group::cco/$m.py --self-test"
+            python "cco/$m.py" --self-test
+            echo "::endgroup::"
+          done
+
+      - name: Gate 2 — manifest integrity (only kernel.py may differ from canonical)
+        run: python cco/manifest_tool.py verify --root . --manifest manifest.json
+
+      - name: Gate 3 — size cap + declared track + no-delegation on kernel.py
+        run: |
+          set -e
+          KT=$(python -c "from cco.guard_kernel import extract_kernel_type; print(extract_kernel_type(open('kernel.py').read()) or '')")
+          echo "declared KERNEL_TYPE: ${KT:-<none>}"
+          python cco/gate.py kernel.py "$KT" --config cco.config.json

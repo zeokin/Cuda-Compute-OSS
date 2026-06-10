@@ -44,8 +44,7 @@ import argparse
 import ast
 import json
 import sys
-from dataclasses import dataclass, field
-
+from dataclasses import dataclass
 
 # --------------------------------------------------------------------------------------
 # Policy (defaults — canonical copy will move to cco.config.json in Step 12)
@@ -402,7 +401,9 @@ def kernel_fn(x, weight, eps=1e-6):
 # Each negative case: (label, source, expected_category_substring)
 _NEGATIVE_CASES = [
     ("delegate via F.rms_norm",
-     "import torch.nn.functional as F\ndef kernel_fn(x, weight, eps=1e-6):\n    return F.rms_norm(x, (x.shape[-1],), weight, eps)\n",
+     ("import torch.nn.functional as F\n"
+      "def kernel_fn(x, weight, eps=1e-6):\n"
+      "    return F.rms_norm(x, (x.shape[-1],), weight, eps)\n"),
      "delegation"),
     ("delegate via torch.matmul",
      "import torch\ndef kernel_fn(a, b):\n    return torch.matmul(a, b)\n",
@@ -426,7 +427,10 @@ _NEGATIVE_CASES = [
      _CLEAN_TRITON + "\ndef get_flops(size):\n    return 1\n",
      "artifact-owned-metric"),
     ("pure-eager, no triton kernel",
-     "import torch\ndef kernel_fn(x, weight, eps=1e-6):\n    v = x.float().pow(2).mean(-1, keepdim=True)\n    return (x / (v + eps).sqrt()) * weight\n",
+     ("import torch\n"
+      "def kernel_fn(x, weight, eps=1e-6):\n"
+      "    v = x.float().pow(2).mean(-1, keepdim=True)\n"
+      "    return (x / (v + eps).sqrt()) * weight\n"),
      "not-a-kernel"),
     ("aten ops escape",
      "import torch\ndef kernel_fn(a, b):\n    return torch.ops.aten.mm(a, b)\n",

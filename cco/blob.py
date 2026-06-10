@@ -144,7 +144,8 @@ def _self_test() -> int:
         b2 = build_score_blob(**common)
         check(b1["blob_sha256"] == b2["blob_sha256"], "blob_sha256 deterministic for identical inputs")
 
-        c3 = dict(common); c3["scored"] = {"median_us": 90.0, "latencies_us": [89.0, 91.0]}
+        c3 = dict(common)
+        c3["scored"] = {"median_us": 90.0, "latencies_us": [89.0, 91.0]}
         b3 = build_score_blob(**c3)
         check(b3["blob_sha256"] != b1["blob_sha256"], "different score -> different blob_sha256")
 
