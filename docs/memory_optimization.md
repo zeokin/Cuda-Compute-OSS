@@ -42,7 +42,7 @@ Quick-reference for GPU memory hierarchy optimization techniques.
 
 ## L1 / Shared Memory
 
-**Capacity**: 192 KB per SM on Hopper (configurable split between L1 cache and shared memory).
+**Capacity**: 256 KB per SM on Hopper (H100), 192 KB on Ampere (A100) — configurable split between L1 cache and shared memory.
 
 **Bank conflicts**: Shared memory has 32 banks, 4 bytes wide. Two threads accessing the same bank (but different addresses) cause a conflict, serializing the access.
 
