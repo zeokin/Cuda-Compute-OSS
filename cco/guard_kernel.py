@@ -57,6 +57,9 @@ DENY_QUALIFIED_NAMES = frozenset({
     "torch.mv", "torch.dot", "torch.vdot", "torch.chain_matmul", "torch.kron",
     "torch.conv1d", "torch.conv2d", "torch.conv3d", "torch.conv_transpose2d",
     "torch.softmax", "torch.log_softmax",
+    # high-level fused ops reachable as torch.<name> (the runtime trap bans these too — keep the
+    # static layer aligned so they are rejected at Gate 3, before any GPU spend)
+    "torch.rms_norm", "torch.layer_norm", "torch.group_norm", "torch.silu", "torch.glu",
 })
 
 # Whole namespaces that are off-limits (prefix match).
@@ -85,6 +88,7 @@ DENY_IMPORT_MODULES = frozenset({
     "importlib", "ctypes", "cffi", "subprocess", "pickle", "marshal",
     "socket", "urllib", "requests", "http", "cupy",
     "os", "sys", "builtins", "io",  # process/fs/introspection escapes (os.system, sys.argv, ...)
+    "cco",  # a submission must not import the enforcement package (it could reach trap internals)
 })
 
 # Module-level names the artifact must NOT define (the LOCKED config owns these).

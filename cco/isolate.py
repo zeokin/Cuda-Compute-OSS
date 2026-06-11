@@ -76,12 +76,22 @@ def _child_main(job_path: str, out_path: str) -> int:
 
     job = torch.load(job_path, weights_only=True)
 
+    import time
+
+    # Capture the timing primitives + trap as LOCALS *before* the submission is loaded. The kernel
+    # shares this child interpreter, so it could monkeypatch torch.cuda.Event / torch.cuda.synchronize
+    # / time.perf_counter at import to forge its own timing — but it cannot reach these function-local
+    # captures or repatch them, and it cannot reach the timing loop (harness code), so the loop below
+    # stays honest no matter what the kernel patches globally.
+    _Event = torch.cuda.Event
+    _sync = torch.cuda.synchronize
+    _perf = time.perf_counter
+    from cco.dispatch_trap import DelegationError, delegation_trap, run_guarded
+
     spec = importlib.util.spec_from_file_location("cco_submission_kernel", job["kernel_path"])
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)  # the only place the submission executes; this is the isolated child
     kernel_fn = mod.kernel_fn
-
-    from cco.dispatch_trap import DelegationError, run_guarded  # defense-in-depth only
 
     def cuda_in(inp):
         return {k: (v.to("cuda") if hasattr(v, "to") else v) for k, v in inp.items()}
@@ -92,6 +102,7 @@ def _child_main(job_path: str, out_path: str) -> int:
     det_outputs = []
     scored_val = []
     event_block_us: list[float] = []
+    timed_wall_s = 0.0
 
     try:
         # --- correctness tasks (smoke / sweep / stability / edge): run once each ---
@@ -117,32 +128,40 @@ def _child_main(job_path: str, out_path: str) -> int:
                 det_outputs.append(_to_cpu(run_guarded(kernel_fn, di)))
             torch.cuda.empty_cache()
 
-        # --- scored size: validate before + after the timed window; time with CUDA events ---
+        # --- scored size: EVERY call (pre-val / warmup / timed / post-val) runs under the trap, so
+        #     there is no untrapped phase in which a kernel could delegate; a banned op ANYWHERE here
+        #     raises DelegationError and is caught below. ---
         if delegation is None:
             sc = job["scored"]
             bufs = [cuda_in(b) for b in sc["buffers"]]
             nb = len(bufs)
             n_pre = int(sc["n_pre"])
-            for i in range(min(n_pre, nb)):
-                scored_val.append(_to_cpu(run_guarded(kernel_fn, bufs[i])))
-
-            for _ in range(int(sc["warmup"])):
-                kernel_fn(**bufs[0])
-            torch.cuda.synchronize()
-            s = torch.cuda.Event(enable_timing=True)
-            e = torch.cuda.Event(enable_timing=True)
             rep = int(sc["rep"])
-            for _blk in range(int(sc["n_blocks"])):
-                s.record()
-                for r in range(rep):
-                    kernel_fn(**bufs[r % nb])
-                e.record()
-                torch.cuda.synchronize()
-                event_block_us.append(s.elapsed_time(e) * 1000.0 / rep)
+            with delegation_trap():
+                for i in range(min(n_pre, nb)):
+                    scored_val.append(_to_cpu(kernel_fn(**bufs[i])))
 
-            for i in range(n_pre, nb):
-                scored_val.append(_to_cpu(kernel_fn(**bufs[i])))
-            torch.cuda.synchronize()
+                for _ in range(int(sc["warmup"])):
+                    kernel_fn(**bufs[0])
+                _sync()
+                s = _Event(enable_timing=True)
+                e = _Event(enable_timing=True)
+                _t0 = _perf()
+                for _blk in range(int(sc["n_blocks"])):
+                    s.record()
+                    for r in range(rep):
+                        kernel_fn(**bufs[r % nb])
+                    e.record()
+                    _sync()
+                    event_block_us.append(s.elapsed_time(e) * 1000.0 / rep)
+                # Captured-clock wall of the whole timed window: forge-resistant (the kernel cannot
+                # patch _perf or _sync here), so the parent anchors the cuda-event sample's scale to
+                # it — a kernel under-reporting events (e.g. side-stream evasion) is caught.
+                timed_wall_s = _perf() - _t0
+
+                for i in range(n_pre, nb):
+                    scored_val.append(_to_cpu(kernel_fn(**bufs[i])))
+                _sync()
     except DelegationError as ex:
         delegation = str(ex)
     except Exception as ex:
@@ -156,7 +175,8 @@ def _child_main(job_path: str, out_path: str) -> int:
 
     torch.save({"task_outputs": task_outputs, "det_outputs": det_outputs,
                 "scored_val": scored_val, "event_block_us": event_block_us,
-                "delegation": delegation, "child_error": child_error}, out_path)
+                "timed_wall_s": timed_wall_s, "delegation": delegation,
+                "child_error": child_error}, out_path)
     return 0
 
 
@@ -346,8 +366,21 @@ def run_isolated(kernel_path: str, config: dict, seed: int, compare_fn, *,
         stages["correctness"] = "PASS" if overall else "FAIL"
 
         latencies_us = list(res.get("event_block_us") or [])
-        claimed_gpu_s = sum(latencies_us) * rep / 1e6
-        timing_inconsistent = bool(latencies_us) and claimed_gpu_s > child_wall_s
+        timed_wall_s = float(res.get("timed_wall_s") or 0.0)
+        # Anchor the cuda-event sample's SCALE to the child's forge-resistant captured-clock wall of
+        # the SAME loop. Events (now read from a captured torch.cuda.Event the kernel can't repatch)
+        # measure GPU-only; wall includes per-call launch overhead, so honest timing has
+        # event_median <= wall_per_iter. A kernel under-reporting its events (e.g. side-stream
+        # evasion that the full-device sync still waits on) shows event_median << wall_per_iter.
+        timing_inconsistent = False
+        if latencies_us:
+            event_med_us = statistics.median(latencies_us)
+            denom = n_blocks * rep
+            wall_per_iter_us = (timed_wall_s / denom * 1e6) if denom else 0.0
+            if sum(latencies_us) * rep / 1e6 > child_wall_s:          # outer backstop
+                timing_inconsistent = True
+            if wall_per_iter_us > 0 and event_med_us < wall_per_iter_us / 4.0:  # scale anchor
+                timing_inconsistent = True
         if timing_inconsistent:
             overall = False
             stages["correctness"] = "FAIL"
@@ -355,6 +388,7 @@ def run_isolated(kernel_path: str, config: dict, seed: int, compare_fn, *,
         return {
             **base, "correct": bool(overall and scored_ok), "max_abs_error": worst_err,
             "delegation": None, "timing_inconsistent": timing_inconsistent, "child_wall_s": child_wall_s,
+            "timed_wall_s": timed_wall_s,
             "child_error": res.get("child_error"), "stages": stages, "latencies_us": latencies_us,
             "median_us": statistics.median(latencies_us) if latencies_us else 0.0,
             "mean_us": statistics.fmean(latencies_us) if latencies_us else 0.0,
@@ -424,6 +458,54 @@ def kernel_fn(x, weight, eps=1e-6):
     return y
 '''
 
+# Genuinely correct, but patches torch.cuda.Event + synchronize at import to forge ~0 timing. The
+# child captured those primitives before loading it, so the reported timing must be the REAL latency.
+_TIME_FORGER = '''
+import torch, triton, triton.language as tl
+class _FakeEvt:
+    def __init__(self, *a, **k): pass
+    def record(self, *a, **k): pass
+    def elapsed_time(self, other): return 0.0001
+torch.cuda.Event = _FakeEvt
+torch.cuda.synchronize = lambda *a, **k: None
+KERNEL_TYPE = "rms_norm"
+@triton.jit
+def _k(X, W, Y, s, N, eps, B: tl.constexpr):
+    row = tl.program_id(0); cols = tl.arange(0, B); m = cols < N
+    x = tl.load(X + row*s + cols, mask=m, other=0.0).to(tl.float32)
+    rms = tl.sqrt(tl.sum(x*x)/N + eps)
+    w = tl.load(W + cols, mask=m, other=0.0).to(tl.float32)
+    tl.store(Y + row*s + cols, (x/rms*w), mask=m)
+def kernel_fn(x, weight, eps=1e-6):
+    M, N = x.shape; y = torch.empty_like(x)
+    _k[(M,)](x, weight, y, x.stride(0), N, eps, B=triton.next_power_of_2(N))
+    return y
+'''
+
+# Honest Triton through correctness + warmup, then delegates to a runtime-banned op INSIDE the timed
+# loop (after ~50 calls). The trap now covers the timed loop, so it must be CAUGHT.
+_TIMED_DELEGATOR = '''
+import torch, torch.nn.functional as F, triton, triton.language as tl
+KERNEL_TYPE = "rms_norm"
+_n = [0]
+@triton.jit
+def _k(X, W, Y, s, N, eps, B: tl.constexpr):
+    row = tl.program_id(0); cols = tl.arange(0, B); m = cols < N
+    x = tl.load(X + row*s + cols, mask=m, other=0.0).to(tl.float32)
+    rms = tl.sqrt(tl.sum(x*x)/N + eps)
+    w = tl.load(W + cols, mask=m, other=0.0).to(tl.float32)
+    tl.store(Y + row*s + cols, (x/rms*w), mask=m)
+def _triton(x, weight, eps):
+    M, N = x.shape; y = torch.empty_like(x)
+    _k[(M,)](x, weight, y, x.stride(0), N, eps, B=triton.next_power_of_2(N))
+    return y
+def kernel_fn(x, weight, eps=1e-6):
+    _n[0] += 1
+    if _n[0] > 50:
+        return F.rms_norm(x, (x.shape[-1],), weight, eps)   # runtime-banned; the timed-loop trap must catch
+    return _triton(x, weight, eps)
+'''
+
 
 def _self_test() -> int:
     import torch
@@ -486,6 +568,14 @@ def _self_test() -> int:
     r = run(_SIZE_CHEAT)
     check(not r["correct"] and r["stages"]["shape_sweep"] == "FAIL",
           "correct-only-at-scored-size cheat -> REJECTED by the full-suite shape sweep")
+
+    r = run(_TIME_FORGER)
+    check(r["correct"] and r["median_us"] > 1.0,
+          f"timing-forger (patches cuda.Event/sync at import) -> REAL timing survives ({r['median_us']:.1f}us, not ~0)")
+
+    r = run(_TIMED_DELEGATOR)
+    check(not r["correct"] and bool(r.get("delegation")),
+          "delegate-only-inside-the-timed-loop -> CAUGHT (timed loop is now trapped)")
 
     print("-" * 60)
     print("SELF-TEST PASSED" if not failures else f"SELF-TEST FAILED: {failures} case(s)")

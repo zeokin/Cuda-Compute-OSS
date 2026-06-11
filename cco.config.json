@@ -29,7 +29,8 @@
         "torch.addbmm", "torch.einsum", "torch.tensordot", "torch.inner", "torch.outer",
         "torch.mv", "torch.dot", "torch.vdot", "torch.chain_matmul", "torch.kron",
         "torch.conv1d", "torch.conv2d", "torch.conv3d", "torch.conv_transpose2d",
-        "torch.softmax", "torch.log_softmax"
+        "torch.softmax", "torch.log_softmax",
+        "torch.rms_norm", "torch.layer_norm", "torch.group_norm", "torch.silu", "torch.glu"
       ],
       "deny_qualified_prefixes": [
         "torch.nn.functional", "torch.ops", "torch._C", "torch.linalg", "torch.utils.cpp_extension"
@@ -44,7 +45,7 @@
       "deny_import_modules": [
         "importlib", "ctypes", "cffi", "subprocess", "pickle", "marshal",
         "socket", "urllib", "requests", "http", "cupy",
-        "os", "sys", "builtins", "io"
+        "os", "sys", "builtins", "io", "cco"
       ],
       "forbidden_toplevel_defs": ["get_inputs", "get_flops", "get_bytes"],
       "require_kernel_fn": true,

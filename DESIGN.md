@@ -97,10 +97,17 @@ own** oracle against the outputs the child returns — validating distinct buffe
 and after* the timed window, so a correct-then-garbage call-counter has no safe window. The child is
 launched with `-E` and a clean working directory (no `sitecustomize` / `PYTHON*` injection), and its
 output is deserialized tensor-only (`weights_only=True`) so it cannot pickle-RCE the parent. The
-in-child dispatch trap is defense-in-depth; the load-bearing check is the parent's oracle. *Residual:*
-a genuinely-correct kernel under-reporting its own CUDA-event timing is bounded by a parent
-wall-clock tripwire (a claim faster than wall-clock is rejected); full timing-forge immunity needs
-parent-driven two-point wall-clock timing, a planned follow-up.
+in-child dispatch trap wraps the **entire scored window** — pre-validation, warmup, the timed loop,
+and post-validation — so there is no untrapped phase in which a kernel could detect it is unobserved
+(by catching `DelegationError`) and delegate to a fast vendor op only while being timed; a banned op
+*anywhere* in that window is caught. The static guard's denylist is kept aligned with the runtime
+trap's, and a submission may not import the `cco` package (so it cannot reach the trap internals).
+Timing primitives (`torch.cuda.Event` / `synchronize` / `perf_counter`) are captured as child-locals
+**before** the submission is loaded, so a kernel that monkeypatches them at import cannot forge its
+timing. *Residual:* a genuinely-correct kernel under-reporting its own CUDA-event timing via
+side-stream tricks is bounded by a captured-clock wall anchor on the sample's scale (events
+implausibly faster than the wall are rejected); full timing-forge immunity needs parent-driven
+two-point wall-clock timing, a planned follow-up.
 
 ## 5. Threat model — what's gameable, and what closes it
 

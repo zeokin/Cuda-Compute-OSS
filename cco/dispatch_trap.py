@@ -37,6 +37,7 @@ Usage (needs torch; run in the WSL env):
 
 from __future__ import annotations
 
+import contextlib
 import sys
 
 
@@ -131,12 +132,46 @@ def _run_under_traps(kernel_fn, inputs: dict, denied_fns, denied_aten, raise_on_
     return out, hits
 
 
+@contextlib.contextmanager
+def delegation_trap(denied_fns=DENIED_FN_NAMES, denied_aten=DENIED_ATEN_OPS):
+    """Context manager: any banned high-level/aten op executed INSIDE raises DelegationError.
+
+    Wrap a whole loop (warmup + timed reps + post-validation), not just single validation calls,
+    so EVERY kernel invocation is trapped. Otherwise a kernel can probe whether it is currently
+    under the trap (catch DelegationError) and delegate to a fast vendor op only in an untrapped
+    phase (e.g. the timed loop), winning on the delegated kernel's latency. The mode classes and
+    the (frozenset) denylists are bound here, out of the submission's reach.
+    """
+    from torch.overrides import TorchFunctionMode
+    from torch.utils._python_dispatch import TorchDispatchMode
+
+    class _FnMode(TorchFunctionMode):
+        def __torch_function__(self, func, types, args=(), kwargs=None):
+            kwargs = kwargs or {}
+            if getattr(func, "__name__", "") in denied_fns:
+                raise DelegationError(
+                    f"kernel invoked banned op torch:{func.__name__} at runtime "
+                    f"(delegation to a high-level/vendor op is not allowed)")
+            return func(*args, **kwargs)
+
+    class _DispMode(TorchDispatchMode):
+        def __torch_dispatch__(self, func, types, args=(), kwargs=None):
+            kwargs = kwargs or {}
+            base = _op_base_name(func)
+            if base in denied_aten:
+                raise DelegationError(f"kernel invoked banned op aten::{base} at runtime")
+            return func(*args, **kwargs)
+
+    with _DispMode(), _FnMode():
+        yield
+
+
 def run_guarded(kernel_fn, inputs: dict,
                 denied_fns=DENIED_FN_NAMES, denied_aten=DENIED_ATEN_OPS):
-    """Call kernel_fn(**inputs) under the traps; raise DelegationError on the first banned op.
+    """Call kernel_fn(**inputs) under the trap; raise DelegationError on the first banned op.
     Returns kernel_fn's output if clean."""
-    out, _ = _run_under_traps(kernel_fn, inputs, denied_fns, denied_aten, raise_on_hit=True)
-    return out
+    with delegation_trap(denied_fns, denied_aten):
+        return kernel_fn(**inputs)
 
 
 def collect_delegations(kernel_fn, inputs: dict,
