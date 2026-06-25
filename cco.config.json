@@ -141,7 +141,10 @@
   },
 
   "gittensor_repo_config": {
-    "weight": 0.5,
+    "_comment": "Mirrors the SN74/Gittensor per-repo RepositoryConfig, VERIFIED against entrius/gittensor (gittensor/validator/utils/load_weights.py + weights/master_repositories.json). NOTES: (1) emission_share is SET BY THE GITTENSOR TEAM, not self-served (0.01 is a placeholder; the SUM across ALL repos must be <= 1.0, live repos run ~0.004-0.05). (2) King-of-the-hill: the cco-winner-<track> label is read from the winning PR (NOT the issue) via label_resolution.resolve_trusted_label_multiplier(pr.labels); default_label_multiplier 0 + fixed_base_score 1.0 make only the crown-holder earn. (3) trusted_label_pipeline true lets a CCO bot/App-applied label (actor_association=NULL) count. (4) eligibility zeros let a single crowned winner score (defaults are min_valid_merged_prs 3 / min_credibility 0.80). (5) scoring.time_decay is FLATTENED (min_multiplier 1.0) because Gittensor decays reward by TIME-SINCE-MERGE by default (50% at 10d, 5% floor, gone from lookback at 30d), which would erode 'earn while you hold the crown' -- the team must approve this override. nested eligibility/scoring objects REJECT unknown keys.",
+    "emission_share": 0.1,
+    "issue_discovery_share": 0.0,
+    "maintainer_cut": 0.0,
     "trusted_label_pipeline": true,
     "label_multipliers": {
       "cco-winner-rms_norm": 1.0,
@@ -152,7 +155,21 @@
     },
     "default_label_multiplier": 0.0,
     "fixed_base_score": 1.0,
-    "eligibility_mode": false
+    "eligibility": {
+      "min_valid_merged_prs": 0,
+      "min_credibility": 0.0,
+      "min_valid_solved_issues": 0,
+      "min_issue_credibility": 0.0
+    },
+    "scoring": {
+      "pr_lookback_days": 90,
+      "time_decay": {
+        "grace_period_hours": 8760,
+        "sigmoid_midpoint_days": 36500,
+        "sigmoid_steepness": 0.4,
+        "min_multiplier": 1.0
+      }
+    }
   },
 
   "miner_limits": {

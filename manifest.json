@@ -2,11 +2,11 @@
   "artifact": "kernel.py",
   "files": {
     "benchmark.py": "dc24c4ada83106563bcdb94e5cd2c38551067a8cb9702a9ffcfc960f4783ffac",
-    "cco.config.json": "6ec59c5599b1773f4d832788a49074008f5067c8ea48f57981b57d6f6e0cff3c",
+    "cco.config.json": "c62720130a52eceb97b4a57eb20ad849ac38abeb7c7b6d737f465c76c1736b6e",
     "cco/__init__.py": "f60e916523780b6c8e5204e3b3171d9f0417ca8d571ce3c85d0dd36e9d69541f",
     "cco/blob.py": "8d3de0941ef8193dc669d1da8bb4c2e0c7640b76862eeb6765fa6be071aa64e0",
     "cco/dispatch_trap.py": "41256fea1bc7709f84a6a1c908f0c93525c6d3dfe4d552db80533fd0584a7f99",
-    "cco/gate.py": "ebb4955a5ce8124da96952824915977811c9f6b67ba5eddc34dc3e2d29acc528",
+    "cco/gate.py": "70acf93dc6c2c46d37d72562141edf395d41c3fef9e217003759433f39e1764a",
     "cco/guard_kernel.py": "cef8bd721e02fded6b7861019516122ed005e069a4a8b1a9f6b85a56b52c1804",
     "cco/isolate.py": "1f7f8f26ff0ac06441bddb7d0e1b0001d1f07377703aade70566ddf28757dac2",
     "cco/manifest_tool.py": "2089be35dbaaa233e0b7685feb5d6be5237d29a53afa9326cf1493945740a6fc",

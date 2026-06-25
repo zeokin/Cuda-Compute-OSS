@@ -10,8 +10,10 @@ reject). Three deterministic checks bundled into one verdict:
                     declaring an easier track, or being scored against the wrong oracle/champion;
   3. no delegation — the static AST scan (cco/guard_kernel.py).
 
-The gate pipeline then diffs the PR against `champions/<kernel_type>/` and, on a win, applies the
-`cco-winner-<kernel_type>` label (that orchestration is the pipeline's, not this module's).
+On a win, the **CCO maintainer bot** (a maintainer-owned token — an owner/collaborator account, or a
+GitHub App honored via `trusted_label_pipeline`, NOT the read-only Gittensor App) merges the PR and
+moves the `cco-winner-<kernel_type>` label onto it; SN74 validators only observe the merged + labeled
+result. That orchestration is the bot/pipeline's, not this module's.
 
 Usage:
     uv run --no-project python cco/gate.py --self-test

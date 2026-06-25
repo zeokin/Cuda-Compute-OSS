@@ -45,6 +45,15 @@ A PR merges only on affirmative evidence. The gate pipeline short-circuits on th
 The PR is **frozen** between gate-walk and merge (snapshot of head SHA + body hash); any drift closes
 it. This removes the "pass clean, then push a backdoor before merge" window.
 
+**Who merges and labels (king-of-the-hill).** The gate pipeline only *decides*; the merge and the
+`cco-winner-<track>` label are applied by the **CCO maintainer bot** — a maintainer-owned token (an
+owner/collaborator account, or a GitHub App honored via `trusted_label_pipeline`), **never** the
+read-only Gittensor App (on SN74, Gittensor never merges for you). On a win the bot merges the PR,
+moves the single `cco-winner-<track>` label off the prior champion onto the new one, and closes the
+rest; on a loss it closes the PR. SN74 validators then only *observe* the merged + labeled state and
+pay via the per-repo king-of-the-hill config (§3). Merging only the winner makes "merged" == "took the
+crown."
+
 ## 3. Scoring
 
 **Correctness is a hard gate, never an axis.** All 5 `benchmark.py` stages must PASS against the locked
@@ -75,9 +84,14 @@ wins only if it is *significantly* faster **and** faster by ≥ `min_improvement
 both noise-only flips and statistically-detectable-but-tiny wins, preventing crown-thrash. **VRAM**
 is a non-regression guard band.
 
-**Emissions** (`cco.config.json` → `gittensor_repo_config`): king-of-the-hill. `fixed_base_score`
-+ `default_label_multiplier: 0` means only the PR currently holding `cco-winner-<track>` earns, and
-the magnitude of a win doesn't change pay — you're rewarded for *taking and holding* the frontier.
+**Emissions** (`cco.config.json` → `gittensor_repo_config`, mirrored into Gittensor's
+`master_repositories.json`): king-of-the-hill on SN74. `fixed_base_score` + `default_label_multiplier: 0`
+mean only the PR currently holding `cco-winner-<track>` earns, and the magnitude of a win doesn't change
+pay — you're rewarded for *taking and holding* the frontier. SN74 validators read the **winning PR's**
+label every ~2h (`trusted_label_pipeline` lets the CCO bot's label count even as a NULL-actor App;
+`eligibility` is zeroed so a single crowned winner isn't gated out), and `scoring.time_decay` is
+flattened so a held crown keeps paying instead of decaying by time-since-merge. The label move is
+performed by the CCO bot (§2), not by Gittensor.
 
 ## 4. The bound score blob
 
