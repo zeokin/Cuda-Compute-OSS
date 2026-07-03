@@ -1,6 +1,7 @@
 
 # CCO — Compute-Cost Optimization
-<img width="1104" height="517" alt="CCO-adver" src="https://github.com/user-attachments/assets/83dec1d6-cbf2-424b-8c9d-ed16ba024bfa" />
+<img width="1104" height="517" alt="CCO-adver" src="https://github.com/user-attachments/assets/4b52e4f8-f1dd-4861-8c38-deb80cda9d51" />
+
 
 
 
