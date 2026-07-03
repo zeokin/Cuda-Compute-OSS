@@ -7,7 +7,7 @@
     "cco/blob.py": "8d3de0941ef8193dc669d1da8bb4c2e0c7640b76862eeb6765fa6be071aa64e0",
     "cco/dispatch_trap.py": "41256fea1bc7709f84a6a1c908f0c93525c6d3dfe4d552db80533fd0584a7f99",
     "cco/gate.py": "ebb4955a5ce8124da96952824915977811c9f6b67ba5eddc34dc3e2d29acc528",
-    "cco/guard_kernel.py": "cef8bd721e02fded6b7861019516122ed005e069a4a8b1a9f6b85a56b52c1804",
+    "cco/guard_kernel.py": "711c558dc3b692ffe235def8fbd020f4432f3cd0b5b6c5df33b47aa3256dc9f3",
     "cco/isolate.py": "1f7f8f26ff0ac06441bddb7d0e1b0001d1f07377703aade70566ddf28757dac2",
     "cco/manifest_tool.py": "2089be35dbaaa233e0b7685feb5d6be5237d29a53afa9326cf1493945740a6fc",
     "cco/seed.py": "b978dcefbc679ea5ccfa0de75038906d22dceb9ece6c170da2f2eab1ae761bb6",

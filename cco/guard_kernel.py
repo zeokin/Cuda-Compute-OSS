@@ -316,6 +316,13 @@ def _dotted_parts(node: ast.AST):
     return None
 
 
+def _subscript_string_key(slice_node: ast.AST):
+    """Return a string lookup key from `obj['name']`, or None for grid launches like `kernel[(M,)]`."""
+    if isinstance(slice_node, ast.Constant) and isinstance(slice_node.value, str):
+        return slice_node.value
+    return None
+
+
 def _build_alias_map(tree: ast.AST) -> dict:
     """Map locally-bound names to their fully-qualified import path.
 
@@ -507,6 +514,17 @@ class _Scanner(ast.NodeVisitor):
                     self._add("delegation",
                               f"call to delegating method `.{leaf}()` (compute must be in the kernel)", node)
 
+        elif isinstance(func, ast.Subscript):
+            # Bracket dispatch: F['rms_norm'](...) / torch.ops.aten['mm'](...) bypasses the Attribute
+            # resolver. Only string keys are delegation lookups; tuple slices are Triton grid launches.
+            key = _subscript_string_key(func.slice)
+            parts = _dotted_parts(func.value)
+            if parts is not None and key is not None:
+                qualified = _resolve(parts, self.aliases) + "." + key
+                if _is_denied_qualified(qualified, self.policy):
+                    self._add("delegation",
+                              f"call to forbidden `{qualified}()` (subscript dispatch)", node)
+
         self.generic_visit(node)
 
     # --- attribute access: introspection-dunder escapes (reached as `.X` on any receiver) ---
@@ -686,6 +704,14 @@ _NEGATIVE_CASES = [
      ("import torch.nn.functional as F\n"
       "def kernel_fn(x, weight, eps=1e-6):\n"
       "    return F.rms_norm(x, (x.shape[-1],), weight, eps)\n"),
+     "delegation"),
+    ("delegate via F['rms_norm'] subscript",
+     ("import torch.nn.functional as F\n"
+      "def kernel_fn(x, weight, eps=1e-6):\n"
+      "    return F['rms_norm'](x, (x.shape[-1],), weight, eps)\n"),
+     "delegation"),
+    ("delegate via torch.ops.aten['mm'] subscript",
+     "import torch\ndef kernel_fn(a, b):\n    return torch.ops.aten['mm'](a, b)\n",
      "delegation"),
     ("delegate via torch.matmul",
      "import torch\ndef kernel_fn(a, b):\n    return torch.matmul(a, b)\n",
