@@ -1,7 +1,7 @@
 {
   "artifact": "kernel.py",
   "files": {
-    "benchmark.py": "dc24c4ada83106563bcdb94e5cd2c38551067a8cb9702a9ffcfc960f4783ffac",
+    "benchmark.py": "ffab27395befa381bd577643a19759e96858046f813afee91b2aff23af0da76f",
     "cco.config.json": "6ec59c5599b1773f4d832788a49074008f5067c8ea48f57981b57d6f6e0cff3c",
     "cco/__init__.py": "f60e916523780b6c8e5204e3b3171d9f0417ca8d571ce3c85d0dd36e9d69541f",
     "cco/blob.py": "8d3de0941ef8193dc669d1da8bb4c2e0c7640b76862eeb6765fa6be071aa64e0",

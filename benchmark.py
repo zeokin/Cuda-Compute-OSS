@@ -553,7 +553,10 @@ def run_correctness(kernel_fn: Callable, config: dict, quick: bool = False, seed
                     print(f"  FAIL: {case_name} -> {cmp['reason']}")
 
         except torch.cuda.OutOfMemoryError:
-            print(f"  SKIP: {case_name} -> OOM")
+            # OOM on a locked correctness size is a FAIL, not a SKIP — same rule as shape_sweep.
+            stability_pass = False
+            details.append(f"  stability {case_name}: OOM (must fit the canonical GPU)")
+            print(f"  FAIL: {case_name} -> OOM")
             torch.cuda.empty_cache()
         except BenchTimeoutError:
             stability_pass = False
@@ -651,7 +654,10 @@ def run_correctness(kernel_fn: Callable, config: dict, quick: bool = False, seed
                             print(f"  FAIL: {label} -> {cmp['reason']}")
 
                 except torch.cuda.OutOfMemoryError:
-                    print(f"  SKIP: {label} -> OOM")
+                    # OOM on a locked edge size is a FAIL, not a SKIP — same rule as shape_sweep.
+                    edge_pass = False
+                    details.append(f"  edge {label}: OOM (must fit the canonical GPU)")
+                    print(f"  FAIL: {label} -> OOM")
                     torch.cuda.empty_cache()
                 except BenchTimeoutError:
                     edge_pass = False
