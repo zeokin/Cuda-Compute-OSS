@@ -54,6 +54,31 @@ def _run(A, B, m, transform, dtype="fp64"):
     return C
 
 
+class _FakeBackend:
+    """Minimal stand-in exposing only what _row_block needs -- no GPU/torch."""
+
+    def __init__(self, free_bytes):
+        self._free = free_bytes
+
+    def free_compute_bytes(self):
+        return self._free
+
+
+# -- row-block sizing (pure arithmetic, no GPU needed) --------------------
+def test_row_block_scales_with_itemsize():
+    # reconstruct() must size its streaming block from the dtype the loop
+    # actually computes in (compute_dtype), not the output dtype -- they
+    # differ for dtype="fp16" (compute_dtype is bumped to fp32). Sizing from
+    # the smaller fp16 itemsize would under-budget the real fp32 footprint
+    # by 2x, since the same byte budget divided by half the itemsize yields
+    # twice the row count.
+    fake = _FakeBackend(1_000_000_000)
+    n = 50_000
+    blk_fp32 = subspace._row_block(n, n, fake, np.dtype(np.float32).itemsize)
+    blk_fp16 = subspace._row_block(n, n, fake, np.dtype(np.float16).itemsize)
+    assert blk_fp16 == 2 * blk_fp32
+
+
 # -- streaming primitives -------------------------------------------------
 # The primitives stream the rows of X from the host but expect the *resident*
 # operand (Q / Om / Ctil) to already be a device tensor, exactly as production

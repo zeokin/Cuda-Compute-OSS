@@ -91,10 +91,17 @@ def compress(X, Q, backend: Backend, dtype,
 
 
 def reconstruct(Ctil, Q, C_out, backend: Backend, out_dtype,
-                frac: float = _DEFAULT_ROW_BLOCK_FRACTION):
-    """Write Q @ Ctil @ Q^T  (n x n) into C_out, streaming output row-blocks."""
+                frac: float = _DEFAULT_ROW_BLOCK_FRACTION, compute_dtype=None):
+    """Write Q @ Ctil @ Q^T  (n x n) into C_out, streaming output row-blocks.
+
+    Row-blocks are sized from ``compute_dtype`` -- the dtype Q/Ctil/the (rb, n)
+    intermediate actually occupy on-device -- not ``out_dtype``. They can
+    differ (e.g. fp16 output computed in fp32 for accuracy), and sizing from
+    the smaller output dtype under-budgets the real per-row footprint.
+    """
     n = Q.shape[0]
-    blk = _row_block(n, n, backend, np.dtype(out_dtype).itemsize, frac)
+    item_dtype = compute_dtype if compute_dtype is not None else out_dtype
+    blk = _row_block(n, n, backend, np.dtype(item_dtype).itemsize, frac)
     QT = Q.T
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
@@ -129,7 +136,7 @@ def multiply_subspace(A, B, C, backend: Backend, cfg: Config) -> dict:
     Atil = compress(A, Q, backend, cdt, frac)             # (m, m)
     Btil = compress(B, Q, backend, cdt, frac)             # (m, m)
     Ctil = backend.matmul(Atil, Btil)                     # (m, m)  -- cheap core
-    reconstruct(Ctil, Q, C, backend, cfg.np_dtype, frac)
+    reconstruct(Ctil, Q, C, backend, cfg.np_dtype, frac, cdt)
 
     return {
         "n": n,
