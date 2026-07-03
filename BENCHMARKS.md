@@ -21,7 +21,8 @@ uv run benchmark.py --blob     # the bound score blob (sample + correctness + id
 
 - **Latency sample:** `n_blocks = 30` block-mean latencies on the primary size + dtype, with
   rotating input buffers (kills warm-L2 / memoize-by-pointer), fused correctness on two distinct
-  buffers, and an output-vs-input alias guard (`run_scored_sample`).
+  buffers, and an output-vs-input alias guard (`run_isolated`; the in-process `run_scored_sample`
+  fallback implements the same check but is not authoritative).
 - **Win decision** (`cco/significance.py`): the challenger beats the champion only if it is
   *significantly* faster (`p < p_value_threshold`) **and** faster by ≥ `min_improvement_pct` — both
   thresholds live in [cco.config.json](cco.config.json) (`scoring.significance`).

@@ -73,6 +73,25 @@ def _has_nan_inf(out) -> bool:
     return False
 
 
+def _tensor_storage_ptrs(x) -> set:
+    """Underlying data pointers of a tensor or tuple/list of tensors (anti-alias guard)."""
+    import torch
+
+    ptrs = set()
+    items = x if isinstance(x, (tuple, list)) else [x]
+    for t in items:
+        if torch.is_tensor(t):
+            ptrs.add(t.data_ptr())
+    return ptrs
+
+
+def _output_aliases_input(out, inp: dict) -> bool:
+    in_ptrs = set()
+    for t in inp.values():
+        in_ptrs |= _tensor_storage_ptrs(t)
+    return bool(_tensor_storage_ptrs(out) & in_ptrs)
+
+
 # =====================================================================================
 # CHILD — runs in the isolated subprocess. Untrusted-kernel territory; runs kernel_fn on each
 # parent-provided input and returns the raw outputs. Makes NO judgement.
@@ -215,6 +234,7 @@ def _child_main(job_path: str, out_path: str) -> int:
     task_outputs = []
     det_outputs = []
     scored_val = []
+    output_aliased_input = False
     event_block_us: list[float] = []
     wall_block_us: list[float] = []     # PRIMARY: per-block synced captured-clock wall (forge-resistant)
     timed_wall_s = 0.0
@@ -303,7 +323,10 @@ def _child_main(job_path: str, out_path: str) -> int:
             # (run_guarded re-enters it per call). The events s/e, the clock _perf, and probe_set all
             # stay in THIS thread — off the kernel's reachable call stack.
             for i in range(min(n_pre, nb)):
-                scored_val.append(_to_cpu(_call(bufs[i])))
+                out = _call(bufs[i])
+                if _output_aliases_input(out, bufs[i]):
+                    output_aliased_input = True
+                scored_val.append(_to_cpu(out))
 
             for _ in range(int(sc["warmup"])):
                 mutate(0, g)
@@ -374,7 +397,10 @@ def _child_main(job_path: str, out_path: str) -> int:
             two_point_us = max(0.0, (_wall2 - _wall1) / _m2 * 1e6)
 
             for i in range(n_pre, nb):
-                scored_val.append(_to_cpu(_call(bufs[i])))
+                out = _call(bufs[i])
+                if _output_aliases_input(out, bufs[i]):
+                    output_aliased_input = True
+                scored_val.append(_to_cpu(out))
             _sync()
 
             probe_inputs = [{k: (_to_cpu(v) if hasattr(v, "detach") else v) for k, v in p.items()}
@@ -401,6 +427,7 @@ def _child_main(job_path: str, out_path: str) -> int:
                 "wall_block_us": wall_block_us,
                 "timed_wall_s": timed_wall_s, "two_point_us": two_point_us, "delegation": delegation,
                 "probe_inputs": probe_inputs, "probe_outputs": probe_outputs,
+                "output_aliased_input": output_aliased_input,
                 "child_error": child_error}, out_path)
     return 0
 
@@ -755,6 +782,10 @@ def run_isolated(kernel_path: str, config: dict, seed: int, compare_fn, *,
             if not cmp["match"]:
                 scored_ok = False
 
+        output_aliased = bool(res.get("output_aliased_input"))
+        if output_aliased:
+            scored_ok = False
+
         # TIMED-LOOP probe: each captured (mutated input, output) sample must match the oracle on that
         # EXACT input. A cache that ignores the per-call mutation returns a stale -> wrong output here;
         # a schedule-aware kernel that garbages an un-probed call is caught because the server-random
@@ -782,7 +813,8 @@ def run_isolated(kernel_path: str, config: dict, seed: int, compare_fn, *,
             return "PASS" if stage_ok[st] else "FAIL"
 
         stages = {k: verdict(k) for k in stage_ok}
-        overall = all(stage_ok[k] for k in stage_ok if stage_seen[k]) and scored_ok and probe_ok
+        overall = (all(stage_ok[k] for k in stage_ok if stage_seen[k])
+                     and scored_ok and probe_ok and not output_aliased)
         stages["correctness"] = "PASS" if overall else "FAIL"
 
         # PHASE B — the PRIMARY latency is the per-block synced captured-clock WALL, NOT the default-stream
@@ -837,6 +869,7 @@ def run_isolated(kernel_path: str, config: dict, seed: int, compare_fn, *,
 
         return {
             **base, "correct": bool(overall and scored_ok and probe_ok), "max_abs_error": worst_err,
+            "output_aliased_input": output_aliased,
             "delegation": None, "timing_inconsistent": timing_inconsistent, "child_wall_s": child_wall_s,
             "timed_wall_s": timed_wall_s, "two_point_us": float(res.get("two_point_us") or 0.0),
             "event_med_us": (statistics.median(event_lat) if event_lat else 0.0),  # sanity cross-check only
@@ -933,6 +966,24 @@ def kernel_fn(x, weight, eps=1e-6):
     M, N = x.shape; y = torch.empty_like(x)
     _k[(M,)](x, weight, y, x.stride(0), N, eps, B=triton.next_power_of_2(N))
     return y
+'''
+
+# Correct in-place Triton write, but returns the input tensor (aliases its storage). Passes the oracle
+# on the scored buffers yet must be rejected by the output-vs-input alias guard.
+_ALIAS_RETURN = '''
+import torch, triton, triton.language as tl
+KERNEL_TYPE = "rms_norm"
+@triton.jit
+def _k(X, W, s, N, eps, B: tl.constexpr):
+    row = tl.program_id(0); cols = tl.arange(0, B); m = cols < N
+    x = tl.load(X + row*s + cols, mask=m, other=0.0).to(tl.float32)
+    rms = tl.sqrt(tl.sum(x*x)/N + eps)
+    w = tl.load(W + cols, mask=m, other=0.0).to(tl.float32)
+    tl.store(X + row*s + cols, (x/rms*w), mask=m)
+def kernel_fn(x, weight, eps=1e-6):
+    M, N = x.shape
+    _k[(M,)](x, weight, x.stride(0), N, eps, B=triton.next_power_of_2(N))
+    return x
 '''
 
 # Honest Triton through correctness + warmup, then delegates to a runtime-banned op INSIDE the timed
@@ -1132,6 +1183,10 @@ def _self_test() -> int:
     r = run(_TIME_FORGER)
     check(r["correct"] and r["median_us"] > 1.0,
           f"timing-forger (patches cuda.Event/sync at import) -> REAL timing survives ({r['median_us']:.1f}us, not ~0)")
+
+    r = run(_ALIAS_RETURN)
+    check(not r["correct"] and bool(r.get("output_aliased_input")),
+          "in-place kernel returning aliased input -> REJECTED by the output-vs-input alias guard")
 
     r = run(_TIMED_DELEGATOR)
     check(not r["correct"] and bool(r.get("delegation")),
