@@ -556,8 +556,21 @@ def run_isolated(kernel_path: str, config: dict, seed: int, compare_fn, *,
     if not quick:
         def _xf_near_max(t):
             return t * (60000.0 if t.dtype == torch.float16 else 1e30)
-        transforms = [("near_max", _xf_near_max), ("near_zero", lambda t: t * 1e-6),
-                      ("all_zeros", torch.zeros_like), ("all_same", lambda t: torch.ones_like(t) * 0.5)]
+
+        def _xf_mixed_scale(t):
+            return t * torch.where(
+                torch.rand_like(t.float()).to(t.dtype) > 0.5,
+                torch.tensor(1e3, device=t.device, dtype=t.dtype),
+                torch.tensor(1e-3, device=t.device, dtype=t.dtype),
+            )
+
+        transforms = [
+            ("near_max", _xf_near_max),
+            ("near_zero", lambda t: t * 1e-6),
+            ("mixed_scale", _xf_mixed_scale),
+            ("all_zeros", torch.zeros_like),
+            ("all_same", lambda t: torch.ones_like(t) * 0.5),
+        ]
         for _name, xf in transforms:
             base = gen_fn(stab_size, dtypes[0], dev, seed=seed)
             tr = {k: (xf(v) if (hasattr(v, "is_floating_point") and v.is_floating_point()) else v)
