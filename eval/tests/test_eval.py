@@ -65,6 +65,21 @@ def test_accuracy_floors_at_zero():
     assert metrics.accuracy(C, -C) == 0.0
 
 
+def test_rel_frobenius_error_keeps_climbing_past_the_accuracy_clamp():
+    # accuracy = max(0, 1 - error) floors at 0 once error >= 1, but the real
+    # relative Frobenius error keeps growing -- the two are not interchangeable
+    # above the clamp, so a caller wanting the true error (e.g. eval.evaluator's
+    # report) must call rel_frobenius_error directly rather than back-deriving
+    # it from accuracy (which would flatten every error >= 1 to exactly 1).
+    rng = np.random.default_rng(2)
+    C = rng.standard_normal((16, 16))
+    Chat = -3.0 * C                       # ||C - Chat||_F / ||C||_F == 4.0 exactly
+    err = metrics.rel_frobenius_error(C, Chat)
+    acc = metrics.accuracy(C, Chat)
+    assert abs(err - 4.0) < 1e-9
+    assert acc == 0.0
+
+
 def test_score_gated_by_accuracy_floor():
     # Accuracy below the floor -> score forced to 0 regardless of speed/memory.
     gated = metrics.score(0.5, peak_vram_bytes=1e6, latency_s=0.01,

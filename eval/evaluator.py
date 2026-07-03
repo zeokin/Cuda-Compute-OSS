@@ -140,19 +140,22 @@ def evaluate(ev: EvalConfig) -> dict:
     results = {}
     for name in names:
         cfg = _strategy_config(ev, name)
-        accs, lats, vrams, flop_ratio = [], [], [], None
+        accs, errs, lats, vrams, flop_ratio = [], [], [], [], None
         for (A, B), Ce in zip(pairs, exact_products):
             Cs = np.empty((ev.n, ev.n), dtype=dt)
             sec, peak, info = _timed_with_mem(
                 lambda A=A, B=B, Cs=Cs: subspace.multiply_subspace(A, B, Cs, backend, cfg),
                 backend,
             )
-            accs.append(metrics.accuracy(Ce, Cs))
+            err = metrics.rel_frobenius_error(Ce, Cs)
+            errs.append(err)
+            accs.append(max(0.0, 1.0 - err))
             lats.append(sec)
             vrams.append(peak)
             flop_ratio = info["flop_exact"] / info["flop_actual"]
 
         acc = float(np.mean(accs))
+        rel_err = float(np.mean(errs))
         latency = float(np.mean(lats))
         peak_vram = float(np.max(vrams))          # worst-case memory pick
 
@@ -171,7 +174,7 @@ def evaluate(ev: EvalConfig) -> dict:
         )
         results[name] = {
             "accuracy": acc,
-            "rel_frobenius_error": 1.0 - acc if acc < 1.0 else 0.0,
+            "rel_frobenius_error": rel_err,
             "latency_s": latency,
             "peak_vram_bytes": peak_vram,
             "peak_vram_mib": peak_vram / metrics.MIB,
