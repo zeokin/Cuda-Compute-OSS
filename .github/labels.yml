@@ -1,0 +1,60 @@
+# CCO label taxonomy — the single source of truth for repository labels.
+#
+# `labels-sync.yml` reads this file and reconciles the repo's labels with it
+# (create missing, recolor/redescribe drifted). Edit here, not in the GitHub UI.
+#
+# Three families:
+#   area:*   subsystem the issue/PR touches (auto-applied from changed paths)
+#   type:*   what kind of contribution it is (auto-applied from title/template)
+#   status:* review/triage state (applied by maintainers or the eval bot)
+
+# ── area: subsystems ────────────────────────────────────────────────────────
+- name: "area:strategy"
+  color: "8250DF"
+  description: "Smart strategies / transforms (strategy/)"
+- name: "area:matmul"
+  color: "006B75"
+  description: "Exact engine and tile schedules (matmul/)"
+- name: "area:eval"
+  color: "0052CC"
+  description: "Scorer, metrics, and the scorecard (eval/)"
+- name: "area:tests"
+  color: "C2E0C6"
+  description: "Correctness gates and test suites (tests/)"
+- name: "area:examples"
+  color: "BFD4F2"
+  description: "Runnable examples (examples/)"
+- name: "area:docs"
+  color: "0E8A16"
+  description: "README, CONTRIBUTING, BENCHMARKS and other docs"
+- name: "area:ci"
+  color: "5319E7"
+  description: "GitHub Actions and repository automation (.github/)"
+
+# ── type: contribution kind ─────────────────────────────────────────────────
+- name: "type:strategy"
+  color: "D4C5F9"
+  description: "New smart strategy / transform proposal"
+- name: "type:bug"
+  color: "B60205"
+  description: "Something is incorrect or broken"
+- name: "type:enhancement"
+  color: "1D76DB"
+  description: "Improvement to an existing component"
+- name: "type:docs"
+  color: "FBCA04"
+  description: "Documentation-only change"
+- name: "type:question"
+  color: "D876E3"
+  description: "A question or discussion, not a change"
+
+# ── status: triage / review state ───────────────────────────────────────────
+- name: "status:needs-scorecard"
+  color: "E99695"
+  description: "PR is missing the reproducible eval scorecard"
+- name: "status:needs-review"
+  color: "FBCA04"
+  description: "Awaiting maintainer review"
+- name: "status:triage"
+  color: "C5DEF5"
+  description: "Newly opened, not yet triaged"

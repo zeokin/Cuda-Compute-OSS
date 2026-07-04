@@ -1,9 +1,0 @@
-blank_issues_enabled: true
-contact_links:
-  - name: Discord — questions, help, real-time discussion
-    url: https://discord.gg/kEHZ3wJuHM
-    about: Channels include #help, #kernels, #benchmarks, #hardware.
-
-  - name: CONTRIBUTING.md
-    url: https://github.com/zeokin/Cuda-Compute-OSS/blob/main/CONTRIBUTING.md
-    about: The one-file rule, the kernel contract, the no-delegation rule, self-scoring, and how to submit.

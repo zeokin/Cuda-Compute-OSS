@@ -1,0 +1,36 @@
+# Path → area-label rules for pull requests, consumed by actions/labeler@v5
+# (see .github/workflows/labeler.yml). A PR gets an `area:*` label for every
+# subsystem it touches. Keep the globs in sync with the repo layout.
+
+"area:strategy":
+  - changed-files:
+      - any-glob-to-any-file: "strategy/**"
+
+"area:matmul":
+  - changed-files:
+      - any-glob-to-any-file: "matmul/**"
+
+"area:eval":
+  - changed-files:
+      - any-glob-to-any-file: "eval/**"
+
+"area:tests":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "tests/**"
+          - "**/tests/**"
+          - "**/test_*.py"
+
+"area:examples":
+  - changed-files:
+      - any-glob-to-any-file: "examples/**"
+
+"area:docs":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - "LICENSE"
+
+"area:ci":
+  - changed-files:
+      - any-glob-to-any-file: ".github/**"

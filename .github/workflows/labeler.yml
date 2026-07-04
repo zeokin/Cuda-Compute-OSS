@@ -1,0 +1,119 @@
+name: Auto-label
+
+# Automatically labels issues and PRs when they are opened, mirroring the
+# triage flow used by upstream gittensor / sparkinfer:
+#   - PRs get an area:* label for every subsystem they touch (from changed paths)
+#     plus status:needs-review, and status:needs-scorecard when the required eval
+#     scorecard is missing from the description.
+#   - Issues get a type:* label inferred from their title prefix / keywords, plus
+#     status:triage.
+#
+# Labels themselves are defined in .github/labels.yml and materialised by
+# .github/workflows/labels-sync.yml.
+
+on:
+  issues:
+    types: [opened, reopened, edited]
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: auto-label-${{ github.event_name }}-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Pull requests: area labels from changed paths + scorecard check ─────────
+  pr-area:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label subsystems from changed paths
+        uses: actions/labeler@v5
+        with:
+          configuration-path: .github/labeler.yml
+          sync-labels: true
+
+      - name: Review-state and scorecard labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const body = pr.body || "";
+
+            const add = new Set(["status:needs-review"]);
+            const remove = new Set();
+
+            // The one rule requires a reproducible scorecard. Treat the PR as
+            // missing it unless the body carries a filled metric (a number next
+            // to accuracy / latency), not just the empty template.
+            const hasScorecard =
+              /accuracy\s*\|?\s*[0-9]/i.test(body) ||
+              /latency\s*\|?\s*[0-9]/i.test(body) ||
+              /RESULT_JSON/.test(body);
+            (hasScorecard ? remove : add).add("status:needs-scorecard");
+
+            // A PR that adds/registers a transform is a strategy proposal.
+            if (/register_transform|class\s+\w+\(Transform\)|\[strategy\]/i.test(
+                  `${pr.title}\n${body}`)) {
+              add.add("type:strategy");
+            }
+
+            const { owner, repo } = context.repo;
+            if (add.size) {
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: pr.number, labels: [...add],
+              });
+            }
+            for (const name of remove) {
+              await github.rest.issues
+                .removeLabel({ owner, repo, issue_number: pr.number, name })
+                .catch(() => {}); // label may not be present — ignore 404
+            }
+
+  # ── Issues: type from title/keywords + triage ───────────────────────────────
+  issue-triage:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Infer type labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const text = `${issue.title}\n${issue.body || ""}`;
+            const labels = new Set(["status:triage"]);
+
+            const rules = [
+              [/^\s*\[strategy\]|\btransform\b|\bsubspace\b|\bstrategy\b/i, "type:strategy"],
+              [/^\s*\[bug\]|\bbug\b|\bcrash\b|\bincorrect\b|\bwrong\b|\bfails?\b/i, "type:bug"],
+              [/^\s*\[docs?\]|\bdocumentation\b|\breadme\b|\btypo\b/i, "type:docs"],
+              [/^\s*\[question\]|\bquestion\b|\bhow do i\b|\?$/i, "type:question"],
+              [/\benhancement\b|\bimprove\b|\bfeature\b|\bproposal\b/i, "type:enhancement"],
+            ];
+
+            for (const [re, label] of rules) {
+              if (re.test(text)) labels.add(label);
+            }
+            // Fall back to enhancement if no concrete type matched.
+            if (![...labels].some(l => l.startsWith("type:"))) {
+              labels.add("type:enhancement");
+            }
+
+            const areaRules = [
+              [/\bstrategy\b|\btransform\b|\bsubspace\b/i, "area:strategy"],
+              [/\bmatmul\b|\bgemm\b|\btile\b|\bkernel\b/i, "area:matmul"],
+              [/\beval\b|\bscorer?\b|\bscorecard\b|\bmetric\b/i, "area:eval"],
+            ];
+            for (const [re, label] of areaRules) {
+              if (re.test(text)) labels.add(label);
+            }
+
+            const { owner, repo } = context.repo;
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: issue.number, labels: [...labels],
+            });

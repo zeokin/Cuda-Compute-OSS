@@ -1,35 +1,47 @@
-<!-- Read CONTRIBUTING.md before opening this PR.
-     ONLY the fenced JSON payload below, the acknowledgement checkboxes, and this body's hash
-     carry authority. All other prose (title, this description, comments) is non-authoritative and
-     is ignored by the automated gates. Editing the PR after the gates pass closes it — open a
-     fresh PR instead. -->
+<!--
+CCO PR scorecard. The numbers, not the prose, decide.
+Read CONTRIBUTING.md and BENCHMARKS.md before filling this in.
+The one rule: an improvement reduces every cost axis WITHOUT losing accuracy.
+-->
 
-## Optimization
+## Summary
 
-<!-- One sentence describing your optimization. Human-readable only; not scored. -->
+<!-- What the strategy does, why it is cheaper, and the regime it targets. -->
 
-## Submission payload
+## Result
 
-<!-- Fill in every field. Schema: payload-schema.json. `signature` is your SN74 hotkey signing the
-     message `<commit_sha>:<kernel_sha256>:<kernel_type>`. `claimed_speedup` is advisory only —
-     the canonical rerun is authoritative. -->
+| metric          | value          |
+|-----------------|----------------|
+| accuracy        |                |
+| time complexity |                |
+| latency         |                |
+| VRAM usage      |                |
 
-```json
-{
-  "version": 1,
-  "commit_sha": "<40-hex PR HEAD commit sha>",
-  "kernel_type": "<rms_norm | matmul | qkv_part_rope | swiglu_input_quant | dsa_forward>",
-  "kernel_sha256": "<sha256 of your kernel.py>",
-  "hotkey": "<your SN74 SS58 hotkey>",
-  "signature": "<hotkey signature over commit_sha:kernel_sha256:kernel_type>",
-  "claimed_speedup": 1.00
-}
+<!--
+accuracy        — bounded Frobenius accuracy in [0,1] from `python -m eval`
+time complexity — analytic O(·) and the fitted N^p from `--sweep`
+latency         — mean wall-clock ms of the smart multiply, GPU-synchronized
+VRAM usage      — peak incremental GPU memory during the multiply
+-->
+
+**Regime measured:** N=12000, dtype=fp32, fill=full-rank, rank M=____, device=A100 (80 GB)
+
+<details>
+<summary>Raw scorecard (paste <code>python -m eval …</code> output or <code>--json</code>)</summary>
+
 ```
+<paste here>
+```
+</details>
 
-## Acknowledgements
+## Checklist
 
-- [ ] I read [CONTRIBUTING.md](https://github.com/zeokin/Cuda-Compute-OSS/blob/main/CONTRIBUTING.md) and [DESIGN.md](https://github.com/zeokin/Cuda-Compute-OSS/blob/main/DESIGN.md).
-- [ ] This PR changes **only** `kernel.py` — no other file is added, modified, or removed.
-- [ ] `kernel.py` is a real **Triton** kernel: it does **not** delegate the computation to `torch.matmul`/`mm`/`bmm`, `torch.nn.functional.*`, the `@` operator, `torch.ops.aten.*`, cuBLAS/cuDNN, or inline CUDA-C (see CONTRIBUTING § No delegation).
-- [ ] My SN74 hotkey is bound to this GitHub identity and the payload signature verifies.
-- [ ] I self-scored locally and got `correctness: PASS` on the declared track.
+- [ ] I ran the scorer on **unseen** couples — no hardcoding of seeds/matrices.
+- [ ] Accuracy and latency come from the **same run** at the **same dtype**.
+- [ ] This is an **improvement** (every cost axis down, accuracy held) **or** I
+      state honestly which axis it trades — see the one rule in CONTRIBUTING.md.
+- [ ] Correctness gates pass:
+      `python eval/tests/test_eval.py`,
+      `python strategy/tests/test_subspace.py`,
+      `python tests/test_correctness.py`.
+- [ ] I named the device and dtype so a reviewer can reproduce the numbers.

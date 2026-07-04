@@ -1,0 +1,27 @@
+name: Sync labels
+
+# Reconciles the repository's labels with .github/labels.yml so the auto-labeler
+# always has the labels it references. Runs when the taxonomy changes on main,
+# and can be triggered by hand.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/labels.yml"
+      - ".github/setup_labels.sh"
+      - ".github/workflows/labels-sync.yml"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconcile labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/setup_labels.sh

@@ -1,147 +1,153 @@
-# Contributing to CCO — Miner Guide
+# Contributing to CCO
 
-**CCO is an objective GPU-kernel optimization competition on Bittensor subnet 74 (gittensor).**
-You (a "miner") submit one optimized kernel; if it beats the current champion — faster, still
-correct, no more VRAM — with statistical significance, it becomes the new champion and earns
-emissions while it holds the crown. There is no subjective review: a submission clears the bar or
-it doesn't.
-
-This guide is the contributor's reference. Read it once and you'll know exactly what an acceptable
-submission looks like. For the architecture and threat model, see [DESIGN.md](DESIGN.md).
+CCO grows one way: someone submits a **strategy** that multiplies matrices for
+less compute cost without losing accuracy, proves it with the shared scorer, and
+opens a PR. This document is the whole loop — **the one rule**, **self-score
+locally**, **submit**.
 
 ---
 
-## 1. The one rule
+## The one rule
 
-**You may change exactly one file: `kernel.py`.** Everything else — the harness (`benchmark.py`),
-the correctness oracles (`references/`), the benchmark spec (`kernel_configs/`), the per-track
-champions (`champions/`), the config and runtime — is **locked** and byte-verified at your PR HEAD
-against `manifest.json` (Gate 2). A PR that touches anything else is rejected.
+> **You may only claim an improvement when every cost axis goes down and accuracy
+> does not.**
 
-## 2. The kernel contract
+Cost is `time complexity`, `latency`, and `VRAM usage`. Accuracy is the bounded
+Frobenius score. A change that makes the multiply faster or smaller **by making
+it less accurate is not an improvement** — it is a different, worse answer, and
+CCO scores it as one (often `0`, via the accuracy floor).
 
-`kernel.py` must export exactly two names:
+Concretely, a submission is admitted as an improvement only if, against the
+current frontier on the **same inputs**:
+
+- error (`1 − accuracy`) does **not** increase, **and**
+- `latency`, `VRAM`, and the empirical time-complexity exponent **all** decrease.
+
+If any cost axis regresses, or accuracy drops, it is not an improvement. No
+exceptions, no averaging a loss on one axis against a win on another. See
+[BENCHMARKS.md](BENCHMARKS.md) for the precise dominance rule.
+
+Everything else in this file is just how to *demonstrate* that you followed the
+one rule.
+
+---
+
+## What you actually change
+
+Most contributions are a new **transform** — the pluggable basis that defines the
+subspace the smart strategy compresses into. You add a class in
+[`strategy/transforms.py`](strategy/transforms.py) and register it:
 
 ```python
-KERNEL_TYPE = "rms_norm"   # one of the 5 tracks; selects the oracle/config/champion you compete on
+from strategy.transforms import Transform, register_transform
 
-def kernel_fn(**inputs):   # the kernel under test; called as kernel_fn(**inputs)
-    ...                    # returns a Tensor, or a tuple of Tensors for multi-output tracks
+class MyTransform(Transform):
+    name = "mine"
+    def basis(self, n, m, backend, dtype, A=None, B=None):
+        # return an (n, m) array on backend.xp with ORTHONORMAL columns
+        Q = ...
+        return Q
+
+register_transform("mine", MyTransform)
 ```
 
-It must **not** export `get_inputs` / `get_flops` / `get_bytes` — inputs, FLOPs and bytes are owned
-by the locked `kernel_configs/`. The exact `kernel_fn` signature and the inputs you receive are
-defined per track:
+That is enough to be scored: `--transform mine`. Bigger contributions (a new
+compression scheme, a better exact tile schedule in `matmul/`, a sharper metric
+in `eval/`) are welcome too — the same one rule and the same scorecard apply.
 
-| Track | `kernel_fn(...)` | returns |
-|---|---|---|
-| `rms_norm` | `(x, weight, eps=1e-6)` | `Tensor` |
-| `matmul` | `(a, b)` | `Tensor` |
-| `qkv_part_rope` | `(qkv, cos, sin, q_heads, kv_heads, nope_dim)` | `Tensor` |
-| `swiglu_input_quant` | `(x)` | `(out, x_fp8, x_scale)` |
-| `dsa_forward` | `(q, k, v, block_indices, indices_blk_siz, scale, cu_seqlens_q, cu_seqlens_k, …)` | `(out, lse)` |
+---
 
-The **current champion** at `champions/<track>/kernel.py` is the canonical, correct, working
-example for each track — start from it. The matching `kernel_configs/<track>.py` shows the exact
-input dict you'll receive.
+## Self-score locally
 
-## 3. No delegation — write a real kernel
+Before you open a PR, run the scorer. It generates random couples, multiplies
+them with the **normal (exact)** engine and your **smart** strategy on the
+*identical* inputs, and prints one scorecard.
 
-The competition measures *the kernel you write*, not your ability to call a library. **v1 is
-Triton-only.** `kernel_fn` (and anything it calls) may **not**:
-
-- call `torch.matmul / mm / bmm / addmm / einsum`, `torch.nn.functional.*` (rms_norm, softmax,
-  silu, scaled_dot_product_attention, …), `torch.ops.aten.*`, `torch._scaled_mm` / `_int_mm` /
-  `_weight_int*pack_mm`, `torch.linalg.*`, or the `@` matmul operator — i.e. any vendor BLAS/DNN call;
-- JIT/codegen the kernel: `torch.compile`, `torch._dynamo` / `torch._inductor` / `torch.fx` / `torch.jit`;
-- reach any of the above through aliases, `getattr` / `eval` / `exec` / `importlib`, introspection
-  dunders (`__dict__` / `__getattribute__` / `__class__` …), `open` (no file I/O), or tensor methods
-  (`a.mm(b)`);
-- reach an attribute or method by passing its name as a **string** — `getattr`, the `operator` module
-  (`operator.attrgetter` / `methodcaller` / `itemgetter`, so `operator` is not importable), or
-  `str.format` / `format_map` field access (`"{0.f_back}".format(x)`). Use f-strings, which expose
-  attribute access as real syntax the guard can see;
-- walk the interpreter stack to read the scorer's state — `__traceback__` / `tb_frame` / `f_back` /
-  `f_locals` / `gi_frame` / `__code__` / `__closure__` / `cell_contents` (the timed loop runs your
-  kernel in the same interpreter; these are banned so the secret correctness-probe schedule stays secret);
-- create CUDA streams / events / graphs (`torch.cuda.Stream` / `Event` / `CUDAGraph` …) — your Triton
-  kernel launches on the current timed stream; moving work off it to under-report timing is rejected;
-- read the CUDA allocator (`torch.cuda.memory_allocated` / `memory_stats` / `mem_get_info` …) — it
-  would leak which calls are correctness-probed (those clone an extra buffer);
-- use inline CUDA-C (`torch.utils.cpp_extension`), or pop/neuter the runtime trap
-  (`torch.overrides`, `torch.utils._python_dispatch`);
-- define `get_inputs`/`get_flops`/`get_bytes`.
-
-**Imports are an allowlist:** only `torch`, `triton`, and a few pure-Python utilities
-(`math` / `typing` / `dataclasses` / `functools` / `collections` / …). No `os` / `sys` / `ctypes` /
-`subprocess` / `operator` (its `attrgetter`/`methodcaller` are a string-keyed attribute escape) /
-`numpy` (it re-exposes ctypes), and **no alternate GPU-compute library** (`cupy` / `jax` / `cutlass` /
-`numba` / …).
-
-It **must** contain at least one `@triton.jit` kernel and do the actual compute there. Allowed in the
-Python wrapper: allocation (`torch.empty`/`empty_like`), reshape/view/transpose/contiguous, dtype
-casts, shape introspection, and launching your Triton kernel.
-
-This is enforced **mechanically**, not by review, in three layers: a static AST guard
-([`cco/guard_kernel.py`](cco/guard_kernel.py)) rejects delegation before any GPU spend — and is
-**re-run on the exact bytes about to execute** inside the scoring subprocess, so nothing reaches the GPU
-unscanned; a runtime trap ([`cco/dispatch_trap.py`](cco/dispatch_trap.py)) catches it during execution;
-and a native `LD_PRELOAD` vendor-symbol trap catches any cuBLAS/cuDNN call that slips past the first two
-— even one reached by popping the Python trap. Don't try to wrap cuBLAS — you'll be caught.
-
-## 4. Self-score locally
+CCO computes on a **GPU** (CUDA/MPS) via PyTorch — score on a GPU machine
+(reference: A100). The reference regime is **`12000`, full-rank**
+(random) data, which is `eval`'s default.
 
 ```bash
-uv run benchmark.py                   # full 5-stage correctness + roofline (on the published self-score seed=42)
-uv run benchmark.py --score           # the competition latency SAMPLE on the primary size
-uv run benchmark.py --blob            # the full bound score blob the canonical rerun verifies
-uv run --no-project python cco/guard_kernel.py kernel.py    # check you didn't delegate
+# score your transform on the reference regime (12000, full-rank, 3 couples)
+python -m eval --n 12000 --pairs 3 --transforms mine,rsvd
+
+# fit the empirical time complexity O(N^p); pass --rank-m to hold M fixed (~N²),
+# omit it to let M = N//8 grow with N (~N³)
+python -m eval --transforms mine --rank-m 128 --sweep 512,1024,2048
+
+# machine-readable, for pasting exact numbers
+python -m eval --n 12000 --pairs 3 --transforms mine --json
+
+# if your strategy targets compressible data, show that regime too (and say so):
+python -m eval --n 12000 --pairs 3 --fill lowrank --data-rank 16 --transforms mine
 ```
 
-Self-scoring uses the **published seed (42)** so you can iterate. The canonical rerun uses a secret
-seed derived from your PR HEAD SHA, so you cannot precompute or memorize outputs — your kernel must
-be genuinely general.
+Then confirm you did not break the gates:
 
-Self-scoring needs **Linux with a CUDA GPU** (on Windows, use WSL2): `pyproject.toml` installs
-torch/triton only on Linux, and Triton has no Windows wheels. (No GPU? You can at least run the AST
-guard, which is pure Python.)
+```bash
+python eval/tests/test_eval.py
+python strategy/tests/test_subspace.py
+python tests/test_correctness.py
+```
 
-## 5. Submit
+Rules for an honest local score:
 
-1. Register a hotkey on SN74 and bind your GitHub identity to it.
-2. Put your kernel in `kernel.py`, commit it (only `kernel.py` changed).
-3. Open a PR using the template: the fenced **JSON payload** (`payload-schema.json`) + the
-   acknowledgement checkboxes. Sign `<commit_sha>:<kernel_sha256>:<kernel_type>` with your hotkey.
-4. The PR is **frozen** once the gates pass — any edit (even a typo fix) closes it; open a fresh PR.
+- Score on **unseen** couples from the same distribution — never special-case the
+  seeds, sizes, or matrices the harness uses.
+- Report accuracy and latency from the **same run** at the **same dtype**.
+- Use the peak-VRAM number the scorer measures; do not exclude scratch memory.
+- Name the GPU (and dtype) you measured on — results depend on the device.
 
-## 6. How you're scored
+---
 
-CCO's automated gate pipeline walks cheap gates (identity → manifest → no-delegation static scan →
-threshold), then runs a **canonical rerun** on trusted GPU hardware:
+## Submit
 
-- **Correctness is a hard gate** — all 5 stages must PASS (smoke, shape sweep, numerical stability,
-  within-tolerance determinism, edge cases) against the locked oracle on the secret-seeded inputs.
-- **The scored axis is speedup vs the current champion** (not vs PyTorch). Champion and challenger
-  are re-run fresh and interleaved; you win only if a **Mann-Whitney U** test says you're faster
-  **and** you beat the champion by at least the configured margin. A sub-noise or below-margin win
-  does not take the crown.
-- **VRAM is a non-regression guard** — you can't win by blowing up scratch memory.
+1. **Fork & branch.** One strategy (or one focused change) per PR.
+2. **Keep it standalone.** `matmul/`, `strategy/`, and `eval/` do not import each
+   other except where they already do; don't add cross-coupling.
+3. **Green tests.** All three test suites above must pass.
+4. **Open the PR** and fill in the scorecard. The PR template
+   ([`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md))
+   pre-populates the exact format below — **the numbers, not the prose, decide.**
 
-Emissions are **king-of-the-hill**: only the PR currently holding `cco-winner-<track>` earns, and a
-fixed base score means you're paid for *holding* the frontier, not for the size of one win. When a
-new winner lands, your label is stripped.
+### PR description format
 
-**Rate limit:** 1 canonical rerun / hotkey / 24h (a new PR resets the clock — PR spam is
-negative-EV). Hotkeys that repeatedly fail the rerun lose credibility and hit a banlist.
+Every PR description must be exactly this shape:
 
-## 7. Reporting bugs / security
+```markdown
+## Summary
 
-Open an issue with GPU/driver/CUDA, the exact command, and the full error (don't summarize the
-stack trace). For a **correctness** bug, include the shapes/dtypes and the `pct_within_tol` figure.
-Do **not** file security issues publicly — use GitHub's private vulnerability reporting first; a leaked token in git history
-must be revoked, not just rotated.
+<what the strategy does, why it is cheaper, and the regime it targets>
 
-## 8. License
+## Result   (N=12000, full-rank, A100 (80 GB), fp32)
 
-MIT (see [LICENSE](LICENSE)). By contributing you agree your contribution is MIT-licensed — CCO
-depends on staying permissive so winning kernels can ship into production.
+| metric          | value          |
+|-----------------|----------------|
+| accuracy        | 0.83           |
+| time complexity | O(N²M) ~ N^2.1 |
+| latency         | 41.3 ms        |
+| VRAM usage      | 12.4 MiB       |
+```
+
+- **accuracy** — bounded Frobenius accuracy in `[0,1]` from the scorer. On the
+  full-rank reference regime a blind subspace basis lands near `0`; a real
+  improvement means finding structure that pushes it up while cutting cost.
+- **time complexity** — the analytic `O(·)` and the fitted `N^p` from `--sweep`.
+- **latency** — mean wall-clock ms of the smart multiply, GPU-synchronized.
+- **VRAM usage** — peak incremental GPU memory during the multiply.
+
+Paste the raw scorecard (or `--json` output) and name the device/dtype you
+measured on, so a reviewer can reproduce your numbers exactly.
+
+### Review & merge
+
+A maintainer reproduces your scorecard on the reference setup, checks the
+correctness gates and the one rule, and merges if your strategy is a genuine
+improvement (or a useful strategy that documents its trade-off honestly). If the
+scorecard can't be reproduced, the PR goes back for evidence — not rejected for
+disagreeing with the prose.
+
+---
+
+By contributing you agree that your contribution is licensed under the project's
+[MIT License](LICENSE).
