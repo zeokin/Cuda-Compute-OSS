@@ -104,6 +104,18 @@ def _generate_pairs(ev: EvalConfig):
     return pairs, dt
 
 
+def _best_transform(results: dict) -> "str | None":
+    """Name of the highest-scoring transform, or ``None`` when nothing is an
+    improvement. Score is 0 for any strategy that is gated or fails to dominate
+    exact, so an all-zero board (e.g. the full-rank reference regime, where no
+    subspace beats exact) has NO winner -- returning the first name there would
+    falsely crown a strategy that scored 0."""
+    ranked = sorted(results.items(), key=lambda kv: kv[1]["score"], reverse=True)
+    if not ranked or ranked[0][1]["score"] <= 0.0:
+        return None
+    return ranked[0][0]
+
+
 def evaluate(ev: EvalConfig) -> dict:
     """Run the full evaluation and return a results dict (see module docstring)."""
     backend = Backend(ev.device, ev.verbose)
@@ -189,6 +201,7 @@ def evaluate(ev: EvalConfig) -> dict:
         }
 
     ranking = sorted(results.items(), key=lambda kv: kv[1]["score"], reverse=True)
+    best = _best_transform(results)
     m = ev.rank_m or ev.n // 8
     out = {
         "config": {
@@ -208,7 +221,7 @@ def evaluate(ev: EvalConfig) -> dict:
         },
         "transforms": results,
         "ranking": [name for name, _ in ranking],
-        "best": ranking[0][0] if ranking else None,
+        "best": best,
     }
     if ev.verbose:
         _print_report(out)
@@ -276,4 +289,8 @@ def _print_report(out: dict) -> None:
         print(f"  {name:<10}{r['accuracy']:>10.4f}"
               f"{r['latency_s']*1e3:>11.2f}ms{r['peak_vram_mib']:>9.1f}MiB"
               f"{r['flop_ratio_vs_exact']:>7.1f}x{r['score']:>13.4g}{note}")
-    print(f"  best (highest score): {out['best']}")
+    if out["best"] is None:
+        print("  best: none — no strategy is an improvement over exact "
+              "(all gated or non-dominant)")
+    else:
+        print(f"  best (highest score): {out['best']}")

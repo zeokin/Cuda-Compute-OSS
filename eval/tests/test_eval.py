@@ -13,7 +13,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from eval import metrics
-from eval.evaluator import EvalConfig, evaluate, estimate_scaling
+from eval.evaluator import EvalConfig, evaluate, estimate_scaling, _best_transform
 
 
 class _Skip(Exception):
@@ -128,6 +128,18 @@ def test_dominance_rejects_no_flop_win():
     assert metrics.dominates_exact(
         latency_s=0.5, peak_vram_bytes=1e6, flop_ratio_vs_exact=1.0,
         exact_latency_s=1.0, exact_peak_vram_bytes=2e6) is False
+
+
+# ---- best-transform selection (CPU) --------------------------------------
+def test_best_is_none_when_nothing_improves():
+    # An all-zero board (every strategy gated or non-dominant -- e.g. the
+    # full-rank reference regime) has NO winner; don't crown a strategy that
+    # scored 0.
+    assert _best_transform({"rsvd": {"score": 0.0}, "other": {"score": 0.0}}) is None
+    assert _best_transform({}) is None
+    # a genuine winner is still reported, ties broken by sort order.
+    assert _best_transform({"a": {"score": 0.0}, "b": {"score": 3.5}}) == "b"
+    assert _best_transform({"a": {"score": 2.0}, "b": {"score": 2.0}}) in ("a", "b")
 
 
 # ---- end-to-end evaluate (GPU) -------------------------------------------
