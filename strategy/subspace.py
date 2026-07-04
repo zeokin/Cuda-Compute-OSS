@@ -107,7 +107,13 @@ def reconstruct(Ctil, Q, C_out, backend: Backend, out_dtype,
 # ---------------------------------------------------------------------------
 # smart (subspace) multiply
 # ---------------------------------------------------------------------------
-def _default_rank(n: int) -> int:
+def default_rank_m(n: int) -> int:
+    """Default subspace dimension M when ``rank_m`` is unset.
+
+    Matches the strategy's real default: ``min(n, max(64, n // 8))``. The floor
+    at 64 keeps tiny-N smoke runs numerically stable; eval must report this same
+    value so scorecards reproduce what was actually multiplied.
+    """
     return int(min(n, max(64, n // 8)))
 
 
@@ -130,7 +136,7 @@ def multiply_subspace(A, B, C, backend: Backend, cfg: Config) -> dict:
     n = A.shape[0]
     if A.shape != (n, n) or B.shape != (n, n) or C.shape != (n, n):
         raise ValueError("A, B, C must all be square n x n with matching n")
-    m = cfg.rank_m or _default_rank(n)
+    m = cfg.rank_m if cfg.rank_m is not None else default_rank_m(n)
     if not (1 <= m <= n):
         raise ValueError(f"rank_m must be in [1, n]; got {m} for n={n}")
     cdt = cfg.compute_dtype

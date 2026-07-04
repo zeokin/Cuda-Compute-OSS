@@ -11,7 +11,8 @@ turns it into a single comparable **score** per transform strategy.
 2. normal    C_i = A_i @ B_i          (exact, streamed)
 3. smart     Ĉ_i = subspace(A_i, B_i) (per transform: rsvd / your own / …)
 4. estimate  accuracy · latency · peak VRAM · FLOP complexity
-5. score     accuracy × (1/Peak_VRAM) × (1/Latency)   (0 if accuracy < floor)
+5. score     accuracy × (1/Peak_VRAM) × (1/Latency)   (0 unless it beats exact
+             on accuracy AND every cost axis — the dominance rule)
 ```
 
 The exact products are computed **once** and reused for every transform, so all
@@ -38,12 +39,17 @@ it is sampled from `torch.mps.current_allocated_memory`.
 **Time complexity** — reported analytically (normal `O(N³)`, smart `O(N²·M)`)
 and, with `--sweep`, fitted empirically to `latency ~ N^p` in log-log space.
 
-**Score** — rewards accurate, memory-light, fast strategies; hard-gated to 0
-when accuracy falls below the floor (`--min-accuracy`, default **0.8**) so
-"fast but wrong" cannot win:
+**Score** — rewards accurate, memory-light, fast strategies, but only among
+strategies admitted as an **improvement** over exact. It is hard-gated to 0
+unless accuracy clears the floor (`--min-accuracy`, default **0.8**) **and** the
+strategy dominates the exact baseline on every cost axis — latency, peak VRAM
+**and** FLOP count all below exact (the dominance rule in
+[BENCHMARKS.md](../BENCHMARKS.md)). So "fast but wrong", or accurate but slower /
+heavier than exact, cannot win:
 
 ```
-score = Accuracy × (1 / Peak_VRAM) × (1 / Latency)   → 0 if Accuracy < floor
+score = Accuracy × (1 / Peak_VRAM) × (1 / Latency)
+      → 0 unless Accuracy ≥ floor AND latency, VRAM, FLOPs all below exact
 ```
 
 Peak_VRAM is expressed in `--vram-unit` (default GiB) so the number stays
@@ -93,7 +99,10 @@ approximate the product, so every transform's accuracy collapses to ≈ 0 (and a
 accuracy floor zeroes the score) — the honest baseline the strategy is **not**
 for. On **low-rank** data (`--fill lowrank`) the data-aware `rsvd` transform
 reconstructs almost exactly (accuracy ≈ 1) and dominates the score, because it
-builds its subspace from A and B themselves.
+builds its subspace from A and B themselves. Even then the score is non-zero
+only when the strategy also beats exact on cost (latency, VRAM and FLOPs); an
+accurate strategy that is slower or heavier than exact is not an improvement and
+is scored 0.
 
 ## Layout
 

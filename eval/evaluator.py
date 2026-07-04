@@ -25,6 +25,7 @@ from strategy import transforms as _transforms
 from strategy.backend import Backend
 from strategy.config import Config
 from strategy import subspace, storage
+from strategy.subspace import default_rank_m
 
 from . import metrics
 from .memory import MemoryProbe
@@ -37,7 +38,7 @@ class EvalConfig:
     n            : matrix edge N (square N x N couples).
     pairs        : how many random couples to generate and average over.
     dtype        : element type (fp16 / fp32 / fp64).
-    rank_m       : subspace dimension M for the smart strategy (None => N//8).
+    rank_m       : subspace dimension M for the smart strategy (None => min(N, max(64, N//8))).
     fill         : matrix content: 'random' (hard, full-rank), 'lowrank'
                    (the strategy's happy path), or 'iota'.
     data_rank    : rank used when fill='lowrank' (None => N//32).
@@ -62,6 +63,11 @@ class EvalConfig:
     seed: int = 0
     device: int = 0
     verbose: bool = True
+
+
+def effective_rank_m(ev: EvalConfig) -> int:
+    """M used for scoring: explicit ``rank_m`` or the strategy's default."""
+    return ev.rank_m if ev.rank_m is not None else default_rank_m(ev.n)
 
 
 def _strategy_config(ev: EvalConfig, transform: str) -> Config:
@@ -125,7 +131,7 @@ def evaluate(ev: EvalConfig) -> dict:
         print(f"[eval] device     : {backend.name}")
         print(f"[eval] couples     : {ev.pairs} x ({ev.n} x {ev.n})  fill={ev.fill}  "
               f"dtype={ev.dtype}")
-        print(f"[eval] rank_m (M)  : {ev.rank_m or ev.n // 8}")
+        print(f"[eval] rank_m (M)  : {effective_rank_m(ev)}")
         print(f"[eval] transforms  : {', '.join(names)}")
 
     pairs, dt = _generate_pairs(ev)
@@ -212,7 +218,8 @@ def evaluate(ev: EvalConfig) -> dict:
         "complexity": {
             "normal": "O(N^3)",
             "smart": "O(N^2 * M)"
-            + (f"  (M={m} fixed -> ~O(N^2))" if ev.rank_m else f"  (M=N/8 -> ~O(N^3))"),
+            + (f"  (M={m} fixed -> ~O(N^2))" if ev.rank_m is not None
+               else f"  (M=min(N,max(64,N/8))={m} -> ~O(N^3) when M grows with N)"),
         },
         "exact": {
             "latency_s": float(np.mean(exact_lat)),
@@ -233,7 +240,7 @@ def estimate_scaling(ns, ev: EvalConfig) -> dict:
 
     Runs one smart multiply per N in ``ns`` and fits latency ~ c * N^p by least
     squares in log-log space. Set ``ev.rank_m`` to hold M fixed (isolates the
-    ~N^2 term); leave it None and M = N//8 grows with N (~N^3).
+    ~N^2 term); leave it None and M = min(N, max(64, N//8)) grows with N (~N^3).
     """
     backend = Backend(ev.device, ev.verbose)
     name = (ev.transforms or _transforms.available())[0]

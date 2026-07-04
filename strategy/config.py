@@ -20,7 +20,7 @@ class Config:
 
     device        : GPU device index (CUDA).
     dtype         : element type, one of DTYPES keys.
-    rank_m        : subspace dimension M. None => n // 8. Smaller = faster,
+    rank_m        : subspace dimension M. None => min(n, max(64, n // 8)). Smaller = faster,
                     less accurate. The approximation is exact only when M = n
                     or when A/B live in the captured subspace (low rank).
     transform     : registry name ("rsvd", the only built-in) OR a Transform

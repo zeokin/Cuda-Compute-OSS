@@ -101,6 +101,19 @@ def test_score_monotonic_in_accuracy():
     assert hi > lo
 
 
+def test_default_rank_m_matches_strategy_floor():
+    # Strategy floors M at 64; eval must report the same default, not bare N//8.
+    assert default_rank_m(256) == 64
+    assert default_rank_m(256) != 256 // 8
+    assert default_rank_m(12000) == 1500
+    assert default_rank_m(32) == 32
+
+
+def test_effective_rank_m_uses_strategy_default():
+    assert effective_rank_m(EvalConfig(n=256, rank_m=None)) == 64
+    assert effective_rank_m(EvalConfig(n=256, rank_m=48)) == 48
+
+
 # ---- dominance gate (the improvement rule) -------------------------------
 def test_dominance_all_axes_below_exact():
     # Faster, lighter, fewer FLOPs than exact -> admitted as an improvement.
@@ -150,6 +163,7 @@ def test_evaluate_smoke():
     ev = EvalConfig(n=96, pairs=2, dtype="fp32", fill="lowrank", data_rank=4,
                     transforms=["rsvd"], verbose=False)
     out = evaluate(ev)
+    assert out["config"]["rank_m"] == default_rank_m(96)
     assert set(out["transforms"]) == {"rsvd"}
     for r in out["transforms"].values():
         assert 0.0 <= r["accuracy"] <= 1.0

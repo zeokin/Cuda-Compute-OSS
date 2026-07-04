@@ -30,8 +30,12 @@ C = subspace_matmul(A, B, config=Config(transform="rsvd", rank_m=128, verbose=Fa
 print("1) rsvd(M=128) on rank-16 data, rel err:", rel(C, A @ B))
 
 # 2) The honest failure case: full-rank random data -> large error.
-Af = np.random.rand(512, 512).astype("float32")
-Bf = np.random.rand(512, 512).astype("float32")
+#    Use ZERO-mean data (randn), matching storage._fill_random's standard_normal:
+#    uniform rand() has mean 0.5, so its product is dominated by a rank-1 mean
+#    component (near rank-1 / compressible) and rsvd would score ~91% accurate --
+#    the opposite of the full-rank failure this example is meant to show.
+Af = np.random.randn(512, 512).astype("float32")
+Bf = np.random.randn(512, 512).astype("float32")
 Cf = subspace_matmul(Af, Bf, config=Config(transform="rsvd", rank_m=64, verbose=False))
 print("2) rsvd(M=64) on FULL-rank data, rel err:", rel(Cf, Af @ Bf), "(expected: large)")
 

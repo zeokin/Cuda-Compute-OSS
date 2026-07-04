@@ -11,6 +11,8 @@ for NumPy -- ``xp.zeros``, ``@``, ``.astype``, ``xp.concatenate``,
 from __future__ import annotations
 
 import os
+import sys
+
 import numpy as np
 
 
@@ -72,6 +74,42 @@ class _TorchXP:
         return self.t.cat(list(tensors), dim=axis)
 
 
+def _host_available_bytes() -> int:
+    """Best-effort available physical RAM in bytes (cross-platform)."""
+    try:
+        avail = int(os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE"))
+        if avail > 0:
+            return avail
+    except (AttributeError, ValueError, OSError):
+        pass
+
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            class _MEMORYSTATUSEX(ctypes.Structure):
+                _fields_ = [
+                    ("dwLength", ctypes.c_ulong),
+                    ("dwMemoryLoad", ctypes.c_ulong),
+                    ("ullTotalPhys", ctypes.c_ulonglong),
+                    ("ullAvailPhys", ctypes.c_ulonglong),
+                    ("ullTotalPageFile", ctypes.c_ulonglong),
+                    ("ullAvailPageFile", ctypes.c_ulonglong),
+                    ("ullTotalVirtual", ctypes.c_ulonglong),
+                    ("ullAvailVirtual", ctypes.c_ulonglong),
+                    ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+                ]
+
+            stat = _MEMORYSTATUSEX()
+            stat.dwLength = ctypes.sizeof(stat)
+            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat)):
+                return int(stat.ullAvailPhys)
+        except Exception:  # noqa: BLE001
+            pass
+
+    return 8 * 1024**3  # last-resort fallback when OS queries are unavailable
+
+
 class Backend:
     """PyTorch GPU backend. Raises if no CUDA/MPS device is available."""
 
@@ -125,10 +163,7 @@ class Backend:
 
     def host_available_bytes(self) -> int:
         """Available system RAM (used for out-of-core host buffering)."""
-        try:
-            return os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
-        except (ValueError, OSError):
-            return 8 * 1024**3  # conservative fallback: assume 8 GiB
+        return _host_available_bytes()
 
     # -- transfers ---------------------------------------------------------
     def to_device(self, host_array):

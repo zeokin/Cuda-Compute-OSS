@@ -113,6 +113,35 @@ def test_public_matmul_matches_numpy():
     assert np.allclose(C, A @ B, rtol=1e-3, atol=1e-3)
 
 
+def test_memmap_forces_tiled_path():
+    """Disk-backed inputs must not take the in-core path (would OOM on host)."""
+    import tempfile
+    import shutil
+
+    workdir = tempfile.mkdtemp(prefix="cco_memmap_test_")
+    try:
+        n = 64
+        cfg = Config(dtype="fp32", verbose=False, workdir=workdir)
+        backend = Backend(verbose=False)
+        pa = os.path.join(workdir, "A.dat")
+        pb = os.path.join(workdir, "B.dat")
+        pc = os.path.join(workdir, "C.dat")
+        from matmul import storage
+
+        A = storage.generate(n, cfg.np_dtype, True, pa, 0, "iota")
+        B = storage.generate(n, cfg.np_dtype, True, pb, 1, "iota")
+        C = storage.allocate(n, cfg.np_dtype, True, pc)
+        info = gemm.multiply(A, B, C, backend, cfg)
+        assert info["mode"].startswith("tiled"), (
+            f"memmap inputs must use tiled path, got {info['mode']!r}"
+        )
+        ref = A.astype(np.float64) @ B.astype(np.float64)
+        rel = np.linalg.norm(C.astype(np.float64) - ref) / np.linalg.norm(ref)
+        assert rel < 1e-4
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
 if __name__ == "__main__":
     if not HAVE_GPU:
         print("SKIP  all tests (no CUDA/MPS GPU; CCO computes on GPU only)")

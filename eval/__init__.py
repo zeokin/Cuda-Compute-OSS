@@ -5,7 +5,8 @@ Generates random matrix couples, multiplies them with **normal** (exact) and
 latency, and peak VRAM:
 
     Accuracy = max(0, 1 - ||C - Ĉ||_F / ||C||_F)
-    score    = Accuracy × (1 / Peak_VRAM) × (1 / Latency)   (0 if accuracy < floor)
+    score    = Accuracy × (1 / Peak_VRAM) × (1 / Latency)
+               → 0 unless accuracy ≥ floor AND latency, VRAM and FLOPs all beat exact
 
 Quick API
 ---------

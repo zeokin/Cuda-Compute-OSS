@@ -24,7 +24,8 @@ def _parse_args(argv=None) -> argparse.Namespace:
                    help="number of random couples to average over. default 3")
     p.add_argument("--dtype", choices=("fp16", "fp32", "fp64"), default="fp32")
     p.add_argument("--rank-m", type=int, default=None,
-                   help="subspace dimension M for the smart strategy (default N//8)")
+                   help="subspace dimension M for the smart strategy "
+                        "(default min(N, max(64, N//8)))")
     p.add_argument("--fill", choices=("random", "lowrank", "iota"), default="random",
                    help="matrix content. 'random'=hard/full-rank (default), "
                         "'lowrank'=the strategy's happy path")
