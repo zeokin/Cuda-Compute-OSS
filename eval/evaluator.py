@@ -91,6 +91,18 @@ def _timed_with_mem(fn, backend):
     return seconds, probe.peak_bytes, result
 
 
+def _mean_flop_ratio_vs_exact(flop_ratios: list[float]) -> float | None:
+    """Mean FLOP savings ratio (exact/actual) across couples.
+
+    Accuracy, latency, and peak VRAM are all aggregated over ``--pairs``; the
+    dominance gate must use the same rule for FLOP count so one couple cannot
+    decide admission when another disagrees.
+    """
+    if not flop_ratios:
+        return None
+    return float(np.mean(flop_ratios))
+
+
 def _generate_pairs(ev: EvalConfig):
     """Return a list of (A, B) NumPy couples, each (n, n), in RAM."""
     dt = np.dtype({"fp16": np.float16, "fp32": np.float32, "fp64": np.float64}[ev.dtype])
@@ -140,7 +152,7 @@ def evaluate(ev: EvalConfig) -> dict:
     results = {}
     for name in names:
         cfg = _strategy_config(ev, name)
-        accs, errs, lats, vrams, flop_ratio = [], [], [], [], None
+        accs, errs, lats, vrams, flop_ratios = [], [], [], [], []
         for (A, B), Ce in zip(pairs, exact_products):
             Cs = np.empty((ev.n, ev.n), dtype=dt)
             sec, peak, info = _timed_with_mem(
@@ -152,7 +164,9 @@ def evaluate(ev: EvalConfig) -> dict:
             accs.append(max(0.0, 1.0 - err))
             lats.append(sec)
             vrams.append(peak)
-            flop_ratio = info["flop_exact"] / info["flop_actual"]
+            flop_ratios.append(info["flop_exact"] / info["flop_actual"])
+
+        flop_ratio = _mean_flop_ratio_vs_exact(flop_ratios)
 
         acc = float(np.mean(accs))
         rel_err = float(np.mean(errs))

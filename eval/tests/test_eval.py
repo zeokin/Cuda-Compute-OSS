@@ -13,7 +13,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from eval import metrics
-from eval.evaluator import EvalConfig, evaluate, estimate_scaling
+from eval.evaluator import EvalConfig, _mean_flop_ratio_vs_exact, evaluate, estimate_scaling
 
 
 class _Skip(Exception):
@@ -127,6 +127,27 @@ def test_dominance_rejects_no_flop_win():
     # Faster and lighter, but does not reduce FLOP count -> not an improvement.
     assert metrics.dominates_exact(
         latency_s=0.5, peak_vram_bytes=1e6, flop_ratio_vs_exact=1.0,
+        exact_latency_s=1.0, exact_peak_vram_bytes=2e6) is False
+
+
+def test_mean_flop_ratio_averages_over_pairs():
+    assert _mean_flop_ratio_vs_exact([4.0, 2.0]) == 3.0
+    assert _mean_flop_ratio_vs_exact([3.0]) == 3.0
+    assert _mean_flop_ratio_vs_exact([]) is None
+
+
+def test_dominance_must_use_mean_flop_ratio_not_last_pair():
+    # Last couple alone fails the FLOP axis; the mean still clears it.
+    ratios = [4.0, 0.5]
+    mean_ratio = _mean_flop_ratio_vs_exact(ratios)
+    last_ratio = ratios[-1]
+    assert mean_ratio > 1.0
+    assert last_ratio <= 1.0
+    assert metrics.dominates_exact(
+        latency_s=0.5, peak_vram_bytes=1e6, flop_ratio_vs_exact=mean_ratio,
+        exact_latency_s=1.0, exact_peak_vram_bytes=2e6) is True
+    assert metrics.dominates_exact(
+        latency_s=0.5, peak_vram_bytes=1e6, flop_ratio_vs_exact=last_ratio,
         exact_latency_s=1.0, exact_peak_vram_bytes=2e6) is False
 
 
