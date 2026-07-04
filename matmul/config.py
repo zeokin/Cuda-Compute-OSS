@@ -50,6 +50,11 @@ class Config:
             raise ValueError("vram_fraction must be in (0, 0.95]")
         if self.storage not in ("ram", "disk", "auto"):
             raise ValueError("storage must be ram|disk|auto")
+        if self.tile is not None and self.tile <= 0:
+            # A non-positive tile makes _tiles() yield an empty schedule, so the
+            # tiled path never writes C and returns the uninitialised output
+            # buffer as the product -- a silent wrong answer. Reject it here.
+            raise ValueError(f"tile must be a positive int or None; got {self.tile}")
 
     @property
     def np_dtype(self) -> np.dtype:
