@@ -96,6 +96,18 @@ def test_score_no_floor_by_default():
     assert metrics.score(0.01, 1e6, 0.01) > 0.0
 
 
+def test_perf_score_transparency_uses_zero_floor():
+    # eval's perf_score field must stay ungated so JSON consumers see the raw
+    # figure even when accuracy is below ev.accuracy_floor (ranking score stays 0).
+    acc = 0.002
+    peak = 1e6
+    lat = 0.5
+    raw = metrics.score(acc, peak, lat, 0.0, "mib")
+    if_gated = metrics.score(acc, peak, lat, 0.8, "mib")
+    assert raw > 0.0
+    assert if_gated == 0.0
+
+
 def test_score_monotonic_in_accuracy():
     lo = metrics.score(0.2, 1e6, 0.01)
     hi = metrics.score(0.9, 1e6, 0.01)
