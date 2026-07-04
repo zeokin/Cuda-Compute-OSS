@@ -32,11 +32,16 @@ def test_tile_operand_bytes_fp16_upcast():
 
 def test_tile_workspace_counts_fp16_upcast():
     fp16_acc = Config(dtype="fp16", accumulate_fp32=True)
-    # acc fp32 (4) + two fp32 operand tiles (4 + 4)
-    assert _tile_workspace_bytes_per_elem(fp16_acc) == 12
+    # acc fp32 (4) + two fp32 operand tiles (4 + 4) + the fp32 matmul output (4)
+    assert _tile_workspace_bytes_per_elem(fp16_acc) == 16
 
     fp16_raw = Config(dtype="fp16", accumulate_fp32=False)
-    assert _tile_workspace_bytes_per_elem(fp16_raw) == 6
+    # acc fp16 (2) + two fp16 operand tiles (2 + 2) + the fp16 matmul output (2)
+    assert _tile_workspace_bytes_per_elem(fp16_raw) == 8
+
+    fp32 = Config(dtype="fp32")
+    # acc fp32 (4) + two fp32 operand tiles (4 + 4) + the fp32 matmul output (4)
+    assert _tile_workspace_bytes_per_elem(fp32) == 16
 
 
 def _legacy_auto_tile(n: int, cfg: Config, free_bytes: int) -> int:
