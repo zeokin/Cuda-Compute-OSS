@@ -19,8 +19,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dtype", choices=list(DTYPES), default="fp32")
     p.add_argument("--device", type=int, default=0, help="CUDA device index")
     p.add_argument("--rank-m", type=int, default=None,
-                   help="subspace dimension M (default n//8). Smaller = "
-                        "faster + less accurate")
+                   help="subspace dimension M (default min(n, max(64, n//8))). "
+                        "Smaller = faster + less accurate")
     p.add_argument("--transform", default="rsvd",
                    help=f"subspace basis (the core tech). one of: "
                         f"{available_transforms()}")
