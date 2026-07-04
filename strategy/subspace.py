@@ -18,6 +18,8 @@ Standalone: no imports from the sibling `matmul` package.
 """
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 from .backend import Backend
@@ -172,25 +174,53 @@ def multiply_subspace(A, B, C, backend: Backend, cfg: Config) -> dict:
 # ---------------------------------------------------------------------------
 # exact baseline (self-contained; for the normal-vs-smart comparison)
 # ---------------------------------------------------------------------------
+def _exact_stream_tile(n: int, cfg: Config, backend: Backend) -> int:
+    """Pick tile edge T for streamed exact multiply C = A @ B.
+
+    One (output-row, K) step keeps an accumulator stripe (T x n), an A tile
+    (T x T), and a B tile (T x n) on the device — T*ib*(2*n + T) bytes.
+    """
+    budget = int(backend.free_compute_bytes() * cfg.vram_fraction)
+    ib = np.dtype(cfg.compute_dtype).itemsize
+    # T^2 + 2*n*T <= budget/ib  =>  T <= -n + sqrt(n^2 + budget/ib)
+    disc = n * n + budget / ib
+    t = int(-n + math.sqrt(max(1.0, disc)))
+    t = max(128, (t // 128) * 128)
+    return min(t, n)
+
+
 def multiply_exact(A, B, C, backend: Backend, cfg: Config) -> dict:
-    """Full C = A @ B baseline. B is resident on the device; the rows of A are
-    streamed. Fine for comparison-scale n; for out-of-core exact multiply at
-    huge n use the sibling `matmul` package."""
+    """Full C = A @ B baseline, streaming A and B from host/disk.
+
+    Tiles over output rows and the K dimension so neither operand is
+    materialised with ``np.asarray(full_matrix)`` — disk-backed memmaps stay
+    out-of-core, matching ``multiply_subspace`` and the sibling ``matmul``
+    tiled path."""
     n = A.shape[0]
     dt = cfg.compute_dtype
-    Bdev = backend.to_device(np.asarray(B).astype(dt, copy=False))
-    blk = _row_block(n, n, backend, np.dtype(dt).itemsize, cfg.vram_fraction)
-    for r0 in range(0, n, blk):
-        r1 = min(n, r0 + blk)
-        Ar = backend.to_device(np.asarray(A[r0:r1, :]).astype(dt, copy=False))
-        Cr = backend.matmul(Ar, Bdev)
-        C[r0:r1, :] = backend.to_host(Cr).astype(cfg.np_dtype, copy=False)
+    T = _exact_stream_tile(n, cfg, backend)
+    xp = backend.xp
+    for r0 in range(0, n, T):
+        r1 = min(n, r0 + T)
+        ti = r1 - r0
+        acc = xp.zeros((ti, n), dtype=dt)
+        for k0 in range(0, n, T):
+            k1 = min(n, k0 + T)
+            Ar = backend.to_device(
+                np.asarray(A[r0:r1, k0:k1]).astype(dt, copy=False)
+            )
+            Bk = backend.to_device(
+                np.asarray(B[k0:k1, :]).astype(dt, copy=False)
+            )
+            acc += backend.matmul(Ar, Bk)
+        C[r0:r1, :] = backend.to_host(acc).astype(cfg.np_dtype, copy=False)
     if isinstance(C, np.memmap):
         C.flush()
+    mode = "exact(streamed)" if T >= n else f"exact(streamed,T={T})"
     return {
         "n": n,
         "strategy": "exact",
-        "mode": "exact(streamed)",
+        "mode": mode,
         "device": backend.name,
         "dtype": cfg.dtype,
         "flop_exact": 2.0 * n * n * n,

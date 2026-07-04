@@ -137,6 +137,46 @@ def test_exact_baseline_matches_numpy():
     assert _rel(C, A @ B) < 1e-12
 
 
+def test_exact_stream_tile_respects_vram_budget():
+    """K-streamed exact multiply must not assume full B fits on device."""
+    class _FakeBackend:
+        def free_compute_bytes(self):
+            return 64 * 1024**2
+
+    cfg = Config(dtype="fp32", vram_fraction=0.6, verbose=False)
+    n = 8192
+    t = subspace._exact_stream_tile(n, cfg, _FakeBackend())
+    ib = 4
+    budget = int(64 * 1024**2 * cfg.vram_fraction)
+    assert t * ib * (2 * n + t) <= budget
+    assert t < n
+
+
+def test_multiply_exact_memmap_streams():
+    """Disk-backed inputs must not be materialised with np.asarray(full matrix)."""
+    import shutil
+    import tempfile
+
+    from strategy import storage
+
+    workdir = tempfile.mkdtemp(prefix="cco_strategy_exact_memmap_")
+    try:
+        n = 64
+        cfg = Config(dtype="fp32", verbose=False, workdir=workdir)
+        pa = os.path.join(workdir, "A.dat")
+        pb = os.path.join(workdir, "B.dat")
+        pc = os.path.join(workdir, "C.dat")
+        A = storage.generate(n, cfg.np_dtype, True, pa, 0, "iota")
+        B = storage.generate(n, cfg.np_dtype, True, pb, 1, "iota")
+        C = storage.allocate(n, cfg.np_dtype, True, pc)
+        info = subspace.multiply_exact(A, B, C, BK, cfg)
+        assert "streamed" in info["mode"]
+        ref = A.astype(np.float64) @ B.astype(np.float64)
+        assert _rel(C.astype(np.float64), ref) < 1e-4
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
 # -- exactness / accuracy properties --------------------------------------
 def test_exact_when_m_equals_n():
     # M = N => Q spans R^N => P = I => exact. rsvd's four sketches concatenated
