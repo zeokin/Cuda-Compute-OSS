@@ -68,6 +68,25 @@ def test_flop_actual_matches_matmul_sum():
         assert subspace._flop_actual(n, m) == expected
 
 
+def test_basis_flops_counted_in_reported_flop_actual():
+    # The transform's basis construction (rsvd: sketches + QR) is a mandatory
+    # O(n^2 m) per-call cost. multiply_subspace reports flop_actual = core
+    # (_flop_actual) PLUS transform.basis_flops, so the "FLOPs saved" figure does
+    # not overstate the win. A bare Transform reports 0 by default.
+    from strategy.transforms import RandomizedSVDTransform, Transform
+    n, m = 4096, 512
+    rsvd = RandomizedSVDTransform()
+    assert rsvd.basis_flops(n, m) == 2.0 * n * n * m + 2.0 * n * m * m
+    assert rsvd.basis_flops(n, m) > 0.0
+
+    class _Bare(Transform):
+        name = "_bare"
+    assert _Bare().basis_flops(n, m) == 0.0
+
+    # reported flop_actual (core + basis) strictly exceeds the core-only count.
+    assert subspace._flop_actual(n, m) + rsvd.basis_flops(n, m) > subspace._flop_actual(n, m)
+
+
 # -- streaming primitives -------------------------------------------------
 # The primitives stream the rows of X from the host but expect the *resident*
 # operand (Q / Om / Ctil) to already be a device tensor, exactly as production

@@ -40,6 +40,14 @@ class Transform:
     def basis(self, n: int, m: int, backend, dtype, A=None, B=None):
         raise NotImplementedError
 
+    def basis_flops(self, n: int, m: int) -> float:
+        """FLOPs to CONSTRUCT the (n, m) basis. Added to ``multiply_subspace``'s
+        reported ``flop_actual`` so the FLOP savings include basis construction --
+        a mandatory, per-call, data-dependent cost that is NOT free. Override this
+        when your basis is non-negligible; the default 0.0 means "negligible /
+        unknown" and will OVERSTATE your savings, so report it honestly."""
+        return 0.0
+
     @staticmethod
     def _orthonormalize(M, backend):
         Q, _ = backend.xp.linalg.qr(M)
@@ -85,6 +93,13 @@ class RandomizedSVDTransform(Transform):
 
         Y = xp.concatenate(parts, axis=1)      # (n, m)
         return self._orthonormalize(Y, backend)  # (n, m) orthonormal columns
+
+    def basis_flops(self, n, m):
+        # 4 random sketches over A and B totalling m columns cost 2*n*n*m FLOPs
+        # (each width-w sketch A@Omega / A^T@Omega is 2*n*n*w, and the widths sum
+        # to m), plus the QR of the (n, m) sketch ~ 2*n*m*m. Recomputed every call
+        # (the sketches depend on A, B), so it is not amortizable.
+        return 2.0 * n * n * m + 2.0 * n * m * m
 
 
 _REGISTRY: dict[str, type[Transform]] = {}
