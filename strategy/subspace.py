@@ -18,6 +18,8 @@ Standalone: no imports from the sibling `matmul` package.
 """
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 from .backend import Backend
@@ -41,6 +43,17 @@ def _row_block(n: int, cols: int, backend: Backend, item_bytes: int,
     budget = int(backend.free_compute_bytes() * frac)
     per_row = max(1, cols * item_bytes)
     return int(min(n, max(1, budget // per_row)))
+
+
+def _exact_tile(n: int, backend: Backend, item_bytes: int, frac: float) -> int:
+    """Tile edge for row- and k-blocking in ``multiply_exact``.
+
+    Per (row, k) step the device holds an accumulator (T x n), an A panel
+    (T x T), and a B panel (T x n): T * (2n + T) elements total.
+    """
+    budget_elems = max(1, int(backend.free_compute_bytes() * frac) // item_bytes)
+    t = int((math.sqrt(4 * n * n + 4 * budget_elems) - 2 * n) / 2)
+    return max(1, min(t, n))
 
 
 # ---------------------------------------------------------------------------
@@ -162,18 +175,29 @@ def multiply_subspace(A, B, C, backend: Backend, cfg: Config) -> dict:
 # exact baseline (self-contained; for the normal-vs-smart comparison)
 # ---------------------------------------------------------------------------
 def multiply_exact(A, B, C, backend: Backend, cfg: Config) -> dict:
-    """Full C = A @ B baseline. B is resident on the device; the rows of A are
-    streamed. Fine for comparison-scale n; for out-of-core exact multiply at
-    huge n use the sibling `matmul` package."""
+    """Full C = A @ B baseline. Both A and B are streamed in row/k blocks so
+    disk-backed memmaps never fully materialise in host or device RAM.
+    For huge-n exact multiply at maximum throughput use the sibling `matmul`
+    package."""
     n = A.shape[0]
     dt = cfg.compute_dtype
-    Bdev = backend.to_device(np.asarray(B).astype(dt, copy=False))
-    blk = _row_block(n, n, backend, np.dtype(dt).itemsize, cfg.vram_fraction)
-    for r0 in range(0, n, blk):
-        r1 = min(n, r0 + blk)
-        Ar = backend.to_device(np.asarray(A[r0:r1, :]).astype(dt, copy=False))
-        Cr = backend.matmul(Ar, Bdev)
-        C[r0:r1, :] = backend.to_host(Cr).astype(cfg.np_dtype, copy=False)
+    item = np.dtype(dt).itemsize
+    T = _exact_tile(n, backend, item, cfg.vram_fraction)
+    xp = backend.xp
+    for r0 in range(0, n, T):
+        r1 = min(n, r0 + T)
+        ti = r1 - r0
+        acc = xp.zeros((ti, n), dtype=dt)
+        for k0 in range(0, n, T):
+            k1 = min(n, k0 + T)
+            Ar = backend.to_device(
+                np.asarray(A[r0:r1, k0:k1]).astype(dt, copy=False)
+            )
+            Bk = backend.to_device(
+                np.asarray(B[k0:k1, :]).astype(dt, copy=False)
+            )
+            acc = acc + backend.matmul(Ar, Bk)
+        C[r0:r1, :] = backend.to_host(acc).astype(cfg.np_dtype, copy=False)
     if isinstance(C, np.memmap):
         C.flush()
     return {
