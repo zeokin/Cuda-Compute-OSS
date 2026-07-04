@@ -112,7 +112,10 @@ def multiply(A, B, C, backend: Backend, cfg: Config) -> dict:
     if A.shape != (n, n) or B.shape != (n, n) or C.shape != (n, n):
         raise ValueError("A, B, C must all be square n x n with matching n")
 
-    if _fits_in_core(n, cfg, backend) and not cfg.force_tiled:
+    # Disk-backed memmaps must use the tiled path: np.asarray() in _gemm_in_core
+    # would materialise the full matrix in host RAM, defeating out-of-core storage.
+    on_disk = any(isinstance(x, np.memmap) for x in (A, B, C))
+    if _fits_in_core(n, cfg, backend) and not cfg.force_tiled and not on_disk:
         mode, T = "in-core", n
         _gemm_in_core(A, B, C, backend, cfg)
     else:
