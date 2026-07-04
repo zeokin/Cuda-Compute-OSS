@@ -70,6 +70,15 @@ def effective_rank_m(ev: EvalConfig) -> int:
     return ev.rank_m if ev.rank_m is not None else default_rank_m(ev.n)
 
 
+def _best_transform(results: dict) -> str | None:
+    """Name of the highest-scoring transform, or None when nothing improved."""
+    if not results:
+        return None
+    ranking = sorted(results.items(), key=lambda kv: kv[1]["score"], reverse=True)
+    top_name, top = ranking[0]
+    return top_name if top["score"] > 0.0 else None
+
+
 def _strategy_config(ev: EvalConfig, transform: str) -> Config:
     return Config(
         device=ev.device,
@@ -215,7 +224,7 @@ def evaluate(ev: EvalConfig) -> dict:
         },
         "transforms": results,
         "ranking": [name for name, _ in ranking],
-        "best": ranking[0][0] if ranking else None,
+        "best": _best_transform(results),
     }
     if ev.verbose:
         _print_report(out)
@@ -283,4 +292,8 @@ def _print_report(out: dict) -> None:
         print(f"  {name:<10}{r['accuracy']:>10.4f}"
               f"{r['latency_s']*1e3:>11.2f}ms{r['peak_vram_mib']:>9.1f}MiB"
               f"{r['flop_ratio_vs_exact']:>7.1f}x{r['score']:>13.4g}{note}")
-    print(f"  best (highest score): {out['best']}")
+    best = out["best"]
+    if best is None:
+        print("  best (highest score): none (no strategy is an improvement over exact)")
+    else:
+        print(f"  best (highest score): {best}")

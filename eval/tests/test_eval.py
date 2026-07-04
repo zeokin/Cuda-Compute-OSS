@@ -13,7 +13,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from eval import metrics
-from eval.evaluator import EvalConfig, effective_rank_m, evaluate, estimate_scaling
+from eval.evaluator import EvalConfig, _best_transform, effective_rank_m, evaluate, estimate_scaling
 from strategy.subspace import default_rank_m
 
 
@@ -115,6 +115,27 @@ def test_effective_rank_m_uses_strategy_default():
     assert effective_rank_m(EvalConfig(n=256, rank_m=48)) == 48
 
 
+def test_best_transform_none_when_all_scores_zero():
+    results = {
+        "rsvd": {"score": 0.0},
+        "other": {"score": 0.0},
+    }
+    assert _best_transform(results) is None
+
+
+def test_best_transform_picks_highest_positive_score():
+    results = {
+        "slow": {"score": 0.0},
+        "winner": {"score": 2.5},
+        "loser": {"score": 1.0},
+    }
+    assert _best_transform(results) == "winner"
+
+
+def test_best_transform_none_for_empty_results():
+    assert _best_transform({}) is None
+
+
 # ---- dominance gate (the improvement rule) -------------------------------
 def test_dominance_all_axes_below_exact():
     # Faster, lighter, fewer FLOPs than exact -> admitted as an improvement.
@@ -158,7 +179,11 @@ def test_evaluate_smoke():
         assert 0.0 <= r["accuracy"] <= 1.0
         assert r["latency_s"] > 0.0
         assert r["score"] >= 0.0
-    assert out["best"] == "rsvd"
+    rsvd = out["transforms"]["rsvd"]
+    if rsvd["score"] > 0.0:
+        assert out["best"] == "rsvd"
+    else:
+        assert out["best"] is None
 
 
 @_gpu_only
