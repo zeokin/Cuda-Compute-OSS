@@ -9,7 +9,12 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from matmul.config import Config
-from matmul.gemm import _tile_operand_bytes, _tile_workspace_bytes_per_elem, auto_tile
+from matmul.gemm import (
+    _tile_operand_bytes,
+    _tile_workspace_bytes,
+    _tile_workspace_bytes_per_elem,
+    auto_tile,
+)
 
 
 class _FakeBackend:
@@ -47,6 +52,20 @@ def _legacy_auto_tile(n: int, cfg: Config, free_bytes: int) -> int:
     t = min(t, n)
     t = max(128, (t // 128) * 128)
     return min(t, n)
+
+
+def test_auto_tile_respects_budget_after_128_alignment_floor():
+    """128-alignment must not force a tile whose workspace exceeds the VRAM budget."""
+    # fp32 workspace per T: T^2 * 12 bytes.  Budget fits ~T=87 but not T=128.
+    free = 150 * 1024
+    backend = _FakeBackend(free)
+    n = 8192
+    cfg = Config(dtype="fp32", vram_fraction=0.6)
+    budget = int(free * cfg.vram_fraction)
+
+    t = auto_tile(n, cfg, backend)
+    assert _tile_workspace_bytes(t, cfg) <= budget
+    assert t < 128
 
 
 def test_auto_tile_fp16_accumulate_smaller_than_legacy_estimator():

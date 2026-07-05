@@ -38,6 +38,11 @@ def _tile_workspace_bytes_per_elem(cfg: Config) -> int:
     return cfg.acc_dtype.itemsize + 2 * _tile_operand_bytes(cfg)
 
 
+def _tile_workspace_bytes(T: int, cfg: Config) -> int:
+    """Device bytes for one T×T tiled (i, j, k) accumulation step."""
+    return T * T * _tile_workspace_bytes_per_elem(cfg)
+
+
 def auto_tile(n: int, cfg: Config, backend: Backend) -> int:
     """Pick tile edge T so the working set fits in the VRAM budget.
 
@@ -48,9 +53,16 @@ def auto_tile(n: int, cfg: Config, backend: Backend) -> int:
     per_elem = _tile_workspace_bytes_per_elem(cfg)
     t = int(math.sqrt(max(1, budget) / per_elem))
     t = min(t, n)
-    # Round down to a multiple of 128 for nicer GEMM shapes; keep a sane floor.
-    t = max(128, (t // 128) * 128)
-    return min(t, n)
+    # Round down to a multiple of 128 for nicer GEMM shapes when it fits the budget.
+    t_aligned = max(128, (t // 128) * 128)
+    if _tile_workspace_bytes(t_aligned, cfg) <= budget:
+        return min(t_aligned, n)
+    # The 128-alignment floor can exceed the budget on tight VRAM; shrink to fit.
+    while t > 128 and _tile_workspace_bytes(t, cfg) > budget:
+        t = max(128, ((t - 128) // 128) * 128)
+    while t > 1 and _tile_workspace_bytes(t, cfg) > budget:
+        t -= 1
+    return max(1, min(t, n))
 
 
 def _fits_in_core(n: int, cfg: Config, backend: Backend) -> bool:
