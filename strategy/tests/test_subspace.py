@@ -137,6 +137,31 @@ def test_exact_baseline_matches_numpy():
     assert _rel(C, A @ B) < 1e-12
 
 
+def test_exact_baseline_memmap_matches_numpy():
+    """Disk-backed inputs must stream both operands, not upload full B to GPU."""
+    import shutil
+    import tempfile
+
+    from strategy import storage
+
+    workdir = tempfile.mkdtemp(prefix="cco_exact_memmap_")
+    try:
+        n = 64
+        cfg = Config(dtype="fp64", verbose=False, workdir=workdir)
+        pa = os.path.join(workdir, "A.dat")
+        pb = os.path.join(workdir, "B.dat")
+        pc = os.path.join(workdir, "C.dat")
+        A = storage.generate(n, np.float64, True, pa, 0, "iota")
+        B = storage.generate(n, np.float64, True, pb, 1, "iota")
+        C = storage.allocate(n, np.float64, True, pc)
+        info = subspace.multiply_exact(A, B, C, BK, cfg)
+        assert info["mode"] == "exact(streamed)"
+        ref = A.astype(np.float64) @ B.astype(np.float64)
+        assert _rel(C, ref) < 1e-12
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
 # -- exactness / accuracy properties --------------------------------------
 def test_exact_when_m_equals_n():
     # M = N => Q spans R^N => P = I => exact. rsvd's four sketches concatenated
