@@ -156,6 +156,8 @@ CCO uses **uv** for the normal contributor environment. The default install is
 CPU-safe and is enough for PR checks, syntax checks, tests that do not require a
 GPU, and the transform smoke test. Real scoring still computes on a **GPU**
 (CUDA or Apple MPS) via **PyTorch** — there is no CPU or CuPy scoring backend.
+That means contributors can validate almost everything locally before they ever
+ask a maintainer to spend GPU time on a PR.
 
 ```bash
 # 1. install the CPU-safe contributor environment
