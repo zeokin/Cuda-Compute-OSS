@@ -69,31 +69,16 @@
     },
     {
       "author": "kaozyn",
-      "detail": "gate chain passed; GPU eval runner is not wired up yet in this repo (Phase 2)",
+      "detail": "",
       "gpu_required": true,
       "head_sha": "60418fe1fa31a6e70a04be3dde1575203c2c031a",
       "kind": "feat",
-      "label": "status:queued-gpu",
       "pr": 114,
-      "state": "eval_pending",
+      "state": "already_evaluated",
       "title": "feat: allow targeted strategy smoke checks",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/114"
     }
   ],
-  "queue": [
-    {
-      "author": "kaozyn",
-      "detail": "gate chain passed; GPU eval runner is not wired up yet in this repo (Phase 2)",
-      "gpu_required": true,
-      "head_sha": "60418fe1fa31a6e70a04be3dde1575203c2c031a",
-      "kind": "feat",
-      "label": "status:queued-gpu",
-      "position": 1,
-      "pr": 114,
-      "state": "eval_pending",
-      "title": "feat: allow targeted strategy smoke checks",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/114"
-    }
-  ],
-  "updated": "2026-07-07T14:40:16+00:00"
+  "queue": [],
+  "updated": "2026-07-07T17:02:52+00:00"
 }
