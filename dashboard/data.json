@@ -40,8 +40,30 @@
       "state": "already_evaluated",
       "title": "fix(strategy): stream K tiles in multiply_exact for memmap inputs",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/112"
+    },
+    {
+      "author": "RealDiligent",
+      "detail": "gate chain passed; GPU eval runner is not wired up yet in this repo (Phase 2)",
+      "head_sha": "4c8e85f934bf464b4fbab4bbbb47fe62436b711c",
+      "label": "status:queued-gpu",
+      "pr": 113,
+      "state": "eval_pending",
+      "title": "fix(storage): thread seed through iota fill so eval couples differ (#104)",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/113"
     }
   ],
-  "queue": [],
-  "updated": "2026-07-07T13:45:37+00:00"
+  "queue": [
+    {
+      "author": "RealDiligent",
+      "detail": "gate chain passed; GPU eval runner is not wired up yet in this repo (Phase 2)",
+      "head_sha": "4c8e85f934bf464b4fbab4bbbb47fe62436b711c",
+      "label": "status:queued-gpu",
+      "position": 1,
+      "pr": 113,
+      "state": "eval_pending",
+      "title": "fix(storage): thread seed through iota fill so eval couples differ (#104)",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/113"
+    }
+  ],
+  "updated": "2026-07-07T13:47:01+00:00"
 }
