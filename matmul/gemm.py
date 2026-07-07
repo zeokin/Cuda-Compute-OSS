@@ -53,9 +53,27 @@ def auto_tile(n: int, cfg: Config, backend: Backend) -> int:
     return min(t, n)
 
 
+def _in_core_bytes_per_elem(cfg: Config) -> int:
+    """Peak device bytes per n×n element for the in-core GEMM path.
+
+    _gemm_in_core keeps the A and B operands resident and, for the default
+    fp16 + accumulate_fp32 path, also holds their fp32 upcasts plus the fp32
+    product before the fp16 store — all live at once during the matmul:
+
+        A, B (2 x operand)  +  A32, B32, out32 (3 x acc)
+
+    A naive ``3 * item_bytes`` (A+B+C) under-budgets that fp16 case by ~2.7x
+    (2*2 + 3*4 = 16 vs 3*2 = 6), letting a run pass the in-core check and then
+    OOM mid-multiply instead of falling back to tiling.
+    """
+    if cfg.np_dtype == np.float16 and cfg.accumulate_fp32:
+        return 2 * cfg.item_bytes + 3 * cfg.acc_dtype.itemsize
+    return 3 * cfg.item_bytes
+
+
 def _fits_in_core(n: int, cfg: Config, backend: Backend) -> bool:
-    # A, B, C resident on the device at once.
-    need = 3 * n * n * cfg.item_bytes
+    # Peak device residency for the in-core path (see _in_core_bytes_per_elem).
+    need = n * n * _in_core_bytes_per_elem(cfg)
     return need <= backend.free_compute_bytes() * cfg.vram_fraction
 
 
