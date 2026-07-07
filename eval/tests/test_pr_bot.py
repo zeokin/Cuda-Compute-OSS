@@ -19,6 +19,7 @@ from eval.pr_bot import (
     PROTECTED_PATH_LABEL,
     PRInfo,
     already_evaluated,
+    already_queued,
     already_notified,
     build_queue_dashboard,
     changed_files,
@@ -109,10 +110,10 @@ def test_copycat_check_excludes_own_earlier_prs():
     assert out.action not in {"copycat_block", "copycat_warn"}
 
 
-def test_already_evaluated_short_circuits():
+def test_queue_marker_keeps_pr_in_eval_pending_state():
     marker = "<!-- cco-eval:sha1 -->"
     out = process_pr(_pr(head_sha="sha1"), SOME_DIFF, [marker], frozenset(), [])
-    assert out.action == "already_evaluated"
+    assert out.action == "eval_pending"
 
 
 def test_missing_scorecard_is_flagged():
@@ -145,8 +146,13 @@ def test_has_scorecard_matches_labeler_ymls_detector():
 
 
 def test_already_evaluated_helper():
-    assert already_evaluated(["hello", "<!-- cco-eval:abc -->", "world"], "abc")
-    assert not already_evaluated(["hello", "world"], "abc")
+    assert already_evaluated(1, ["x", "<!-- cco-result:1:abc -->"])
+    assert not already_evaluated(1, ["x", "<!-- cco-eval:abc -->"])
+
+
+def test_already_queued_helper():
+    assert already_queued(["hello", "<!-- cco-eval:abc -->", "world"], "abc")
+    assert not already_queued(["hello", "world"], "abc")
 
 
 def test_already_notified_helper():
@@ -239,12 +245,25 @@ def test_run_once_live_mode_labels_gpu_queue():
     assert ("remove_label", 1, "status:needs-scorecard") in client.actions
 
 
+def test_run_once_live_mode_does_not_repeat_queue_comment():
+    pr1 = _pr(number=1, author="alice", body=SCORECARD_BODY, head_sha="sha1")
+    client = FakeClient(
+        prs={"all": [pr1], "open": [pr1]},
+        diffs={1: SOME_DIFF},
+        comments={1: ["<!-- cco-eval:sha1 -->"]},
+    )
+    outcomes = run_once(client, dry_run=False)
+    assert outcomes[0].action == "eval_pending"
+    assert ("add_label", 1, GPU_QUEUE_LABEL) in client.actions
+    assert not any(a[0] == "post_comment" for a in client.actions)
+
+
 def test_run_once_live_mode_clears_queue_label_once_already_evaluated():
     pr1 = _pr(number=1, author="alice", head_sha="sha1", body=SCORECARD_BODY)
     client = FakeClient(
         prs={"all": [pr1], "open": [pr1]},
         diffs={1: SOME_DIFF},
-        comments={1: ["<!-- cco-eval:sha1 -->"]},
+        comments={1: ["<!-- cco-result:1:sha1 -->"]},
     )
     outcomes = run_once(client, dry_run=False)
     assert outcomes[0].action == "already_evaluated"
@@ -255,7 +274,7 @@ def test_queue_dashboard_only_lists_eval_pending_prs():
     pr1 = _pr(number=1, author="alice", body=SCORECARD_BODY)
     pr2 = _pr(number=2, author="bob", body=SCORECARD_BODY)
     outcomes = [
-        process_pr(pr1, SOME_DIFF, ["<!-- cco-eval:sha1 -->"], frozenset(), []),
+        process_pr(pr1, SOME_DIFF, ["<!-- cco-result:1:sha1 -->"], frozenset(), []),
         process_pr(pr2, SOME_DIFF, [], frozenset(), []),
     ]
     data = build_queue_dashboard([pr1, pr2], outcomes)

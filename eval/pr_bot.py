@@ -35,6 +35,7 @@ REPO_DEFAULT = "zeokin/Cuda-Compute-OSS"
 BLOCKED_CONTRIBUTORS_PATH = ".github/blocked-contributors.txt"
 IDEMPOTENCY_MARKER = "<!-- cco-eval:{sha} -->"
 NEEDS_SCORECARD_MARKER = "<!-- cco-needs-scorecard:{sha} -->"
+RESULT_MARKER_PREFIX = "<!-- cco-result:{pr}:"
 GPU_QUEUE_LABEL = "status:queued-gpu"
 GPU_QUEUE_READY_ACTIONS = frozenset({"eval_pending"})
 PROTECTED_PATH_LABEL = "status:protected-path"
@@ -71,7 +72,7 @@ def load_blocked_contributors(path: str = BLOCKED_CONTRIBUTORS_PATH) -> frozense
     )
 
 
-def already_evaluated(comments: list, head_sha: str) -> bool:
+def already_queued(comments: list, head_sha: str) -> bool:
     marker = IDEMPOTENCY_MARKER.format(sha=head_sha)
     return any(marker in c for c in comments)
 
@@ -79,6 +80,11 @@ def already_evaluated(comments: list, head_sha: str) -> bool:
 def already_notified(comments: list, marker: str, head_sha: str) -> bool:
     tagged = marker.format(sha=head_sha)
     return any(tagged in c for c in comments)
+
+
+def already_evaluated(pr_number: int, comments: list) -> bool:
+    marker = RESULT_MARKER_PREFIX.format(pr=pr_number)
+    return any(marker in c for c in comments)
 
 
 def has_scorecard(body: str) -> bool:
@@ -153,7 +159,7 @@ def process_pr(
                            detail=f"matches an earlier PR by {matched_author}: {verdict.reason}",
                            label="copycat-warn")
 
-    if already_evaluated(comments, pr.head_sha):
+    if already_evaluated(pr.number, comments):
         return GateOutcome(pr.number, "already_evaluated")
 
     if not has_scorecard(pr.body):
@@ -205,12 +211,13 @@ def _apply(client: GitHubClient, pr: PRInfo, outcome: GateOutcome, comments: lis
     elif outcome.action == "eval_pending":
         client.remove_label(pr.number, "status:needs-scorecard")
         client.add_label(pr.number, GPU_QUEUE_LABEL)
-        client.post_comment(
-            pr.number,
-            IDEMPOTENCY_MARKER.format(sha=pr.head_sha)
-            + "\nGate chain passed. This PR is queued for the next batched "
-              "GPU evaluation window.",
-        )
+        if not already_queued(comments, pr.head_sha):
+            client.post_comment(
+                pr.number,
+                IDEMPOTENCY_MARKER.format(sha=pr.head_sha)
+                + "\nGate chain passed. This PR is queued for the next batched "
+                  "GPU evaluation window.",
+            )
     elif outcome.action == "already_evaluated":
         client.remove_label(pr.number, "status:needs-scorecard")
         client.remove_label(pr.number, GPU_QUEUE_LABEL)
