@@ -5,8 +5,11 @@ sanity pre-flight, not a score -- the real scorecard is `python -m eval` on
 a real GPU, which is what actually decides a PR's verdict.
 
     python -m strategy.smoke
+    python -m strategy.smoke rsvd
 """
 from __future__ import annotations
+
+import sys
 
 import numpy as np
 
@@ -54,11 +57,32 @@ def check_transform(name: str, backend) -> tuple:
     return True, f"OK (||QtQ - I|| = {err:.2e})"
 
 
+def pick_transforms(argv=None) -> list[str]:
+    """Return the transform names requested on the command line.
+
+    With no names, smoke-check every registered transform. With explicit names,
+    keep their input order and fail fast on unknown entries so a contributor
+    does not accidentally think they tested something they did not.
+    """
+    args = list(sys.argv[1:] if argv is None else argv)
+    names = available()
+    if not args:
+        return names
+
+    known = set(names)
+    missing = [name for name in args if name not in known]
+    if missing:
+        raise KeyError(
+            f"unknown transform(s) {missing}; available: {sorted(names)}"
+        )
+    return args
+
+
 def main(argv=None) -> int:
     backend = _pick_backend()
     print(f"[smoke] backend: {backend.name}  (N={N}, M={M}, dtype={np.dtype(DTYPE).name})")
 
-    names = available()
+    names = pick_transforms(argv)
     if not names:
         print("[smoke] no transforms registered -- nothing to check")
         return 0
