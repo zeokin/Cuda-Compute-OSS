@@ -1,14 +1,15 @@
 # Contributing to CCO
 
-CCO accepts two public PR lanes:
+CCO accepts two public PR lanes. The current score-bearing track is **matmul**:
 
 - **`fix` / `bug` PRs** correct mistakes in the repository. They must pass the
   CPU-safe validation path, but they do **not** need a GPU scorecard.
-- **`feat` / `strategy` PRs** claim an improvement. They must pass the same
-  CPU-safe validation **and** include a GPU scorecard from the shared scorer.
+- **`feat` / `strategy` PRs** claim a matmul improvement. They must pass the
+  same CPU-safe validation **and** include a GPU scorecard from the shared
+  scorer.
 
-This document defines both lanes: **the one rule**, **local validation**,
-**submit**.
+This document defines both lanes: **the one rule**, **what is score-bearing
+today**, **local validation**, **submit**.
 
 ## Where Gittensor Fits
 
@@ -51,9 +52,9 @@ one rule.
 
 ## What you actually change
 
-Most contributions are a new **transform** — the pluggable basis that defines the
-subspace the smart strategy compresses into. You add a class in
-[`strategy/transforms.py`](strategy/transforms.py) and register it:
+Most score-bearing contributions today are a new **transform** — the pluggable
+basis that defines the subspace the smart strategy compresses into. You add a
+class in [`strategy/transforms.py`](strategy/transforms.py) and register it:
 
 ```python
 from strategy.transforms import Transform, register_transform
@@ -73,6 +74,18 @@ compression scheme, a better exact tile schedule in `matmul/`) are welcome too.
 
 If your PR is fixing incorrect behavior rather than claiming a new measured
 improvement, submit it through the `fix` lane instead of inventing a scorecard.
+
+### Current tracks
+
+| track | status | what contributors should do |
+|---|---|---|
+| `matmul` | Live score-bearing track | Submit `feat` / `strategy` PRs with `python -m eval ...` scorecards. This is the only public track that currently enters the GPU queue. |
+| `attention` | Prototype / roadmap track | Use `attention/` for local experiments and maintainer-reviewed prototype work only. It is not a scored miner track yet, and attention PRs must not claim a `python -m eval` matmul scorecard as proof. |
+
+The future attention track will need a separate exact baseline, quality metric,
+validator command, bot routing, and dashboard result model. Until those pieces
+exist, attention work is useful research infrastructure, not an admitted
+score-bearing improvement.
 
 ---
 
@@ -97,7 +110,7 @@ What is required:
 
 ### `feat` / `strategy` lane
 
-Use this lane when the PR claims an improvement worth measuring:
+Use this lane when the PR claims a matmul improvement worth measuring:
 
 - new transform
 - new approximation strategy
@@ -108,7 +121,7 @@ What is required:
 
 - title or PR body must declare `feat` / `strategy`
 - CPU-safe validation must pass
-- a filled GPU scorecard from `python -m eval ...`
+- a filled matmul GPU scorecard from `python -m eval ...`
 - the PR enters the sequential GPU queue after non-GPU triage
 
 ---
@@ -119,6 +132,7 @@ What is required:
 |---|---|---|
 | **Open — the main event** | [`strategy/transforms.py`](strategy/transforms.py) (new `Transform` classes), new strategy modules under `strategy/` | The designed hook — `register_transform()` exists for exactly this. Self-scored, verified by the scorer below. |
 | **Open — engine performance** | [`matmul/`](matmul/), `strategy/backend.py`, `strategy/subspace.py` | Tiling, streaming, dtype/precision paths, platform fixes — all welcome, measured the same way. |
+| **Open — prototype research** | [`attention/`](attention/) | Local attention-shaped experiments. Useful for future track design, but not score-bearing until the evaluator and bot support an official attention track. |
 | **Open — accompanying** | `tests/`, `strategy/tests/`, `examples/` | Welcome alongside a code change. Test-only PRs score `0` by design — they don't demonstrate a cost improvement. |
 | **Protected — maintainer-owned** | [`eval/`](eval/) (the scorer, the bot, the ledger), [`docs/`](docs/), [`.github/`](.github/), `dashboard/` | The scoring machinery itself. See [`.github/CODEOWNERS`](.github/CODEOWNERS) — a PR touching these paths is held for maintainer review regardless of what else it does. Changing the scorer is not how you win on it. |
 
@@ -163,9 +177,9 @@ uv run --extra test python -m pytest tests/ strategy/tests/ eval/tests/ -v
 
 That is enough for the `fix` lane.
 
-Before you open a `feat` PR, also run the scorer. It generates random couples,
-multiplies them with the **normal (exact)** engine and your **smart** strategy
-on the *identical* inputs, and prints one scorecard.
+Before you open a matmul `feat` PR, also run the scorer. It generates random
+couples, multiplies them with the **normal (exact)** engine and your **smart**
+strategy on the *identical* inputs, and prints one scorecard.
 
 CCO computes on a **GPU** (CUDA/MPS) via PyTorch — score on a GPU machine
 (reference: RTX 5090). The reference regime is **`12000`, full-rank**
@@ -187,7 +201,7 @@ uv run python -m eval --n 12000 --pairs 3 --transforms mine --json
 uv run python -m eval --n 12000 --pairs 3 --fill lowrank --data-rank 16 --transforms mine
 ```
 
-Rules for an honest local `feat` score:
+Rules for an honest local matmul `feat` score:
 
 - Score on **unseen** couples from the same distribution — never special-case the
   seeds, sizes, or matrices the harness uses.
@@ -195,13 +209,22 @@ Rules for an honest local `feat` score:
 - Use the peak-VRAM number the scorer measures; do not exclude scratch memory.
 - Name the GPU (and dtype) you measured on — results depend on the device.
 
+Optional attention prototype check:
+
+```bash
+uv run --extra test python -m pytest tests/test_attention_playground.py -q
+```
+
+This verifies the local attention playground only. It is not a public scorecard
+and does not put a PR into the GPU queue.
+
 ---
 
 ## Submit
 
 1. **Fork & branch.** One strategy (or one focused change) per PR.
-2. **Keep it standalone.** `matmul/`, `strategy/`, and `eval/` do not import each
-   other except where they already do; don't add cross-coupling.
+2. **Keep it standalone.** `matmul/`, `strategy/`, `attention/`, and `eval/` do
+   not import each other except where they already do; don't add cross-coupling.
 3. **Choose the lane explicitly.** Use `fix:` / `bug:` or `feat:` / `strategy:`
    in the PR title, or check the matching box in the PR template.
 4. **Green CPU-safe validation.** `strategy.smoke` (if relevant) and
@@ -272,10 +295,10 @@ CPU-safe commands you ran.
 ### Review & merge
 
 A maintainer reproduces your scorecard on the reference setup, checks the
-correctness gates and the one rule, and merges if your strategy is a genuine
-improvement (or a useful strategy that documents its trade-off honestly). If the
-scorecard can't be reproduced, the PR goes back for evidence — not rejected for
-disagreeing with the prose.
+correctness gates and the one rule, and merges if your matmul strategy is a
+genuine improvement (or a useful strategy that documents its trade-off
+honestly). If the scorecard can't be reproduced, the PR goes back for evidence
+— not rejected for disagreeing with the prose.
 
 The PR bot runs continuously for non-GPU triage. On each PR event and on a
 15-minute schedule it checks drafts, blocked contributors, copycat overlap, PR
@@ -283,9 +306,11 @@ lane declaration, and scorecard presence when the lane is `feat`.
 
 - `fix` / `bug` / docs PRs are labeled `status:ready-non-gpu` after triage.
   They do not enter the GPU queue.
-- `feat` / `strategy` PRs that pass those gates get `status:queued-gpu` and
-  appear in `dashboard/data.json` on the `bot/dashboard-state` branch in
+- matmul `feat` / `strategy` PRs that pass those gates get `status:queued-gpu`
+  and appear in `dashboard/data.json` on the `bot/dashboard-state` branch in
   oldest-PR-first order.
+- attention prototype PRs do not enter the GPU queue until the official
+  attention track is implemented.
 
 The dashboard UI itself is expected to live in a separate private repository,
 so `main` stays protected while the bot publishes queue/result data to that

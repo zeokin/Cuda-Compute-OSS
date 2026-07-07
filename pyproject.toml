@@ -21,4 +21,4 @@ gpu = ["torch>=2.1"]
 Homepage = "https://github.com/zeokin/Cuda-Compute-OSS"
 
 [tool.setuptools]
-packages = ["matmul", "strategy", "eval"]
+packages = ["matmul", "strategy", "eval", "attention"]

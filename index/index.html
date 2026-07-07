@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CCO (Cuda-Compute-OSS) — An Open Arena for Cheaper Matrix Multiplication</title>
-<meta name="description" content="CCO is an open-source benchmark arena for approximate matrix multiplication, whitelisted on Bittensor SN74 (Gittensor). Submit a strategy, score it against a deterministic dominance gate, and earn for a genuine improvement.">
+<title>CCO (Cuda-Compute-OSS) — Matmul Arena Today, Attention Track Roadmap</title>
+<meta name="description" content="CCO is an open-source benchmark arena for cheaper matrix multiplication, whitelisted on Bittensor SN74 (Gittensor), with an attention-shaped prototype on the roadmap. Submit matmul strategies, score them against a deterministic dominance gate, and earn for genuine improvements.">
 <style>
   :root{
     --bg:#0a0f1c;
@@ -246,7 +246,7 @@
     </nav>
     <div class="nav-cta">
       <a class="btn btn-ghost" href="https://github.com/zeokin/Cuda-Compute-OSS/blob/main/docs/whitepaper.md">Whitepaper</a>
-      <a class="btn btn-primary" href="https://github.com/zeokin/Cuda-Compute-OSS/blob/main/CONTRIBUTING.md">Contribute a strategy</a>
+      <a class="btn btn-primary" href="https://github.com/zeokin/Cuda-Compute-OSS/blob/main/CONTRIBUTING.md">Contribute a matmul strategy</a>
       <button class="nav-toggle" aria-label="Menu" onclick="document.body.classList.toggle('mobile-open')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
@@ -260,12 +260,12 @@
 <section class="hero">
   <div class="wrap hero-grid">
     <div class="reveal">
-      <div class="eyebrow">Open matmul benchmark arena · Bittensor SN74</div>
+      <div class="eyebrow">Live matmul arena · attention prototype roadmap · Bittensor SN74</div>
       <h1>An open arena for <span class="grad">cheaper</span> matrix multiplication.</h1>
-      <p class="lead"><code style="font-family:var(--mono)">C = A × B</code> is the hot loop of nearly all numerical computing. CCO is where you submit a strategy that computes it for less — lower latency, lower VRAM, lower time-complexity — without giving up accuracy, and have that claim measured the same way for everyone.</p>
+      <p class="lead"><code style="font-family:var(--mono)">C = A × B</code> is the hot loop of nearly all numerical computing. CCO is where you submit a matmul strategy that computes it for less — lower latency, lower VRAM, lower time-complexity — without giving up accuracy, and have that claim measured the same way for everyone.</p>
       <div class="hero-callout"><b>Whitelisted on Gittensor (Bittensor SN74).</b> Merged strategies earn TAO through Gittensor's emission share for this repository. No Discord access or prior SN74 knowledge required — this repository is the whole story.</div>
       <div class="hero-cta">
-        <a class="btn btn-primary" href="https://github.com/zeokin/Cuda-Compute-OSS/blob/main/CONTRIBUTING.md">Contribute a strategy
+        <a class="btn btn-primary" href="https://github.com/zeokin/Cuda-Compute-OSS/blob/main/CONTRIBUTING.md">Contribute a matmul strategy
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </a>
         <a class="btn btn-ghost" href="https://github.com/zeokin/Cuda-Compute-OSS/blob/main/docs/whitepaper.md">
@@ -315,7 +315,7 @@
     <div class="stat reveal"><div class="n grad">O(N³)→O(N²M)</div><div class="l">Complexity a strategy must beat</div></div>
     <div class="stat reveal"><div class="n">4</div><div class="l">Cost axes scored together — never traded off</div></div>
     <div class="stat reveal"><div class="n">SN74</div><div class="l">Bittensor subnet — Gittensor</div></div>
-    <div class="stat reveal"><div class="n">100%</div><div class="l">Open-source, reproducible scorecard</div></div>
+    <div class="stat reveal"><div class="n">1 + prototype</div><div class="l">Live matmul track, attention staged separately</div></div>
   </div>
 </section>
 
@@ -325,7 +325,7 @@
     <div class="sec-head reveal">
       <div class="eyebrow">The problem</div>
       <h2>Matrix multiply cost grows with the <span class="grad">cube</span> of size.</h2>
-      <p><code style="font-family:var(--mono)">C = A × B</code> costs 2N³ FLOPs computed exactly. The same cubic cost sits underneath the attention layers in every Transformer LLM — which is why CCO's longer-run roadmap points toward sub-quadratic attention (see Roadmap below) — but today's arena is the general, provider-agnostic case: exact matrix multiplication, measured honestly.</p>
+      <p><code style="font-family:var(--mono)">C = A × B</code> costs 2N³ FLOPs computed exactly. The same matrix operations sit underneath attention layers in Transformer LLMs — which is why CCO's roadmap points toward an attention-shaped track — but today's score-bearing arena is the general, provider-agnostic case: exact matrix multiplication, measured honestly.</p>
     </div>
     <div class="cards cols-3">
       <div class="card scale-card reveal">
@@ -358,14 +358,14 @@
     <div class="flow">
       <div class="step reveal">
         <div class="num">01</div>
-        <h3>Submit a strategy</h3>
+        <h3>Submit a matmul strategy</h3>
         <p>Add a <code style="font-family:var(--mono)">Transform</code> to <code style="font-family:var(--mono)">strategy/transforms.py</code> and open a PR with your self-scored scorecard.</p>
         <span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
       </div>
       <div class="step reveal" style="transition-delay:.06s">
         <div class="num">02</div>
         <h3>Deterministic scoring</h3>
-        <p><code style="font-family:var(--mono)">python -m eval</code> reruns your strategy against the exact baseline on identical inputs — accuracy, latency, VRAM, FLOPs, together.</p>
+        <p><code style="font-family:var(--mono)">python -m eval</code> reruns your matmul strategy against the exact baseline on identical inputs — accuracy, latency, VRAM, FLOPs, together.</p>
         <span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
       </div>
       <div class="step reveal" style="transition-delay:.12s">
@@ -453,7 +453,7 @@
     <div class="sec-head reveal">
       <div class="eyebrow">Roadmap</div>
       <h2>From matmul, live today, to sub-quadratic attention.</h2>
-      <p>Progress is gated by achievement, not a calendar. Phase 0 is the open arena running right now; Phases 1–4 are the longer-run bet that the same verification discipline can crack the O(n²) attention bottleneck in Transformer LLMs.</p>
+      <p>Progress is gated by achievement, not a calendar. Matmul is the open score-bearing arena running right now. Attention is being staged separately as a prototype until the evaluator, bot, GPU validator, and dashboard are track-aware.</p>
     </div>
     <div class="timeline">
       <div class="tl-row reveal">
@@ -465,11 +465,11 @@
         </div>
       </div>
       <div class="tl-row reveal">
-        <div class="tl-phase">Phase 1<span class="ph-time">Roadmap</span></div>
+        <div class="tl-phase">Phase 1<span class="ph-time">Prototype now</span></div>
         <div class="tl-body">
           <h3>Foundation — up to 32K tokens</h3>
-          <p>Adapt the matmul-arena discipline to attention: sub-quadratic kernels validated against ground-truth attention output. MSE &lt; 0.01.</p>
-          <div class="tl-tags"><span class="tag">FlashAttention</span><span class="tag">spectral mixing</span><span class="tag">32K ctx</span></div>
+          <p>Adapt the matmul-arena discipline to attention: exact attention baseline, synthetic Q/K/V inputs, hybrid local-window plus spectral-global prototypes, then RTX 5090 validation once the track is official.</p>
+          <div class="tl-tags"><span class="tag">attention/</span><span class="tag">spectral mixing</span><span class="tag">not scored yet</span></div>
         </div>
       </div>
       <div class="tl-row reveal">
@@ -510,8 +510,8 @@
     <div class="cards cols-2">
       <div class="card reveal">
         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6"/></svg></div>
-        <h3>Contribute a strategy</h3>
-        <p style="margin-bottom:18px">Add a <span style="font-family:var(--mono)">Transform</span>, self-score it, open a PR. Admitted improvements are merged and — through Gittensor — paid.</p>
+        <h3>Contribute a matmul strategy</h3>
+        <p style="margin-bottom:18px">Add a <span style="font-family:var(--mono)">Transform</span>, self-score it, open a PR. Admitted matmul improvements are merged and — through Gittensor — paid.</p>
         <ul class="feature-list">
           <li><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span>One rule: every cost axis down, accuracy held</span></li>
           <li><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span>Reviewed and merged on the reproduced scorecard</span></li>
@@ -521,7 +521,7 @@
       <div class="card reveal" style="transition-delay:.06s">
         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
         <h3>Run the scorer</h3>
-        <p style="margin-bottom:18px">Clone the repo, install PyTorch, and reproduce the reference scorecard on your own GPU — the same numbers a reviewer checks.</p>
+        <p style="margin-bottom:18px">Clone the repo, install PyTorch, and reproduce the matmul reference scorecard on your own GPU — the same numbers a reviewer checks.</p>
         <ul class="feature-list">
           <li><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span>CUDA or Apple MPS, PyTorch-only</span></li>
           <li><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span><code style="font-family:var(--mono)">python -m eval --n 12000 --pairs 3</code></span></li>
@@ -537,9 +537,9 @@
   <div class="wrap">
     <div class="cta-box reveal">
       <h2>The frontier is open.</h2>
-      <p>Read the whitepaper to see exactly how scoring and rewards work, or jump straight to contributing a strategy — the scorer decides, not us.</p>
+      <p>Read the whitepaper to see exactly how scoring and rewards work, or jump straight to contributing a matmul strategy — the scorer decides, not us.</p>
       <div class="hero-cta">
-        <a class="btn btn-primary" href="https://github.com/zeokin/Cuda-Compute-OSS/blob/main/CONTRIBUTING.md">Contribute a strategy</a>
+        <a class="btn btn-primary" href="https://github.com/zeokin/Cuda-Compute-OSS/blob/main/CONTRIBUTING.md">Contribute a matmul strategy</a>
         <a class="btn btn-ghost" href="https://github.com/zeokin/Cuda-Compute-OSS/blob/main/docs/whitepaper.md">Read the whitepaper</a>
       </div>
     </div>
