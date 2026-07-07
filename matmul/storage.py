@@ -24,15 +24,15 @@ def _fill_random(mat: np.ndarray, seed: int, scale: float = 1.0) -> None:
         mat.flush()
 
 
-def _fill_iota(mat: np.ndarray) -> None:
-    """Cheap deterministic fill (value = (i+j) mod 97) for fast benchmarking."""
+def _fill_iota(mat: np.ndarray, seed: int = 0) -> None:
+    """Cheap deterministic fill (value = (i+j+seed) mod 97) for fast benchmarking."""
     n = mat.shape[0]
     block = max(1, min(n, (256 * 1024**2) // (n * 8)))
     cols = np.arange(n)
     for r0 in range(0, n, block):
         r1 = min(n, r0 + block)
         rows = np.arange(r0, r1)[:, None]
-        mat[r0:r1, :] = ((rows + cols) % 97).astype(mat.dtype, copy=False)
+        mat[r0:r1, :] = ((rows + cols + seed) % 97).astype(mat.dtype, copy=False)
     if isinstance(mat, np.memmap):
         mat.flush()
 
@@ -63,7 +63,7 @@ def generate(
     if fill == "random":
         _fill_random(mat, seed, scale)
     elif fill == "iota":
-        _fill_iota(mat)
+        _fill_iota(mat, seed)
     elif fill == "zeros":
         mat[:] = 0
     else:
