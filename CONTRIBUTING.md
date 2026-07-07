@@ -76,13 +76,13 @@ compression scheme, a better exact tile schedule in `matmul/`) are welcome too
 | **Open — the main event** | [`strategy/transforms.py`](strategy/transforms.py) (new `Transform` classes), new strategy modules under `strategy/` | The designed hook — `register_transform()` exists for exactly this. Self-scored, verified by the scorer below. |
 | **Open — engine performance** | [`matmul/`](matmul/), `strategy/backend.py`, `strategy/subspace.py` | Tiling, streaming, dtype/precision paths, platform fixes — all welcome, measured the same way. |
 | **Open — accompanying** | `tests/`, `strategy/tests/`, `examples/` | Welcome alongside a code change. Test-only PRs score `0` by design — they don't demonstrate a cost improvement. |
-| **Protected — maintainer-owned** | [`eval/`](eval/) (the scorer, the bot, the ledger), [`docs/`](docs/), [`.github/`](.github/), `dashboard/data.json` | The scoring machinery itself. See [`.github/CODEOWNERS`](.github/CODEOWNERS) — a PR touching these paths is held for maintainer review regardless of what else it does. Changing the scorer is not how you win on it. |
+| **Protected — maintainer-owned** | [`eval/`](eval/) (the scorer, the bot, the ledger), [`docs/`](docs/), [`.github/`](.github/), `dashboard/` | The scoring machinery itself. See [`.github/CODEOWNERS`](.github/CODEOWNERS) — a PR touching these paths is held for maintainer review regardless of what else it does. Changing the scorer is not how you win on it. |
 
 Not sure which zone a change falls into? Open the PR anyway — CODEOWNERS
 review routes it correctly.
 
 If a non-maintainer PR touches `eval/`, `docs/`, `.github/`, or
-`dashboard/data.json`, the sensitive-paths guard fails the PR. That is expected:
+`dashboard/`, the sensitive-paths guard fails the PR. That is expected:
 those files define the rules, automation, or public score feed. A legitimate
 change there should be split into a maintainer-reviewed PR instead of bundled
 with a miner scoring submission.
@@ -209,7 +209,8 @@ disagreeing with the prose.
 The PR bot runs continuously for non-GPU triage. On each PR event and on a
 15-minute schedule it checks drafts, blocked contributors, copycat overlap, and
 scorecard presence. PRs that pass those gates get `status:queued-gpu` and appear
-in `dashboard/data.json` / `dashboard/index.html` in oldest-PR-first order.
+in `dashboard/data.json` in oldest-PR-first order. The dashboard UI itself is
+expected to live in a separate private repository.
 
 GPU evaluation is intentionally batched. The bot can run all day, but GPU tests
 should run sequentially during one or two maintainer-controlled windows per day.

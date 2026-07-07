@@ -25,6 +25,10 @@ _gpu_batch_work/
 gpu-results/
 *.dat
 
+# Local-only planning / strategy notes
+docs/phase-3-4-plan.md
+docs/sn74-emission-strategy.md
+
 # OS / editor
 .DS_Store
 *.swp

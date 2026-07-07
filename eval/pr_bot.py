@@ -222,7 +222,7 @@ def _queue_record(pr: PRInfo, outcome: GateOutcome, position: int | None = None)
 
 
 def build_queue_dashboard(prs: list[PRInfo], outcomes: list[GateOutcome]) -> dict:
-    """Build the live PR queue feed consumed by dashboard/index.html.
+    """Build the live PR queue feed consumed by an external dashboard UI.
 
     This is deliberately separate from eval.ledger's sealed-results dashboard:
     queued PRs are not final evaluations, they are the worklist for the next

@@ -81,6 +81,8 @@ Key flags: `--n`, `--pairs`, `--dtype {fp16,fp32,fp64}`, `--rank-m M`,
 ## Batched PR Evaluation
 
 The always-on PR bot writes the oldest-first GPU queue to `dashboard/data.json`.
+This repository does not ship the dashboard UI itself; it only publishes the
+machine-readable feeds consumed by an external dashboard.
 During a maintainer-controlled GPU window, preview or run that queue with:
 
 ```bash

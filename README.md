@@ -215,7 +215,7 @@ CCO/
 ├── LICENSE            MIT
 ├── pyproject.toml     package metadata and uv extras (test, gpu)
 ├── uv.lock            reproducible uv resolution for maintainers and miners
-├── dashboard/         bot-updated PR queue view
+├── dashboard/         bot-owned queue/result JSON feeds for an external dashboard
 └── .github/
     ├── CODEOWNERS                 maintainer-owned paths (eval/, docs/, .github/)
     └── PULL_REQUEST_TEMPLATE.md   the scorecard your PR must fill in
