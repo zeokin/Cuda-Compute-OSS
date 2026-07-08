@@ -50,6 +50,13 @@ class Config:
             raise ValueError("vram_fraction must be in (0, 0.95]")
         if self.storage not in ("ram", "disk", "auto"):
             raise ValueError("storage must be ram|disk|auto")
+        # ``multiply`` selects the tile edge with ``cfg.tile or auto_tile(...)``: a
+        # non-positive tile is either falsy (0 silently falls back to auto) or, when
+        # negative, produces an empty ``range(0, n, T)`` so the tiled loop writes no
+        # blocks and C is returned unchanged — a silently wrong (all-zeros) result
+        # reported as a successful run. Reject it here; use ``None`` for auto.
+        if self.tile is not None and self.tile < 1:
+            raise ValueError("tile must be a positive integer, or None for auto")
 
     @property
     def np_dtype(self) -> np.dtype:
