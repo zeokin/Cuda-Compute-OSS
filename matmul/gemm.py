@@ -34,15 +34,25 @@ def _tile_operand_bytes(cfg: Config) -> int:
 
 
 def _tile_workspace_bytes_per_elem(cfg: Config) -> int:
-    """Device bytes per T×T element in one tiled (i, j, k) accumulation step."""
-    return cfg.acc_dtype.itemsize + 2 * _tile_operand_bytes(cfg)
+    """Device bytes per T×T element in one tiled (i, j, k) accumulation step.
+
+    Four T×T tiles are live at the peak of each k-step: the accumulator, the two
+    operand tiles (A, B), and the freshly allocated GEMM output returned by
+    ``backend.matmul`` — ``torch.bmm`` cannot write its result into either
+    operand, so ``acc``, ``a_dev``, ``b_dev`` and ``prod`` all coexist. The
+    output tile is produced in the operand/compute dtype, so it costs one more
+    ``_tile_operand_bytes`` term.
+    """
+    return cfg.acc_dtype.itemsize + 3 * _tile_operand_bytes(cfg)
 
 
 def auto_tile(n: int, cfg: Config, backend: Backend) -> int:
     """Pick tile edge T so the working set fits in the VRAM budget.
 
     Working set per (i,j,k) step on the device:
-        acc (T x T, acc_dtype)  +  (A-tile + B-tile) (T x T, operand bytes)
+        acc (T x T, acc_dtype)
+        + (A-tile + B-tile) (T x T, operand bytes)
+        + prod (T x T, the bmm output, operand bytes)
     """
     budget = int(backend.free_compute_bytes() * cfg.vram_fraction)
     per_elem = _tile_workspace_bytes_per_elem(cfg)

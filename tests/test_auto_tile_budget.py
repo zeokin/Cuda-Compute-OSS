@@ -32,11 +32,35 @@ def test_tile_operand_bytes_fp16_upcast():
 
 def test_tile_workspace_counts_fp16_upcast():
     fp16_acc = Config(dtype="fp16", accumulate_fp32=True)
-    # acc fp32 (4) + two fp32 operand tiles (4 + 4)
-    assert _tile_workspace_bytes_per_elem(fp16_acc) == 12
+    # acc fp32 (4) + two fp32 operand tiles (4 + 4) + the fp32 bmm output tile (4)
+    assert _tile_workspace_bytes_per_elem(fp16_acc) == 16
 
     fp16_raw = Config(dtype="fp16", accumulate_fp32=False)
-    assert _tile_workspace_bytes_per_elem(fp16_raw) == 6
+    # acc fp16 (2) + two fp16 operand tiles (2 + 2) + the fp16 bmm output tile (2)
+    assert _tile_workspace_bytes_per_elem(fp16_raw) == 8
+
+
+def test_tile_workspace_counts_the_bmm_output_tile():
+    """Regression for #95: the per-step working set holds four T×T tiles —
+    acc + A + B + the GEMM output `prod` — so the model must budget the output
+    tile too. Before the fix it counted only acc + 2 operands (undersizing the
+    per-element cost and over-picking T)."""
+    for cfg in (
+        Config(dtype="fp32"),
+        Config(dtype="fp16", accumulate_fp32=True),
+        Config(dtype="fp16", accumulate_fp32=False),
+    ):
+        operand = _tile_operand_bytes(cfg)
+        # acc + two operand tiles + one output tile (output produced in operand dtype).
+        assert _tile_workspace_bytes_per_elem(cfg) == cfg.acc_dtype.itemsize + 3 * operand
+        # It must be exactly one operand tile larger than the old 3-term model.
+        assert (
+            _tile_workspace_bytes_per_elem(cfg)
+            == cfg.acc_dtype.itemsize + 2 * operand + operand
+        )
+
+    # fp32 concretely: 4 (acc) + 4 + 4 (operands) + 4 (output) = 16, not the old 12.
+    assert _tile_workspace_bytes_per_elem(Config(dtype="fp32")) == 16
 
 
 def _legacy_auto_tile(n: int, cfg: Config, free_bytes: int) -> int:
