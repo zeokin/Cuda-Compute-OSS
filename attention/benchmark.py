@@ -67,13 +67,19 @@ def run_once(
     local_weight: float = 0.85,
     global_weight: float = 0.15,
     freq_decay: float = 1.0,
+    gate_strength: float = 0.25,
+    landmarks: int = 64,
+    mode: str = "fixed",
     causal: bool = False,
     seed: int = 0,
     device: str = "auto",
 ) -> dict:
     torch = _torch()
-    from .hybrid import hybrid_attention
+    from .hybrid import adaptive_hybrid_attention, hybrid_attention, landmark_hybrid_attention
     from .reference import exact_attention
+
+    if mode not in {"fixed", "adaptive", "landmark", "both", "all"}:
+        raise ValueError("mode must be one of: fixed, adaptive, landmark, both, all")
 
     spec = AttentionSpec(
         batch=batch,
@@ -97,49 +103,112 @@ def run_once(
     _ = hybrid_attention(q[:, :, : min(seq, 64), :], k[:, :, : min(seq, 64), :], v[:, :, : min(seq, 64), :],
                          window=min(window, 32), causal=causal, local_weight=local_weight,
                          global_weight=global_weight, freq_decay=freq_decay)
+    if mode in {"adaptive", "both", "all"}:
+        _ = adaptive_hybrid_attention(
+            q[:, :, : min(seq, 64), :],
+            k[:, :, : min(seq, 64), :],
+            v[:, :, : min(seq, 64), :],
+            window=min(window, 32),
+            causal=causal,
+            local_weight=local_weight,
+            global_weight=global_weight,
+            freq_decay=freq_decay,
+            gate_strength=gate_strength,
+        )
+    if mode in {"landmark", "all"}:
+        _ = landmark_hybrid_attention(
+            q[:, :, : min(seq, 64), :],
+            k[:, :, : min(seq, 64), :],
+            v[:, :, : min(seq, 64), :],
+            window=min(window, 32),
+            causal=causal,
+            local_weight=local_weight,
+            global_weight=global_weight,
+            num_landmarks=min(landmarks, min(seq, 64)),
+        )
     _synchronize(dev)
 
     exact, exact_s, exact_peak = _timed(
         lambda: exact_attention(q, k, v, causal=causal), dev
     )
-    hybrid, hybrid_s, hybrid_peak = _timed(
-        lambda: hybrid_attention(
+
+    candidate_fns = {}
+    if mode in {"fixed", "both", "all"}:
+        candidate_fns["fixed"] = lambda: hybrid_attention(
             q, k, v,
             window=window,
             causal=causal,
             local_weight=local_weight,
             global_weight=global_weight,
             freq_decay=freq_decay,
-        ),
-        dev,
-    )
+        )
+    if mode in {"adaptive", "both", "all"}:
+        candidate_fns["adaptive"] = lambda: adaptive_hybrid_attention(
+            q, k, v,
+            window=window,
+            causal=causal,
+            local_weight=local_weight,
+            global_weight=global_weight,
+            freq_decay=freq_decay,
+            gate_strength=gate_strength,
+        )
+    if mode in {"landmark", "all"}:
+        candidate_fns["landmark"] = lambda: landmark_hybrid_attention(
+            q, k, v,
+            window=window,
+            causal=causal,
+            local_weight=local_weight,
+            global_weight=global_weight,
+            num_landmarks=landmarks,
+        )
 
-    mse = float(torch.mean((hybrid - exact).to(torch.float64) ** 2))
-    rel = _rel_fro(hybrid, exact)
+    candidates = {}
+    for name, fn in candidate_fns.items():
+        out, latency_s, peak = _timed(fn, dev)
+        mse = float(torch.mean((out - exact).to(torch.float64) ** 2))
+        rel = _rel_fro(out, exact)
+        candidates[name] = {
+            "latency_s": latency_s,
+            "peak_vram_bytes": peak,
+            "peak_vram_mib": peak / (1024**2),
+            "quality": {
+                "mse": mse,
+                "rel_frobenius_error": rel,
+                "accuracy_proxy": max(0.0, 1.0 - rel),
+            },
+            "improvement": {
+                "faster_than_exact": latency_s < exact_s,
+                "less_vram_than_exact": peak < exact_peak if exact_peak or peak else False,
+                "latency_ratio_exact_over_candidate": (exact_s / latency_s) if latency_s > 0 else math.inf,
+            },
+        }
 
-    return {
-        "config": {**spec.as_dict(), "device": str(dev)},
+    primary = "fixed" if mode in {"fixed", "both", "all"} else mode
+
+    result = {
+        "config": {
+            **spec.as_dict(),
+            "device": str(dev),
+            "mode": mode,
+            "gate_strength": gate_strength,
+            "landmarks": landmarks,
+        },
         "exact": {
             "latency_s": exact_s,
             "peak_vram_bytes": exact_peak,
             "peak_vram_mib": exact_peak / (1024**2),
         },
-        "hybrid": {
-            "latency_s": hybrid_s,
-            "peak_vram_bytes": hybrid_peak,
-            "peak_vram_mib": hybrid_peak / (1024**2),
-        },
-        "quality": {
-            "mse": mse,
-            "rel_frobenius_error": rel,
-            "accuracy_proxy": max(0.0, 1.0 - rel),
-        },
-        "improvement": {
-            "faster_than_exact": hybrid_s < exact_s,
-            "less_vram_than_exact": hybrid_peak < exact_peak if exact_peak or hybrid_peak else False,
-            "latency_ratio_exact_over_hybrid": (exact_s / hybrid_s) if hybrid_s > 0 else math.inf,
-        },
+        "candidates": candidates,
     }
+    result["hybrid"] = candidates[primary]
+    result["quality"] = candidates[primary]["quality"]
+    result["improvement"] = {
+        **candidates[primary]["improvement"],
+        "latency_ratio_exact_over_hybrid": candidates[primary]["improvement"][
+            "latency_ratio_exact_over_candidate"
+        ],
+    }
+    return result
 
 
 def main(argv=None) -> int:
@@ -156,6 +225,9 @@ def main(argv=None) -> int:
     parser.add_argument("--local-weight", type=float, default=0.85)
     parser.add_argument("--global-weight", type=float, default=0.15)
     parser.add_argument("--freq-decay", type=float, default=1.0)
+    parser.add_argument("--gate-strength", type=float, default=0.25)
+    parser.add_argument("--landmarks", type=int, default=64)
+    parser.add_argument("--mode", choices=("fixed", "adaptive", "landmark", "both", "all"), default="fixed")
     parser.add_argument("--causal", action="store_true")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--device", default="auto")
@@ -172,6 +244,9 @@ def main(argv=None) -> int:
         local_weight=args.local_weight,
         global_weight=args.global_weight,
         freq_decay=args.freq_decay,
+        gate_strength=args.gate_strength,
+        landmarks=args.landmarks,
+        mode=args.mode,
         causal=args.causal,
         seed=args.seed,
         device=args.device,
@@ -183,26 +258,30 @@ def main(argv=None) -> int:
         print(
             f"[attention] device={result['config']['device']} seq={result['config']['seq']} "
             f"heads={result['config']['heads']} dim={result['config']['dim']} "
-            f"dtype={result['config']['dtype']} window={result['config']['window']}"
+            f"dtype={result['config']['dtype']} window={result['config']['window']} "
+            f"mode={result['config']['mode']}"
         )
         print(
             f"[attention] exact  : {result['exact']['latency_s']:.4f}s  "
             f"peak={result['exact']['peak_vram_mib']:.1f} MiB"
         )
-        print(
-            f"[attention] hybrid : {result['hybrid']['latency_s']:.4f}s  "
-            f"peak={result['hybrid']['peak_vram_mib']:.1f} MiB"
-        )
-        print(
-            f"[attention] quality: mse={result['quality']['mse']:.6e}  "
-            f"rel_err={result['quality']['rel_frobenius_error']:.6f}  "
-            f"acc_proxy={result['quality']['accuracy_proxy']:.6f}"
-        )
-        print(
-            f"[attention] faster={result['improvement']['faster_than_exact']}  "
-            f"less_vram={result['improvement']['less_vram_than_exact']}  "
-            f"speedup={result['improvement']['latency_ratio_exact_over_hybrid']:.3f}x"
-        )
+        for name, candidate in result["candidates"].items():
+            quality = candidate["quality"]
+            improvement = candidate["improvement"]
+            print(
+                f"[attention] {name:<8}: {candidate['latency_s']:.4f}s  "
+                f"peak={candidate['peak_vram_mib']:.1f} MiB"
+            )
+            print(
+                f"[attention] {name:<8} quality: mse={quality['mse']:.6e}  "
+                f"rel_err={quality['rel_frobenius_error']:.6f}  "
+                f"acc_proxy={quality['accuracy_proxy']:.6f}"
+            )
+            print(
+                f"[attention] {name:<8} faster={improvement['faster_than_exact']}  "
+                f"less_vram={improvement['less_vram_than_exact']}  "
+                f"speedup={improvement['latency_ratio_exact_over_candidate']:.3f}x"
+            )
     return 0
 
 

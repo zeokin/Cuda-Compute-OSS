@@ -8,7 +8,11 @@ track.
 from .data import generate_qkv
 from .reference import exact_attention
 from .hybrid import (
+    adaptive_hybrid_attention,
+    adaptive_spectral_global_mix,
     hybrid_attention,
+    landmark_global_attention,
+    landmark_hybrid_attention,
     local_window_attention,
     spectral_global_mix,
 )
@@ -18,6 +22,10 @@ __all__ = [
     "AttentionSpec",
     "exact_attention",
     "generate_qkv",
+    "adaptive_spectral_global_mix",
+    "adaptive_hybrid_attention",
+    "landmark_global_attention",
+    "landmark_hybrid_attention",
     "local_window_attention",
     "spectral_global_mix",
     "hybrid_attention",

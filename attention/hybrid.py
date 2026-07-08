@@ -77,6 +77,105 @@ def spectral_global_mix(v, *, freq_decay: float = 1.0):
     return torch.fft.irfft(mixed, n=seq, dim=-2)
 
 
+def adaptive_spectral_global_mix(
+    q,
+    v,
+    *,
+    freq_decay: float = 1.0,
+    gate_strength: float = 0.25,
+):
+    """FFT global mixer with a deterministic input-adaptive frequency gate.
+
+    The current fixed spectral branch applies the same low-pass filter to every
+    input. This branch keeps the same FFT/IFFT structure but lets a summary of
+    Q modulate the frequency response per batch, head, and channel.
+    """
+    torch = _torch()
+    if freq_decay < 0:
+        raise ValueError("freq_decay must be >= 0")
+    if gate_strength < 0:
+        raise ValueError("gate_strength must be >= 0")
+
+    seq = v.shape[-2]
+    real_dtype = torch.float64 if v.dtype == torch.float64 else torch.float32
+    v_work = v.to(real_dtype)
+    q_work = q.to(real_dtype)
+
+    vf = torch.fft.rfft(v_work, dim=-2)
+    freqs = torch.arange(vf.shape[-2], device=v.device, dtype=real_dtype)
+    base_gain = 1.0 / (1.0 + freq_decay * freqs)
+
+    q_summary = torch.tanh(q_work.mean(dim=-2, keepdim=True))
+    gate = base_gain.view(1, 1, -1, 1) * (1.0 + gate_strength * q_summary)
+    mixed = vf * gate.to(vf.dtype)
+    out = torch.fft.irfft(mixed, n=seq, dim=-2)
+    return out.to(v.dtype)
+
+
+def _pad_to_blocks(x, *, blocks: int):
+    torch = _torch()
+    seq = x.shape[-2]
+    block = math.ceil(seq / blocks)
+    padded = block * blocks
+    if padded == seq:
+        return x, seq, block
+    pad_shape = (*x.shape[:-2], padded - seq, x.shape[-1])
+    pad = torch.zeros(pad_shape, device=x.device, dtype=x.dtype)
+    return torch.cat([x, pad], dim=-2), seq, block
+
+
+def landmark_global_attention(
+    q,
+    k,
+    v,
+    *,
+    num_landmarks: int = 64,
+    causal: bool = False,
+):
+    """Approximate global attention by attending to pooled K/V landmarks."""
+    torch = _torch()
+    if num_landmarks <= 0:
+        raise ValueError("num_landmarks must be > 0")
+
+    batch, heads, seq, dim = q.shape
+    landmarks = min(num_landmarks, seq)
+    k_pad, _seq, block = _pad_to_blocks(k, blocks=landmarks)
+    v_pad, _seq, _block = _pad_to_blocks(v, blocks=landmarks)
+
+    k_blocks = k_pad.reshape(batch, heads, landmarks, block, dim)
+    v_blocks = v_pad.reshape(batch, heads, landmarks, block, dim)
+
+    counts = torch.full((landmarks,), block, device=q.device, dtype=q.real.dtype)
+    extra = block * landmarks - seq
+    if extra:
+        counts[-1] = block - extra
+    counts = counts.clamp_min(1.0).view(1, 1, landmarks, 1)
+
+    k_landmarks = k_blocks.sum(dim=-2) / counts
+    v_landmarks = v_blocks.sum(dim=-2) / counts
+
+    scores = torch.matmul(q, k_landmarks.transpose(-1, -2)) / math.sqrt(float(dim))
+    if causal:
+        q_pos = torch.arange(seq, device=q.device)[:, None]
+        landmark_end = (
+            torch.arange(landmarks, device=q.device)[None, :] * block
+            + counts.reshape(1, landmarks).to(torch.long)
+            - 1
+        )
+        scores = scores.masked_fill(landmark_end[None, None, :, :] > q_pos[None, None, :, :], float("-inf"))
+    weights = torch.softmax(scores, dim=-1)
+    return torch.matmul(weights, v_landmarks)
+
+
+def _normalized_weights(local_weight: float, global_weight: float) -> tuple[float, float]:
+    if local_weight < 0 or global_weight < 0:
+        raise ValueError("weights must be >= 0")
+    total = local_weight + global_weight
+    if total <= 0:
+        raise ValueError("at least one branch weight must be positive")
+    return local_weight / total, global_weight / total
+
+
 def hybrid_attention(
     q,
     k,
@@ -90,16 +189,62 @@ def hybrid_attention(
     freq_decay: float = 1.0,
 ):
     """Combine exact local attention with cheap spectral global mixing."""
-    if local_weight < 0 or global_weight < 0:
-        raise ValueError("weights must be >= 0")
-    total = local_weight + global_weight
-    if total <= 0:
-        raise ValueError("at least one branch weight must be positive")
-
+    lw, gw = _normalized_weights(local_weight, global_weight)
     local = local_window_attention(
         q, k, v, window=window, causal=causal, block_size=block_size
     )
+    if gw == 0:
+        return local
     global_ = spectral_global_mix(v, freq_decay=freq_decay)
-    lw = local_weight / total
-    gw = global_weight / total
+    return lw * local + gw * global_
+
+
+def adaptive_hybrid_attention(
+    q,
+    k,
+    v,
+    *,
+    window: int,
+    causal: bool = False,
+    block_size: int | None = None,
+    local_weight: float = 0.85,
+    global_weight: float = 0.15,
+    freq_decay: float = 1.0,
+    gate_strength: float = 0.25,
+):
+    """Combine local exact attention with an adaptive spectral global branch."""
+    lw, gw = _normalized_weights(local_weight, global_weight)
+    local = local_window_attention(
+        q, k, v, window=window, causal=causal, block_size=block_size
+    )
+    if gw == 0:
+        return local
+    global_ = adaptive_spectral_global_mix(
+        q, v, freq_decay=freq_decay, gate_strength=gate_strength
+    )
+    return lw * local + gw * global_
+
+
+def landmark_hybrid_attention(
+    q,
+    k,
+    v,
+    *,
+    window: int,
+    causal: bool = False,
+    block_size: int | None = None,
+    local_weight: float = 0.85,
+    global_weight: float = 0.15,
+    num_landmarks: int = 64,
+):
+    """Combine local exact attention with pooled-landmark global attention."""
+    lw, gw = _normalized_weights(local_weight, global_weight)
+    local = local_window_attention(
+        q, k, v, window=window, causal=causal, block_size=block_size
+    )
+    if gw == 0:
+        return local
+    global_ = landmark_global_attention(
+        q, k, v, num_landmarks=num_landmarks, causal=causal
+    )
     return lw * local + gw * global_

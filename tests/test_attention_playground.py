@@ -13,9 +13,13 @@ from attention import AttentionSpec
 
 if torch is not None:
     from attention import (
+        adaptive_hybrid_attention,
+        adaptive_spectral_global_mix,
         exact_attention,
         generate_qkv,
         hybrid_attention,
+        landmark_global_attention,
+        landmark_hybrid_attention,
         local_window_attention,
         spectral_global_mix,
     )
@@ -79,6 +83,33 @@ def test_spectral_global_mix_preserves_shape_and_finiteness():
     assert torch.isfinite(out).all()
 
 
+def test_adaptive_spectral_global_mix_preserves_shape_and_finiteness():
+    if _skip_if_no_torch():
+        return
+    q, _k, v = _sample(seq=18, dim=6)
+    out = adaptive_spectral_global_mix(q, v, freq_decay=0.5, gate_strength=0.2)
+    assert tuple(out.shape) == tuple(v.shape)
+    assert torch.isfinite(out).all()
+
+
+def test_landmark_global_attention_preserves_shape_and_finiteness():
+    if _skip_if_no_torch():
+        return
+    q, k, v = _sample(seq=18, dim=6)
+    out = landmark_global_attention(q, k, v, num_landmarks=6)
+    assert tuple(out.shape) == tuple(v.shape)
+    assert torch.isfinite(out).all()
+
+
+def test_landmark_global_attention_matches_exact_with_one_landmark_per_token():
+    if _skip_if_no_torch():
+        return
+    q, k, v = _sample(seq=12, dim=4)
+    exact = exact_attention(q, k, v)
+    landmark = landmark_global_attention(q, k, v, num_landmarks=12)
+    assert torch.allclose(landmark, exact, atol=1e-5, rtol=1e-5)
+
+
 def test_hybrid_equals_local_when_global_weight_is_zero():
     if _skip_if_no_torch():
         return
@@ -92,6 +123,78 @@ def test_hybrid_equals_local_when_global_weight_is_zero():
         global_weight=0.0,
     )
     assert torch.allclose(hybrid, local, atol=1e-5, rtol=1e-5)
+
+
+def test_adaptive_hybrid_equals_local_when_global_weight_is_zero():
+    if _skip_if_no_torch():
+        return
+    q, k, v = _sample(seq=14, dim=5)
+    local = local_window_attention(q, k, v, window=3, block_size=4)
+    hybrid = adaptive_hybrid_attention(
+        q, k, v,
+        window=3,
+        block_size=4,
+        local_weight=1.0,
+        global_weight=0.0,
+    )
+    assert torch.allclose(hybrid, local, atol=1e-5, rtol=1e-5)
+
+
+def test_landmark_hybrid_equals_local_when_global_weight_is_zero():
+    if _skip_if_no_torch():
+        return
+    q, k, v = _sample(seq=14, dim=5)
+    local = local_window_attention(q, k, v, window=3, block_size=4)
+    hybrid = landmark_hybrid_attention(
+        q, k, v,
+        window=3,
+        block_size=4,
+        local_weight=1.0,
+        global_weight=0.0,
+        num_landmarks=4,
+    )
+    assert torch.allclose(hybrid, local, atol=1e-5, rtol=1e-5)
+
+
+def test_attention_benchmark_can_compare_both_modes():
+    if _skip_if_no_torch():
+        return
+    from attention.benchmark import run_once
+
+    result = run_once(
+        batch=1,
+        heads=1,
+        seq=8,
+        dim=4,
+        dtype="fp32",
+        window=3,
+        mode="both",
+        device="cpu",
+    )
+    assert set(result["candidates"]) == {"fixed", "adaptive"}
+    assert "exact" in result
+    assert "quality" in result["candidates"]["fixed"]
+    assert "quality" in result["candidates"]["adaptive"]
+
+
+def test_attention_benchmark_can_compare_all_modes():
+    if _skip_if_no_torch():
+        return
+    from attention.benchmark import run_once
+
+    result = run_once(
+        batch=1,
+        heads=1,
+        seq=8,
+        dim=4,
+        dtype="fp32",
+        window=3,
+        mode="all",
+        landmarks=4,
+        device="cpu",
+    )
+    assert set(result["candidates"]) == {"fixed", "adaptive", "landmark"}
+    assert "quality" in result["candidates"]["landmark"]
 
 
 if __name__ == "__main__":
