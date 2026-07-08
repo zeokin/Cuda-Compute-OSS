@@ -123,7 +123,7 @@ uv sync --extra test --extra gpu
 uv run python -m eval --n 12000 --pairs 3 --transforms mine,rsvd
 
 # fit the empirical time complexity O(N^p); pass --rank-m to hold M fixed (~N²),
-# omit it to let M = N//8 grow with N (~N³)
+# omit it to let M = min(N, max(64, N//8)) grow with N (~N³)
 uv run python -m eval --transforms mine --rank-m 128 --sweep 512,1024,2048
 
 # machine-readable, for pasting exact numbers

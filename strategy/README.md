@@ -71,7 +71,7 @@ python -m strategy --n 12000 --transform rsvd --fill lowrank --data-rank 16 --ve
 python -m strategy --n 12000 --compare --transform rsvd --fill lowrank --data-rank 16
 ```
 
-(`M` defaults to `n // 8` = 1500 at `n = 12000`; set it with `--rank-m`.)
+(`M` defaults to `min(n, max(64, n // 8))` = 1500 at `n = 12000`; the `max(64, …)` floor dominates for small `n`. Set it with `--rank-m`.)
 
 Key flags: `--n`, `--dtype {fp16,fp32,fp64}`, `--rank-m M`, `--transform`,
 `--compare`, `--fill {lowrank,random,iota,zeros}`, `--data-rank`, `--storage`,
