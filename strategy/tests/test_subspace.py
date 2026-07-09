@@ -167,10 +167,22 @@ def test_custom_transform_exact_with_shared_basis():
 
 def test_rsvd_recovers_low_rank_product():
     rng = np.random.default_rng(6)
-    n, r, m = 96, 5, 48                     # m/4 = 12 >= r per captured space
+    n, r, m = 96, 5, 48                     # m/3 = 16 >= r per captured space
     A = rng.standard_normal((n, r)) @ rng.standard_normal((r, n))
     B = rng.standard_normal((n, r)) @ rng.standard_normal((r, n))
     assert _rel(_run(A, B, m, "rsvd"), A @ B) < 1e-8
+
+
+def test_rsvd_exact_at_three_times_rank():
+    # With a 3-way budget, rank-r A,B recover exactly at M=3r (issue #91).
+    rng = np.random.default_rng(10)
+    n, r = 200, 10
+    m = 3 * r
+    U = np.linalg.qr(rng.standard_normal((n, r)))[0]
+    V = np.linalg.qr(rng.standard_normal((n, r)))[0]
+    A = U @ V.T
+    B = V @ U.T
+    assert _rel(_run(A, B, m, "rsvd"), A @ B) < 1e-10
 
 
 def test_rsvd_more_dims_not_worse_on_low_rank():
