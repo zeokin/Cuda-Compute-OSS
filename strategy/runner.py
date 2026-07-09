@@ -88,7 +88,7 @@ def run(n: int, cfg: Config, fill: str = "lowrank", verify: bool = False,
 
 
 def compare(n: int, cfg: Config, fill: str = "lowrank",
-            data_rank: int | None = None) -> dict:
+            data_rank: int | None = None, keep: bool = False) -> dict:
     """Run the exact baseline and the subspace strategy on the SAME inputs and
     report time, throughput and the smart strategy's reconstruction error."""
     backend = Backend(cfg.device, cfg.verbose)
@@ -130,9 +130,7 @@ def compare(n: int, cfg: Config, fill: str = "lowrank",
         print(f"  smart FLOPs          : {out['flop_ratio']:.1f}x fewer than exact")
         print(f"  smart rel. error     : {rel_err:.2e}")
 
-    if on_disk and not cfg.verbose:
-        pass
-    if on_disk:
+    if on_disk and not keep:
         for p in (pa, pb, pe, ps):
             try:
                 os.remove(p)

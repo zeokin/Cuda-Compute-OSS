@@ -62,7 +62,8 @@ def main(argv=None) -> int:
     )
     try:
         if args.compare:
-            runner.compare(args.n, cfg, fill=args.fill, data_rank=args.data_rank)
+            runner.compare(args.n, cfg, fill=args.fill, data_rank=args.data_rank,
+                           keep=args.keep)
             return 0
         info = runner.run(args.n, cfg, fill=args.fill, verify=args.verify,
                           keep=args.keep, data_rank=args.data_rank)
