@@ -143,6 +143,29 @@ def test_fits_in_core_accepts_when_true_budget_fits():
     assert _fits_in_core(n, cfg, _FakeBackend(free)) is True
 
 
+def test_auto_tile_tiny_budget_stays_within_budget():
+    """Tiny free-memory reports must not be rounded up to a 128 tile.
+
+    The 128-alignment is a performance preference, not permission to exceed
+    ``vram_fraction``. If the raw budget only allows a smaller tile, return it.
+    """
+    cfg = Config(dtype="fp32", vram_fraction=0.6)
+    backend = _FakeBackend(16 * 1024)
+    t = auto_tile(4096, cfg, backend)
+    budget = int(backend.free_compute_bytes() * cfg.vram_fraction)
+    need = t * t * _tile_workspace_bytes_per_elem(cfg)
+    assert 1 <= t < 128
+    assert need <= budget
+
+
+def test_auto_tile_keeps_128_alignment_when_budget_allows():
+    cfg = Config(dtype="fp32", vram_fraction=0.6)
+    backend = _FakeBackend(64 * 1024**2)
+    t = auto_tile(8192, cfg, backend)
+    assert t >= 128
+    assert t % 128 == 0
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

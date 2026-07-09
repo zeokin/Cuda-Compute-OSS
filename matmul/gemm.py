@@ -56,11 +56,12 @@ def auto_tile(n: int, cfg: Config, backend: Backend) -> int:
     """
     budget = int(backend.free_compute_bytes() * cfg.vram_fraction)
     per_elem = _tile_workspace_bytes_per_elem(cfg)
-    t = int(math.sqrt(max(1, budget) / per_elem))
-    t = min(t, n)
-    # Round down to a multiple of 128 for nicer GEMM shapes; keep a sane floor.
-    t = max(128, (t // 128) * 128)
-    return min(t, n)
+    raw = int(math.sqrt(max(1, budget) / per_elem))
+    t = min(max(1, raw), n)
+    # Prefer 128-aligned GEMM shapes only when doing so stays within budget.
+    if t >= 128:
+        t = max(128, (t // 128) * 128)
+    return t
 
 
 def _in_core_bytes_per_elem(cfg: Config) -> int:
