@@ -338,8 +338,8 @@ uv run --extra test python -m eval.gpu_batch --limit 3 --run --clean
 By default the GPU scorer omits `--seed`, so every official run sees fresh
 unseen matrices. Pass `--seed <n>` only to reproduce a prior result.
 
-**Scoring is moving to automated verdict labels** (`eval:XS` through `eval:XL`,
-plus `eval:BASELINE`, `eval:none`, `eval:REJECT` — see
+**Scoring is moving to automated verdict labels** (`eval:S`, `eval:M`,
+`eval:L`, plus `eval:BASELINE`, `eval:none`, `eval:REJECT` — see
 [`docs/sn74-emission-strategy.md`](docs/sn74-emission-strategy.md)), assigned
 by a deterministic bot that re-runs your scorecard on a pinned GPU, not by a
 human judgment call. That bot isn't live yet — until it is, a maintainer

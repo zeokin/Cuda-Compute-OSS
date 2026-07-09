@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 
 # Verdicts that count as an admitted improvement on a track's frontier.
-ADMITTED_VERDICTS = frozenset({"BASELINE", "XS", "S", "M", "L", "XL"})
+ADMITTED_VERDICTS = frozenset({"BASELINE", "S", "M", "L"})
 
 
 def append_entry(ledger_path: str | os.PathLike, entry: dict) -> None:

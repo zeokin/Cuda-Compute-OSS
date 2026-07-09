@@ -29,7 +29,7 @@ def test_append_and_read_roundtrip():
     with tempfile.TemporaryDirectory() as d:
         path = Path(d) / "ledger.jsonl"
         append_entry(path, _entry(1, "full-rank", "BASELINE", 1.0))
-        append_entry(path, _entry(2, "full-rank", "XS", 1.03))
+        append_entry(path, _entry(2, "full-rank", "S", 1.03))
         entries = read_ledger(path)
         assert len(entries) == 2
         assert entries[0]["pr"] == 1 and entries[1]["pr"] == 2
@@ -52,7 +52,7 @@ def test_frontier_and_reference_anchor():
     entries = [
         _entry(1, "full-rank", "BASELINE", 1.0),
         _entry(2, "full-rank", "none", 5.0),   # not admitted -- must not count
-        _entry(3, "full-rank", "XS", 1.05),
+        _entry(3, "full-rank", "S", 1.05),
         _entry(4, "low-rank", "BASELINE", 2.0),
     ]
     assert frontier_score(entries, "full-rank") == 1.05

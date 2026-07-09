@@ -149,9 +149,9 @@ def test_clean_pr_with_no_runner_is_eval_pending():
 
 def test_clean_pr_with_runner_is_evaluated():
     out = process_pr(_pr(body=SCORECARD_BODY), SOME_DIFF, [], frozenset(), [],
-                     run_eval=lambda pr: {"track": "full-rank", "verdict": "XS"})
+                     run_eval=lambda pr: {"track": "full-rank", "verdict": "S"})
     assert out.action == "evaluated"
-    assert "XS" in out.detail
+    assert "S" in out.detail
 
 
 def test_has_scorecard_matches_labeler_ymls_detector():

@@ -44,16 +44,16 @@ def test_tier_sizing_uses_fixed_anchor_not_frontier():
     ref_anchor = 1.0
     frontier = 10.0
     # +6% over frontier (clears significance) but delta=0.6 vs ref_anchor=1.0
-    # -> tier_basis 0.6 -> should land in the XL bucket (>=0.50).
+    # -> tier_basis 0.6 -> should land in the L bucket (>=0.25).
     out = label(_result(score=frontier * 1.06), frontier_score=frontier, ref_anchor=ref_anchor)
-    assert out["verdict"] == "XL", out
+    assert out["verdict"] == "L", out
 
 
 def test_tiers_are_monotonic_with_gain():
     frontier = 1.0
     ref_anchor = 1.0
     seen = []
-    for pct in (0.03, 0.06, 0.12, 0.30, 0.60):
+    for pct in (0.03, 0.06, 0.12, 0.30):
         out = label(_result(score=frontier * (1 + pct)), frontier_score=frontier, ref_anchor=ref_anchor)
         seen.append(out["verdict"])
     # Strictly increasing tier order for strictly increasing gains.

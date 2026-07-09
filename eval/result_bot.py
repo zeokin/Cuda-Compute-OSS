@@ -27,7 +27,7 @@ DEFAULT_LEDGER = "eval/ledger.jsonl"
 DEFAULT_DASHBOARD_RESULTS = "dashboard/results.json"
 RESULT_MARKER = "<!-- cco-result:{pr}:{commit} -->"
 EVAL_LABELS = {
-    "eval:BASELINE", "eval:XS", "eval:S", "eval:M", "eval:L", "eval:XL",
+    "eval:BASELINE", "eval:S", "eval:M", "eval:L",
     "eval:none", "eval:REJECT",
 }
 

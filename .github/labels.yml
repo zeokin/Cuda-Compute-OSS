@@ -79,9 +79,6 @@
   description: "Newly opened, not yet triaged"
 
 # ── eval: deterministic verdict tiers ───────────────────────────────────────
-- name: "eval:XL"
-  color: "0B6E4F"
-  description: "Verified frontier improvement, largest tier (>=50% over the reference anchor)"
 - name: "eval:L"
   color: "1B998B"
   description: "Verified frontier improvement, large tier (>=25%)"
@@ -90,10 +87,7 @@
   description: "Verified frontier improvement, medium tier (>=10%)"
 - name: "eval:S"
   color: "56CCF2"
-  description: "Verified frontier improvement, small tier (>=5%)"
-- name: "eval:XS"
-  color: "BDE0FE"
-  description: "Verified frontier improvement, smallest tier (>=2%, the significance floor)"
+  description: "Verified frontier improvement, small tier (>=2%, the significance floor)"
 - name: "eval:BASELINE"
   color: "6C63FF"
   description: "First admitted strategy on this track"
@@ -114,11 +108,3 @@
 - name: "flagged:gaming"
   color: "000000"
   description: "Account blocked for gaming the scoring pipeline (see .github/FLAGGED.md)"
-
-# ── mult: non-eval contribution multipliers (docs/sn74-emission-strategy.md) ─
-- name: "mult:harness"
-  color: "0052CC"
-  description: "Improves the eval/scoring harness itself (maintainer-reviewed)"
-- name: "mult:docs"
-  color: "0E8A16"
-  description: "Documentation contribution, scored at a fixed low multiplier"

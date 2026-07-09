@@ -1,10 +1,9 @@
 """Deterministic PR verdict labels for the matmul-strategy scoring pipeline.
 
 ``label()`` turns one ``evaluate()``-style transform result into a single
-verdict -- REJECT / none / BASELINE / XS..XL -- as a pure function of the
+verdict -- REJECT / none / BASELINE / S..L -- as a pure function of the
 measurements, so an independent re-run of the same PR always converges on
-the same verdict (see docs/sn74-emission-strategy.md's target label
-economy, modeled on sparkinfer's eval:XS..XL tiers).
+the same verdict.
 
 This module does NOT recompute the accuracy/dominance gates -- those already
 live in :mod:`eval.metrics` and are applied once by ``evaluate()`` (the
@@ -24,11 +23,9 @@ SIGNIFICANCE = 0.02
 # (mirrors sparkinfer's DIFF_REF anti-drift design in bench/scripts/label.py).
 # Ordered highest-threshold-first; the first bucket a gain clears wins.
 BUCKETS = (
-    (0.50, "XL"),
     (0.25, "L"),
     (0.10, "M"),
-    (0.05, "S"),
-    (SIGNIFICANCE, "XS"),
+    (SIGNIFICANCE, "S"),
 )
 
 
@@ -76,5 +73,5 @@ def label(result: dict, frontier_score: float, ref_anchor: float) -> dict:
                 "delta_pct": delta_pct}
 
     tier_basis = delta / ref_anchor if ref_anchor > 0 else significance
-    verdict = next((v for threshold, v in BUCKETS if tier_basis >= threshold), "XS")
+    verdict = next((v for threshold, v in BUCKETS if tier_basis >= threshold), "S")
     return {"verdict": verdict, "reason": None, "delta_pct": delta_pct}

@@ -96,7 +96,7 @@ does, audited and in production. The loop:
    engine improvement — with a self-scored `python -m eval` scorecard.
 2. CCO's evaluation harness re-measures the claim on the **pinned reference
    regime** (§6) and produces a deterministic verdict label:
-   `eval:XS` … `eval:XL` for a verified frontier improvement, `eval:none` for
+   `eval:S` … `eval:L` for a verified frontier improvement, `eval:none` for
    correct-but-not-better, `eval:REJECT` for accuracy loss.
 3. A maintainer merges PRs on their engineering merits; only the eval label
    carries score weight.
@@ -214,11 +214,9 @@ practice):
 
 | label | verified improvement over frontier |
 |---|---|
-| `eval:XL` | ≥ 18% |
-| `eval:L` | ≥ 10% |
-| `eval:M` | ≥ 6% |
-| `eval:S` | ≥ 3.5% |
-| `eval:XS` | ≥ 2% (the significance floor — below it is noise, label `eval:none`) |
+| `eval:L` | ≥ 25% |
+| `eval:M` | ≥ 10% |
+| `eval:S` | ≥ 2% (the significance floor — below it is noise, label `eval:none`) |
 | `eval:BASELINE` | first verified entry on a new track |
 | `eval:none` | correct, but no verified frontier improvement |
 | `eval:REJECT` | fails the accuracy gate |
