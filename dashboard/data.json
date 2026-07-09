@@ -18,6 +18,7 @@
       "pr": 110,
       "state": "non_gpu_review",
       "title": "fix(matmul): reject non-positive --tile in Config (#80)",
+      "updated_at": "2026-07-09T15:34:56Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/110"
     },
     {
@@ -30,6 +31,7 @@
       "pr": 111,
       "state": "non_gpu_review",
       "title": "fix(matmul): budget fp16 fp32-upcast temporaries in _fits_in_core (#63)",
+      "updated_at": "2026-07-09T15:35:01Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/111"
     },
     {
@@ -42,6 +44,7 @@
       "pr": 112,
       "state": "non_gpu_review",
       "title": "fix(strategy): stream K tiles in multiply_exact for memmap inputs",
+      "updated_at": "2026-07-09T15:35:06Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/112"
     },
     {
@@ -54,6 +57,7 @@
       "pr": 113,
       "state": "non_gpu_review",
       "title": "fix(storage): thread seed through iota fill so eval couples differ (#104)",
+      "updated_at": "2026-07-09T15:35:11Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/113"
     },
     {
@@ -66,6 +70,7 @@
       "pr": 116,
       "state": "non_gpu_review",
       "title": "fix(matmul): count the GEMM output tile in auto_tile's VRAM budget",
+      "updated_at": "2026-07-09T15:35:16Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/116"
     },
     {
@@ -78,30 +83,31 @@
       "pr": 117,
       "state": "non_gpu_review",
       "title": "fix(strategy): size reconstruct() row-block from compute_dtype, not out_dtype",
+      "updated_at": "2026-07-09T15:35:21Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/117"
     },
     {
       "author": "boskodev790",
-      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
+      "detail": "boskodev790 already has more than 2 open PRs; closing this newer PR and keeping only the two oldest open ones.",
       "gpu_required": false,
       "head_sha": "a1303b27d4c7362283ea9a444c1dba102e695fcc",
-      "kind": "fix",
-      "label": "status:ready-non-gpu",
+      "kind": null,
       "pr": 118,
-      "state": "non_gpu_review",
+      "state": "close_excess_open_pr",
       "title": "fix(strategy): correct advertised default M to min(n, max(64, n//8))",
+      "updated_at": "2026-07-09T15:35:26Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/118"
     },
     {
       "author": "boskodev790",
-      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
+      "detail": "boskodev790 already has more than 2 open PRs; closing this newer PR and keeping only the two oldest open ones.",
       "gpu_required": false,
       "head_sha": "eccddc1beb976259fc295d47cd2bc774cbcae192",
-      "kind": "fix",
-      "label": "status:ready-non-gpu",
+      "kind": null,
       "pr": 120,
-      "state": "non_gpu_review",
+      "state": "close_excess_open_pr",
       "title": "fix(config): reject a non-positive tile instead of silently miscomputing",
+      "updated_at": "2026-07-09T15:35:31Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/120"
     },
     {
@@ -114,6 +120,7 @@
       "pr": 121,
       "state": "non_gpu_review",
       "title": "fix(strategy): honor --keep for --compare disk memmap cleanup",
+      "updated_at": "2026-07-09T15:35:36Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/121"
     },
     {
@@ -126,9 +133,10 @@
       "pr": 122,
       "state": "non_gpu_review",
       "title": "fix(strategy): split rsvd rank budget three ways, drop redundant col(B)",
+      "updated_at": "2026-07-09T15:35:41Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/122"
     }
   ],
   "queue": [],
-  "updated": "2026-07-09T14:19:20+00:00"
+  "updated": "2026-07-09T17:34:47+00:00"
 }
