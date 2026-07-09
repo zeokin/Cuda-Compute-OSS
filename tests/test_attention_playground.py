@@ -49,6 +49,37 @@ def test_attention_spec_defaults_are_stable():
     assert spec.window == 256
 
 
+def test_attention_spec_rejects_invalid_dimensions():
+    for kwargs in (
+        {"batch": 0},
+        {"heads": 0},
+        {"seq": 0},
+        {"dim": 0},
+        {"window": -1},
+    ):
+        try:
+            AttentionSpec(**kwargs)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"AttentionSpec({kwargs!r}) should raise ValueError")
+
+
+def test_attention_spec_rejects_invalid_branch_weights():
+    for kwargs in (
+        {"local_weight": -0.1},
+        {"global_weight": -0.1},
+        {"local_weight": 0.0, "global_weight": 0.0},
+        {"freq_decay": -0.1},
+    ):
+        try:
+            AttentionSpec(**kwargs)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"AttentionSpec({kwargs!r}) should raise ValueError")
+
+
 def test_generate_qkv_uses_spec_shape():
     if _skip_if_no_torch():
         return
