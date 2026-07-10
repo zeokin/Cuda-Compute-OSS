@@ -58,12 +58,17 @@ def local_window_attention(q, k, v, *, window: int, causal: bool = False, block_
     return out
 
 
-def spectral_global_mix(v, *, freq_decay: float = 1.0):
+def spectral_global_mix(v, *, freq_decay: float = 1.0, causal: bool = False):
     """Cheap global mixer via FFT over the sequence dimension.
 
     This first reference version uses a deterministic low-pass filter rather
     than a learned kernel. It is intentionally simple: the goal is to establish
     an honest baseline for the global branch before any training or fusion work.
+
+    The default (non-causal) branch is a symmetric zero-phase low-pass, so each
+    output depends on the whole sequence -- future included. With ``causal=True``
+    it uses the causal counterpart of that first-order low-pass instead (see
+    below), so ``out[t]`` depends only on ``v[0..t]``.
     """
     torch = _torch()
     if freq_decay < 0:
@@ -75,11 +80,30 @@ def spectral_global_mix(v, *, freq_decay: float = 1.0):
     # dtype at the end, mirroring adaptive/correlation_spectral_global_mix.
     real_dtype = torch.float64 if v.dtype == torch.float64 else torch.float32
     v_work = v.to(real_dtype)
-    vf = torch.fft.rfft(v_work, dim=-2)
-    freqs = torch.arange(vf.shape[-2], device=v.device, dtype=real_dtype)
-    gain = 1.0 / (1.0 + freq_decay * freqs)
-    mixed = vf * gain.view(1, 1, -1, 1)
-    return torch.fft.irfft(mixed, n=seq, dim=-2).to(v.dtype)
+
+    if not causal:
+        vf = torch.fft.rfft(v_work, dim=-2)
+        freqs = torch.arange(vf.shape[-2], device=v.device, dtype=real_dtype)
+        gain = 1.0 / (1.0 + freq_decay * freqs)
+        mixed = vf * gain.view(1, 1, -1, 1)
+        return torch.fft.irfft(mixed, n=seq, dim=-2).to(v.dtype)
+
+    # Causal low-pass: the frequency gain 1/(1+freq_decay*f) is a first-order
+    # low-pass; its causal counterpart is an exponential moving average with pole
+    # a = 1/(1+freq_decay) (a=1 -> identity at freq_decay=0, matching the
+    # non-causal branch's gain==1). Apply the geometric kernel g[l]=(1-a)^l as a
+    # LINEAR (zero-padded) convolution so no future token leaks in, renormalized
+    # by the partial kernel mass so early positions and constants are preserved
+    # -- the same recipe as correlation_spectral_global_mix's causal branch.
+    alpha = 1.0 / (1.0 + freq_decay)
+    lags = torch.arange(seq, device=v.device, dtype=real_dtype)
+    kernel = (1.0 - alpha) ** lags
+    length = 2 * seq
+    kf = torch.fft.rfft(kernel, n=length)
+    vf = torch.fft.rfft(v_work, n=length, dim=-2)
+    conv = torch.fft.irfft(vf * kf.view(1, 1, -1, 1), n=length, dim=-2)[..., :seq, :]
+    mass = torch.cumsum(kernel, dim=0).clamp_min(1e-12).view(1, 1, -1, 1)
+    return (conv / mass).to(v.dtype)
 
 
 def adaptive_spectral_global_mix(
@@ -330,7 +354,7 @@ def hybrid_attention(
     )
     if gw == 0:
         return local
-    global_ = spectral_global_mix(v, freq_decay=freq_decay)
+    global_ = spectral_global_mix(v, freq_decay=freq_decay, causal=causal)
     return lw * local + gw * global_
 
 

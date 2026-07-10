@@ -125,6 +125,73 @@ def test_adaptive_spectral_global_mix_preserves_shape_and_finiteness():
     assert torch.isfinite(out).all()
 
 
+def test_spectral_global_mix_causal_does_not_see_the_future():
+    """Regression for #164: the default (non-causal) branch is a symmetric FFT
+    low-pass that mixes every position; causal=True must not read the future."""
+    if _skip_if_no_torch():
+        return
+    torch.manual_seed(0)
+    seq = 32
+    v = torch.randn(1, 2, seq, 4, dtype=torch.float64)
+    bumped = v.clone()
+    bumped[:, :, -1, :] += 100.0                 # only the future-most token
+    for freq_decay in (0.0, 0.7, 3.0):
+        base = spectral_global_mix(v, freq_decay=freq_decay, causal=True)
+        moved = spectral_global_mix(bumped, freq_decay=freq_decay, causal=True)
+        assert (moved - base)[:, :, :-1, :].abs().max() < 1e-9, freq_decay
+
+
+def test_spectral_global_mix_causal_freq_decay_zero_is_identity():
+    """freq_decay=0 -> EMA pole a=1 -> identity, matching the non-causal gain==1."""
+    if _skip_if_no_torch():
+        return
+    torch.manual_seed(1)
+    v = torch.randn(1, 2, 16, 4, dtype=torch.float64)
+    out = spectral_global_mix(v, freq_decay=0.0, causal=True)
+    assert torch.allclose(out, v, atol=1e-12)
+
+
+def test_spectral_global_mix_causal_preserves_constant_v():
+    """Each causal output is a convex combination of the visible past, so a
+    constant V comes back unchanged (the zero-padding must not shrink it)."""
+    if _skip_if_no_torch():
+        return
+    torch.manual_seed(2)
+    v = torch.full((1, 2, 20, 4), 2.5, dtype=torch.float64)
+    out = spectral_global_mix(v, freq_decay=1.0, causal=True)
+    assert (out - 2.5).abs().max() < 1e-9
+
+
+def test_spectral_global_mix_noncausal_unchanged_by_new_flag():
+    """The default branch must be bit-identical to the pre-flag behavior."""
+    if _skip_if_no_torch():
+        return
+    torch.manual_seed(3)
+    v = torch.randn(1, 2, 24, 5, dtype=torch.float64)
+    for freq_decay in (0.0, 0.3, 1.0, 5.0):
+        a = spectral_global_mix(v, freq_decay=freq_decay)              # default causal=False
+        b = spectral_global_mix(v, freq_decay=freq_decay, causal=False)
+        assert torch.equal(a, b)
+
+
+def test_hybrid_attention_causal_does_not_see_the_future():
+    """The leak must not survive through the default (fixed) hybrid wrapper (#164)."""
+    if _skip_if_no_torch():
+        return
+    torch.manual_seed(4)
+    seq, window = 32, 4
+    q = torch.randn(1, 2, seq, 4, dtype=torch.float64)
+    k = torch.randn(1, 2, seq, 4, dtype=torch.float64)
+    v = torch.randn(1, 2, seq, 4, dtype=torch.float64)
+    bumped = v.clone()
+    bumped[:, :, -1, :] += 100.0
+    base = hybrid_attention(q, k, v, window=window, causal=True)
+    moved = hybrid_attention(q, k, bumped, window=window, causal=True)
+    # v[-1] can reach out[t] via the local branch only for t >= seq-1-window.
+    horizon = seq - 1 - window
+    assert (moved - base)[:, :, :horizon, :].abs().max() < 1e-9
+
+
 def test_correlation_spectral_global_mix_preserves_shape_and_finiteness():
     if _skip_if_no_torch():
         return
