@@ -18,7 +18,7 @@
       "pr": 146,
       "state": "non_gpu_review",
       "title": "fix(strategy): budget multiply_exact's GEMM output and accumulate in place (Fixes #144)",
-      "updated_at": "2026-07-10T19:08:21Z",
+      "updated_at": "2026-07-10T20:37:56Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/146"
     },
     {
@@ -31,7 +31,7 @@
       "pr": 151,
       "state": "non_gpu_review",
       "title": "fix(attention): run spectral_global_mix FFT in fp32 so the default fp16 benchmark does not crash",
-      "updated_at": "2026-07-10T19:08:28Z",
+      "updated_at": "2026-07-10T20:38:02Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/151"
     },
     {
@@ -44,7 +44,7 @@
       "pr": 153,
       "state": "non_gpu_review",
       "title": "fix(attention): report less_vram_than_exact as unknown when VRAM is unmeasured",
-      "updated_at": "2026-07-10T19:08:35Z",
+      "updated_at": "2026-07-10T20:38:07Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/153"
     },
     {
@@ -57,7 +57,7 @@
       "pr": 155,
       "state": "non_gpu_review",
       "title": "fix(attention): stop causal correlation mixer from seeing the future (Fixes #154)",
-      "updated_at": "2026-07-10T19:08:42Z",
+      "updated_at": "2026-07-10T20:38:11Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/155"
     },
     {
@@ -70,7 +70,7 @@
       "pr": 156,
       "state": "eval_pending",
       "title": "feat(strategy): rsvd captures 3 subspaces, not 4 (drop redundant col(B) sketch)",
-      "updated_at": "2026-07-10T19:08:53Z",
+      "updated_at": "2026-07-10T20:38:19Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/156"
     },
     {
@@ -83,7 +83,7 @@
       "pr": 158,
       "state": "non_gpu_review",
       "title": "fix(attention): upcast fp16 in spectral_global_mix (torch.fft has no half support)",
-      "updated_at": "2026-07-10T19:08:56Z",
+      "updated_at": "2026-07-10T20:38:21Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/158"
     },
     {
@@ -96,7 +96,7 @@
       "pr": 159,
       "state": "non_gpu_review",
       "title": "fix(strategy): budget GEMM output in multiply_exact _exact_tile (Fixes #144)",
-      "updated_at": "2026-07-10T19:09:03Z",
+      "updated_at": "2026-07-10T20:38:26Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/159"
     },
     {
@@ -109,20 +109,8 @@
       "pr": 162,
       "state": "non_gpu_review",
       "title": "fix(strategy): correct README FLOP ratio to 4M/N, not 3M/N (Fixes #161)",
-      "updated_at": "2026-07-10T19:09:09Z",
+      "updated_at": "2026-07-10T20:38:31Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/162"
-    },
-    {
-      "author": "RealDiligent",
-      "detail": "PR touches maintainer-owned files: eval/tests/test_pr_bot.py. Miner PRs cannot modify maintainer-owned files. Open a fresh PR that only changes allowed miner-owned files.",
-      "gpu_required": false,
-      "head_sha": "f5f338b1d434120690058f388f0b502948df7e27",
-      "kind": null,
-      "pr": 160,
-      "state": "close_protected_path",
-      "title": "fix(eval): stop merge-conflict no-repeat test from going stale after 12h",
-      "updated_at": "2026-07-10T20:36:33Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/160"
     }
   ],
   "queue": [
@@ -137,9 +125,9 @@
       "pr": 156,
       "state": "eval_pending",
       "title": "feat(strategy): rsvd captures 3 subspaces, not 4 (drop redundant col(B) sketch)",
-      "updated_at": "2026-07-10T19:08:53Z",
+      "updated_at": "2026-07-10T20:38:19Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/156"
     }
   ],
-  "updated": "2026-07-10T20:38:36+00:00"
+  "updated": "2026-07-10T20:45:59+00:00"
 }
