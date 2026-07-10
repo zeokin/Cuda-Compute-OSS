@@ -18,7 +18,7 @@
       "pr": 127,
       "state": "non_gpu_review",
       "title": "fix(strategy): delegate CPUBackend.host_available_bytes to shared cross-platform helper",
-      "updated_at": "2026-07-10T02:11:27Z",
+      "updated_at": "2026-07-10T02:18:05Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/127"
     },
     {
@@ -31,7 +31,7 @@
       "pr": 130,
       "state": "non_gpu_review",
       "title": "fix(strategy): stream B in k-blocks inside multiply_exact for memmap inputs",
-      "updated_at": "2026-07-10T02:11:33Z",
+      "updated_at": "2026-07-10T02:18:10Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/130"
     },
     {
@@ -44,10 +44,23 @@
       "pr": 131,
       "state": "non_gpu_review",
       "title": "fix(strategy): reserve Q/Ctil VRAM in subspace row-block budgeting",
-      "updated_at": "2026-07-10T02:16:38Z",
+      "updated_at": "2026-07-10T02:18:16Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/131"
+    },
+    {
+      "author": "ultrahighsuper",
+      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
+      "gpu_required": false,
+      "head_sha": "b6473a87eb2a114a990d7aced00b0009857e0c96",
+      "kind": "fix",
+      "label": "status:ready-non-gpu",
+      "pr": 132,
+      "state": "non_gpu_review",
+      "title": "fix(strategy): drop rsvd's redundant col(B) sketch (3-way budget split)",
+      "updated_at": "2026-07-10T02:25:43Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/132"
     }
   ],
   "queue": [],
-  "updated": "2026-07-10T02:18:20+00:00"
+  "updated": "2026-07-10T02:27:04+00:00"
 }
