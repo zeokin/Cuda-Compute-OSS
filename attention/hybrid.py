@@ -70,11 +70,19 @@ def spectral_global_mix(v, *, freq_decay: float = 1.0):
         raise ValueError("freq_decay must be >= 0")
 
     seq = v.shape[-2]
-    vf = torch.fft.rfft(v, dim=-2)
-    freqs = torch.arange(vf.shape[-2], device=v.device, dtype=v.real.dtype)
+    # torch.fft has no half-precision support, so upcast fp16 to fp32 for the
+    # transform and cast back -- exactly as the sibling FFT mixers
+    # (adaptive_spectral_global_mix / correlation_spectral_global_mix) do. Without
+    # this, fp16 input raises "Unsupported dtype Half", and fp16 is the default
+    # benchmark dtype.
+    real_dtype = torch.float64 if v.dtype == torch.float64 else torch.float32
+    v_work = v.to(real_dtype)
+    vf = torch.fft.rfft(v_work, dim=-2)
+    freqs = torch.arange(vf.shape[-2], device=v.device, dtype=real_dtype)
     gain = 1.0 / (1.0 + freq_decay * freqs)
     mixed = vf * gain.view(1, 1, -1, 1)
-    return torch.fft.irfft(mixed, n=seq, dim=-2)
+    out = torch.fft.irfft(mixed, n=seq, dim=-2)
+    return out.to(v.dtype)
 
 
 def adaptive_spectral_global_mix(

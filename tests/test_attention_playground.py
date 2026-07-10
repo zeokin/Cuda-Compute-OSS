@@ -116,6 +116,27 @@ def test_spectral_global_mix_preserves_shape_and_finiteness():
     assert torch.isfinite(out).all()
 
 
+def test_spectral_global_mix_handles_fp16():
+    # fp16 is the default benchmark dtype; torch.fft has no half support, so the
+    # mixer must upcast (like its siblings) instead of crashing.
+    if _skip_if_no_torch():
+        return
+    v = torch.randn(1, 2, 16, 8, dtype=torch.float16)
+    out = spectral_global_mix(v, freq_decay=0.5)
+    assert out.dtype == torch.float16
+    assert torch.isfinite(out.float()).all()
+
+
+def test_hybrid_attention_handles_fp16():
+    if _skip_if_no_torch():
+        return
+    q = torch.randn(1, 2, 16, 8, dtype=torch.float16)
+    k = torch.randn(1, 2, 16, 8, dtype=torch.float16)
+    v = torch.randn(1, 2, 16, 8, dtype=torch.float16)
+    out = hybrid_attention(q, k, v, window=4)
+    assert torch.isfinite(out.float()).all()
+
+
 def test_adaptive_spectral_global_mix_preserves_shape_and_finiteness():
     if _skip_if_no_torch():
         return
