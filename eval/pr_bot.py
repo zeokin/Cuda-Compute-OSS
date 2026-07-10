@@ -302,12 +302,19 @@ def excess_open_prs(prs: list[PRInfo], limit: int = MAX_OPEN_PRS_PER_AUTHOR) -> 
     The bot keeps the oldest ``limit`` open PRs per author and closes newer
     overflow PRs. PR number order matches GitHub creation order, so a miner
     cannot keep opening fresh PRs while older ones are still awaiting review.
+
+    Draft PRs are NOT counted: ``process_pr`` exempts drafts from closure
+    (``skip_draft`` returns before the excess check), so counting them would let
+    idle drafts consume review-queue slots and push a contributor's ready,
+    review-eligible PR into the overflow set to be closed instead.
     """
     if limit <= 0:
         return frozenset()
 
     by_author: dict[str, list[PRInfo]] = {}
     for pr in prs:
+        if pr.is_draft:
+            continue
         by_author.setdefault(pr.author, []).append(pr)
 
     overflow = set()

@@ -394,6 +394,24 @@ def test_excess_open_prs_ignores_recent_updates_and_closes_newer_prs():
     assert excess_open_prs([pr1, pr2, pr3]) == frozenset({3})
 
 
+def test_excess_open_prs_excludes_drafts_from_the_cap():
+    # Two older drafts + one newer ready PR: drafts are skip_draft (never closed),
+    # so they must not push the ready PR into the overflow set.
+    d1 = _pr(number=1, author="alice", is_draft=True)
+    d2 = _pr(number=2, author="alice", is_draft=True)
+    ready = _pr(number=3, author="alice", is_draft=False)
+    assert excess_open_prs([d1, d2, ready]) == frozenset()
+
+
+def test_excess_open_prs_counts_only_non_draft_prs():
+    # Only the third *non-draft* PR is excess; the interleaved draft doesn't count.
+    r1 = _pr(number=1, author="alice", is_draft=False)
+    r2 = _pr(number=2, author="alice", is_draft=False)
+    d3 = _pr(number=3, author="alice", is_draft=True)
+    r4 = _pr(number=4, author="alice", is_draft=False)
+    assert excess_open_prs([r1, r2, d3, r4]) == frozenset({4})
+
+
 class FakeClient:
     """In-memory stand-in for GitHubClient -- no subprocess/network calls."""
 
