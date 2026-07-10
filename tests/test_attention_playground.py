@@ -143,6 +143,29 @@ def test_landmark_global_attention_preserves_shape_and_finiteness():
     assert torch.isfinite(out).all()
 
 
+def test_landmark_global_attention_causal_is_finite_for_early_queries():
+    # Early queries can precede every landmark position, masking their whole
+    # softmax row to -inf. That must not produce NaN.
+    if _skip_if_no_torch():
+        return
+    q, k, v = _sample(seq=20, dim=8)
+    for policy in ("pooled", "topk"):
+        out = landmark_global_attention(
+            q, k, v, num_landmarks=5, causal=True, policy=policy
+        )
+        assert torch.isfinite(out).all(), f"non-finite output for policy={policy}"
+
+
+def test_landmark_hybrid_causal_is_finite():
+    if _skip_if_no_torch():
+        return
+    q, k, v = _sample(seq=20, dim=8)
+    out = landmark_hybrid_attention(
+        q, k, v, window=4, causal=True, num_landmarks=5
+    )
+    assert torch.isfinite(out).all()
+
+
 def test_landmark_global_attention_matches_exact_with_one_landmark_per_token():
     if _skip_if_no_torch():
         return

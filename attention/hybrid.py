@@ -260,11 +260,17 @@ def landmark_global_attention(
             landmark_pos = positions.view(1, 1, -1)
         else:
             landmark_pos = positions
-        scores = scores.masked_fill(
-            landmark_pos[:, :, None, :] > q_pos[None, None, :, :],
-            float("-inf"),
-        )
-    weights = torch.softmax(scores, dim=-1)
+        mask = landmark_pos[:, :, None, :] > q_pos[None, None, :, :]
+        scores = scores.masked_fill(mask, float("-inf"))
+        # An early query can precede every landmark, masking its whole row to
+        # -inf; softmax over an all -inf row is NaN and would poison the output
+        # and the benchmark's quality metrics. Give those rows zero weight (no
+        # visible landmark -> no global contribution) instead.
+        all_masked = mask.all(dim=-1, keepdim=True)
+        weights = torch.softmax(scores.masked_fill(all_masked, 0.0), dim=-1)
+        weights = weights.masked_fill(all_masked, 0.0)
+    else:
+        weights = torch.softmax(scores, dim=-1)
     return torch.matmul(weights, v_landmarks)
 
 
