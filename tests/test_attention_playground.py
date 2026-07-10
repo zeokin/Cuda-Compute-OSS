@@ -65,6 +65,20 @@ def test_attention_spec_rejects_invalid_dimensions():
             raise AssertionError(f"AttentionSpec({kwargs!r}) should raise ValueError")
 
 
+def test_attention_spec_rejects_invalid_dtype():
+    # dtype is validated at the spec boundary, not left to crash later in
+    # generate_qkv -> torch_dtype with an opaque KeyError.
+    for bad in ("bf16", "float16", "int8", ""):
+        try:
+            AttentionSpec(dtype=bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"AttentionSpec(dtype={bad!r}) should raise ValueError")
+    for good in ("fp16", "fp32", "fp64"):
+        AttentionSpec(dtype=good)  # must not raise
+
+
 def test_attention_spec_rejects_invalid_branch_weights():
     for kwargs in (
         {"local_weight": -0.1},
