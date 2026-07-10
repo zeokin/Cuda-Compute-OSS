@@ -9,9 +9,9 @@ refuse to run without one.
 """
 from __future__ import annotations
 
-import os
-
 import numpy as np
+
+from .backend import _host_available_bytes
 
 
 class _NumpyXP:
@@ -60,10 +60,7 @@ class CPUBackend:
         return self.host_available_bytes()
 
     def host_available_bytes(self) -> int:
-        try:
-            return int(os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE"))
-        except (AttributeError, OSError, ValueError):
-            return 2 * 1024**3  # last-resort fallback, matches backend.py's pattern
+        return _host_available_bytes()
 
     def to_device(self, host_array):
         return np.ascontiguousarray(host_array)
