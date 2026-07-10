@@ -59,11 +59,12 @@ def _row_block(n: int, cols: int, backend: Backend, item_bytes: int,
 def _exact_tile(n: int, backend: Backend, item_bytes: int, frac: float) -> int:
     """Tile edge for row- and k-blocking in ``multiply_exact``.
 
-    Per (row, k) step the device holds an accumulator (T x n), an A panel
-    (T x T), and a B panel (T x n): T * (2n + T) elements total.
+    Per (row, k) step the device holds ``acc`` (T x n), ``Ar`` (T x T), ``Bk``
+    (T x n), and the ``matmul(Ar, Bk)`` output (T x n) while ``acc += prod``
+    runs: T * (3n + T) elements total.
     """
     budget_elems = max(1, int(backend.free_compute_bytes() * frac) // item_bytes)
-    t = int((math.sqrt(4 * n * n + 4 * budget_elems) - 2 * n) / 2)
+    t = int((math.sqrt(9 * n * n + 4 * budget_elems) - 3 * n) / 2)
     return max(1, min(t, n))
 
 
@@ -240,7 +241,7 @@ def multiply_exact(A, B, C, backend: Backend, cfg: Config) -> dict:
             Bk = backend.to_device(
                 np.asarray(B[k0:k1, :]).astype(dt, copy=False)
             )
-            acc = acc + backend.matmul(Ar, Bk)
+            acc += backend.matmul(Ar, Bk)
         C[r0:r1, :] = backend.to_host(acc).astype(cfg.np_dtype, copy=False)
     if isinstance(C, np.memmap):
         C.flush()
