@@ -47,6 +47,13 @@ class GitHubClient:
                                 capture_output=True, text=True, check=True)
         return result.stdout
 
+    def _run_optional(self, *args: str) -> str:
+        """Like ``_run`` but return ``""`` when ``gh`` cannot read the target."""
+        try:
+            return self._run(*args)
+        except subprocess.CalledProcessError:
+            return ""
+
     def list_prs(self, state: str = "open") -> list:
         out = self._run("pr", "list", "--state", state, "-L", "300", "--json",
                         "number,title,author,isDraft,headRefOid,body,url,labels,updatedAt,"
@@ -79,15 +86,19 @@ class GitHubClient:
                       mergeable=d.get("mergeable") or "")
 
     def get_diff(self, pr_number: int) -> str:
-        return self._run("pr", "diff", str(pr_number))
+        return self._run_optional("pr", "diff", str(pr_number))
 
     def get_comments(self, pr_number: int) -> list:
-        out = self._run("pr", "view", str(pr_number), "--json", "comments")
+        out = self._run_optional("pr", "view", str(pr_number), "--json", "comments")
+        if not out:
+            return []
         data = json.loads(out)
         return [c["body"] for c in data.get("comments", [])]
 
     def get_commit_messages(self, pr_number: int) -> str:
-        out = self._run("pr", "view", str(pr_number), "--json", "commits")
+        out = self._run_optional("pr", "view", str(pr_number), "--json", "commits")
+        if not out:
+            return ""
         data = json.loads(out)
         parts = []
         for commit in data.get("commits", []):

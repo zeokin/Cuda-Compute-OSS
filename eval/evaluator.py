@@ -195,9 +195,8 @@ def evaluate(ev: EvalConfig) -> dict:
             latency, peak_vram, flop_ratio, exact_latency, exact_peak_vram
         )
         improvement = (not gated) and cost_dominant
-        # JSON transparency field: do not apply the accuracy floor here.
-        perf_score = metrics.score(
-            acc, peak_vram, latency, 0.0, ev.vram_unit
+        perf_score = metrics.transparency_score(
+            acc, peak_vram, latency, ev.vram_unit
         )
         results[name] = {
             "accuracy": acc,

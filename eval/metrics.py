@@ -66,6 +66,16 @@ def score(
     return float(accuracy_score * (1.0 / vram) * (1.0 / lat))
 
 
+def transparency_score(
+    accuracy_score: float,
+    peak_vram_bytes: float,
+    latency_s: float,
+    vram_unit: str = "gib",
+) -> float:
+    """Raw performance figure for JSON output; never gated by the accuracy floor."""
+    return score(accuracy_score, peak_vram_bytes, latency_s, 0.0, vram_unit)
+
+
 def dominates_exact(
     latency_s: float,
     peak_vram_bytes: float,
