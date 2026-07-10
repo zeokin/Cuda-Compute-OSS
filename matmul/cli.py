@@ -54,7 +54,11 @@ def main(argv=None) -> int:
         return 2
     if args.quiet:
         print(f"{info['mode']}  {info['seconds']:.4f}s  {info['gflops']:.1f} GFLOP/s")
-    if "verify" in info and not info["verify"]["ok"]:
+    # Fail only on an explicit mismatch. A skipped verify (large / disk-backed n,
+    # where the float64 CPU reference won't fit) returns {"skipped": ...} with no
+    # "ok" key, and a pass returns ok=True -- neither is a failure.
+    v = info.get("verify")
+    if v and v.get("ok") is False:
         return 1
     return 0
 
