@@ -125,6 +125,67 @@ def test_adaptive_spectral_global_mix_preserves_shape_and_finiteness():
     assert torch.isfinite(out).all()
 
 
+def test_adaptive_spectral_global_mix_causal_does_not_see_the_future():
+    """Regression: the default adaptive branch used a global q.mean over the
+    full sequence and a symmetric FFT low-pass on V -- both leak the future."""
+    if _skip_if_no_torch():
+        return
+    torch.manual_seed(10)
+    seq = 32
+    q, k, v = _corr_sample(seq, seed=10)
+    bumped = v.clone()
+    bumped[:, :, -1, :] += 100.0
+    for freq_decay in (0.0, 0.7, 3.0):
+        base = adaptive_spectral_global_mix(
+            q, v, freq_decay=freq_decay, gate_strength=0.25, causal=True
+        )
+        moved = adaptive_spectral_global_mix(
+            q, bumped, freq_decay=freq_decay, gate_strength=0.25, causal=True
+        )
+        assert (moved - base)[:, :, :-1, :].abs().max() < 1e-9, freq_decay
+
+
+def test_adaptive_spectral_global_mix_causal_q_gate_is_prefix_only():
+    """The adaptive gate must not read future Q either."""
+    if _skip_if_no_torch():
+        return
+    torch.manual_seed(11)
+    seq = 24
+    q, k, v = _corr_sample(seq, seed=11)
+    q2 = q.clone()
+    q2[:, :, -1, :] += 50.0
+    a = adaptive_spectral_global_mix(q, v, causal=True, gate_strength=0.5)
+    b = adaptive_spectral_global_mix(q2, v, causal=True, gate_strength=0.5)
+    assert (a - b)[:, :, :-1, :].abs().max() < 1e-9
+
+
+def test_adaptive_hybrid_causal_does_not_see_the_future():
+    """The leak must not survive through adaptive_hybrid_attention."""
+    if _skip_if_no_torch():
+        return
+    seq, window = 32, 2
+    q, k, v = _corr_sample(seq, seed=12)
+    bumped = v.clone()
+    bumped[:, :, -1, :] += 100.0
+    base = adaptive_hybrid_attention(q, k, v, window=window, causal=True)
+    moved = adaptive_hybrid_attention(q, k, bumped, window=window, causal=True)
+    horizon = seq - 1 - window
+    assert (moved - base)[:, :, :horizon, :].abs().max() < 1e-9
+
+
+def test_adaptive_spectral_global_mix_noncausal_unchanged_by_new_flag():
+    """Default branch must match pre-flag behavior."""
+    if _skip_if_no_torch():
+        return
+    torch.manual_seed(13)
+    q, k, v = _corr_sample(20, seed=13)
+    a = adaptive_spectral_global_mix(q, v, freq_decay=0.5, gate_strength=0.2)
+    b = adaptive_spectral_global_mix(
+        q, v, freq_decay=0.5, gate_strength=0.2, causal=False
+    )
+    assert torch.allclose(a, b, atol=1e-12)
+
+
 def test_correlation_spectral_global_mix_preserves_shape_and_finiteness():
     if _skip_if_no_torch():
         return
