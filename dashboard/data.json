@@ -9,6 +9,18 @@
   },
   "open_prs": [
     {
+      "author": "galuis116",
+      "detail": "PR touches maintainer-owned files: eval/pr_bot.py, eval/tests/test_pr_bot.py. Miner PRs cannot modify maintainer-owned files. Open a fresh PR that only changes allowed miner-owned files.",
+      "gpu_required": false,
+      "head_sha": "03af2a7933d0284c045ad56dc430bf9013b4a376",
+      "kind": null,
+      "pr": 148,
+      "state": "close_protected_path",
+      "title": "fix(pr-bot): exclude draft PRs from the per-author open-PR cap",
+      "updated_at": "2026-07-10T12:50:30Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/148"
+    },
+    {
       "author": "joaovictor91123",
       "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
       "gpu_required": false,
@@ -18,7 +30,7 @@
       "pr": 146,
       "state": "non_gpu_review",
       "title": "fix(strategy): budget multiply_exact's GEMM output and accumulate in place (Fixes #144)",
-      "updated_at": "2026-07-10T12:48:04Z",
+      "updated_at": "2026-07-10T12:50:44Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/146"
     },
     {
@@ -31,10 +43,10 @@
       "pr": 137,
       "state": "non_gpu_review",
       "title": "fix(strategy): state the real default M = min(n, max(64, n//8)) (Fixes #98)",
-      "updated_at": "2026-07-10T12:49:01Z",
+      "updated_at": "2026-07-10T12:50:51Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/137"
     }
   ],
   "queue": [],
-  "updated": "2026-07-10T12:50:55+00:00"
+  "updated": "2026-07-10T12:53:14+00:00"
 }
