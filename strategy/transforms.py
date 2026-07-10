@@ -57,11 +57,21 @@ class Transform:
 class RandomizedSVDTransform(Transform):
     """Data-dependent range finder over A and B (the accurate one).
 
-    Splits the M-column budget evenly across the four spaces that must be
-    captured for the product -- col(A), row(A), col(B), row(B) -- via random
-    sketches, then orthonormalizes. Because all four are represented, the
-    reconstruction converges to the exact product as M approaches the numerical
-    rank. Sketches stream, so A/B may be disk-backed memmaps.
+    The reconstruction is ``Ĉ = P A P B P`` with the projector ``P = Q Qᵀ``, so
+    ``Ĉ = A @ B`` exactly once range(Q) contains the subspaces that survive the
+    reduction ``P A P B P``:
+
+        P A = A   needs  col(A) ⊆ range(Q)
+        A P = A   needs  row(A) ⊆ range(Q)
+        B P = B   needs  row(B) ⊆ range(Q)   (then P A P B P = A B P = A B)
+
+    So the necessary-and-sufficient set is **col(A), row(A), row(B)** -- three
+    spaces, not four. (col(B) is redundant: an alternative reduction ``P B = B``
+    can swap row(A) for col(B), but capturing *both* row(A) and col(B) is never
+    needed.) We therefore split the M-column budget across those three spaces via
+    random sketches, then orthonormalize; exact recovery of a rank-r product needs
+    only ``M ≳ 3r`` instead of ``4r``. Sketches stream, so A/B may be disk-backed
+    memmaps.
     """
 
     name = "rsvd"
@@ -72,8 +82,8 @@ class RandomizedSVDTransform(Transform):
         from .subspace import stream_gemm_right, stream_gemm_left_t
 
         xp = backend.xp
-        base, rem = divmod(m, 4)
-        widths = [base + (1 if i < rem else 0) for i in range(4)]
+        base, rem = divmod(m, 3)
+        widths = [base + (1 if i < rem else 0) for i in range(3)]
         rng = np.random.default_rng(self.seed)
 
         def omega(w):
@@ -83,19 +93,17 @@ class RandomizedSVDTransform(Transform):
 
         parts = []
         if widths[0]:
-            parts.append(stream_gemm_right(A, omega(widths[0]), backend, dtype))
+            parts.append(stream_gemm_right(A, omega(widths[0]), backend, dtype))   # col(A): A Ω
         if widths[1]:
-            parts.append(stream_gemm_left_t(A, omega(widths[1]), backend, dtype))
+            parts.append(stream_gemm_left_t(A, omega(widths[1]), backend, dtype))  # row(A): Aᵀ Ω
         if widths[2]:
-            parts.append(stream_gemm_right(B, omega(widths[2]), backend, dtype))
-        if widths[3]:
-            parts.append(stream_gemm_left_t(B, omega(widths[3]), backend, dtype))
+            parts.append(stream_gemm_left_t(B, omega(widths[2]), backend, dtype))  # row(B): Bᵀ Ω
 
         Y = xp.concatenate(parts, axis=1)      # (n, m)
         return self._orthonormalize(Y, backend)  # (n, m) orthonormal columns
 
     def basis_flops(self, n, m):
-        # 4 random sketches over A and B totalling m columns cost 2*n*n*m FLOPs
+        # 3 random sketches over A and B totalling m columns cost 2*n*n*m FLOPs
         # (each width-w sketch A@Omega / A^T@Omega is 2*n*n*w, and the widths sum
         # to m), plus the QR of the (n, m) sketch ~ 2*n*m*m. Recomputed every call
         # (the sketches depend on A, B), so it is not amortizable.
