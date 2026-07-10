@@ -91,6 +91,30 @@ def run(n: int, cfg: Config, fill: str = "lowrank", verify: bool = False,
     return info
 
 
+def _rel_frobenius_streamed(Ce, Cs, block_bytes: int = 256 * 1024**2) -> float:
+    """Relative Frobenius error ||Cs - Ce||_F / ||Ce||_F, one row-block at a time.
+
+    ``Ce``/``Cs`` may be disk-backed memmaps far larger than RAM (that is the whole
+    point of the streaming engine), so we must never cast the full (n, n) product to
+    float64 at once -- doing so force-loads both matrices plus a diff temporary into
+    host RAM (~3*n^2*8 bytes) and OOMs the host. The Frobenius norm is separable over
+    rows, so accumulating squared sums block-by-block is numerically identical while
+    keeping only one float64 row-block of each operand resident."""
+    n = Ce.shape[0]
+    row_bytes = max(1, n * 8)                       # one float64 row
+    blk = max(1, min(n, block_bytes // row_bytes))
+    num_sq = 0.0
+    den_sq = 0.0
+    for r0 in range(0, n, blk):
+        r1 = min(n, r0 + blk)
+        ce = np.asarray(Ce[r0:r1], dtype=np.float64)
+        cs = np.asarray(Cs[r0:r1], dtype=np.float64)
+        num_sq += float(np.sum((cs - ce) ** 2))
+        den_sq += float(np.sum(ce ** 2))
+    den = np.sqrt(den_sq)
+    return float(np.sqrt(num_sq) / (den or 1.0))
+
+
 def compare(n: int, cfg: Config, fill: str = "lowrank",
             data_rank: int | None = None, keep: bool = False) -> dict:
     """Run the exact baseline and the subspace strategy on the SAME inputs and
@@ -116,9 +140,7 @@ def compare(n: int, cfg: Config, fill: str = "lowrank",
     sm = {}
     sm_t = _timed(lambda: sm.update(subspace.multiply_subspace(A, B, Cs, backend, cfg)), backend)
 
-    ref = np.asarray(Ce, dtype=np.float64)
-    rel_err = float(np.linalg.norm(np.asarray(Cs, dtype=np.float64) - ref)
-                    / (np.linalg.norm(ref) or 1.0))
+    rel_err = _rel_frobenius_streamed(Ce, Cs)
     speedup = ex_t / sm_t if sm_t else float("inf")
     out = {
         "n": n, "exact_seconds": ex_t, "smart_seconds": sm_t,
