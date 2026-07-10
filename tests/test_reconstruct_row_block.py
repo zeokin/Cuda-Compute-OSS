@@ -39,9 +39,9 @@ def _capture_row_block_item_bytes(run):
     captured = []
     real = subspace._row_block
 
-    def spy(n, cols, backend, item_bytes, frac=subspace._DEFAULT_ROW_BLOCK_FRACTION):
+    def spy(n, cols, backend, item_bytes, frac=subspace._DEFAULT_ROW_BLOCK_FRACTION, static_bytes=0):
         captured.append(item_bytes)
-        return real(n, cols, backend, item_bytes, frac)
+        return real(n, cols, backend, item_bytes, frac, static_bytes=static_bytes)
 
     subspace._row_block = spy
     try:

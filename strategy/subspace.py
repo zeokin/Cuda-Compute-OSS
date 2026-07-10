@@ -33,14 +33,25 @@ _DEFAULT_ROW_BLOCK_FRACTION = 0.3
 
 
 def _row_block(n: int, cols: int, backend: Backend, item_bytes: int,
-               frac: float = _DEFAULT_ROW_BLOCK_FRACTION) -> int:
+               frac: float = _DEFAULT_ROW_BLOCK_FRACTION,
+               static_bytes: int = 0) -> int:
     """Choose how many rows of an (n x cols) stream to stage on the device.
 
     ``frac`` is the fraction of free device memory one row-block may use
-    (``Config.vram_fraction`` when driven by the strategy)."""
-    budget = int(backend.free_compute_bytes() * frac)
+    (``Config.vram_fraction`` when driven by the strategy). ``static_bytes``
+    reserves space for tensors already resident for the whole call (e.g. ``Q``,
+    ``Ctil``) so the row-block does not push peak VRAM past the budget.
+    """
+    budget = max(0, int(backend.free_compute_bytes() * frac) - static_bytes)
     per_row = max(1, cols * item_bytes)
-    return int(min(n, max(1, budget // per_row)))
+    blk = int(min(n, max(1, budget // per_row)))
+    if budget <= 0:
+        raise RuntimeError(
+            f"VRAM budget exhausted: {static_bytes} B already resident, "
+            f"only {int(backend.free_compute_bytes() * frac)} B available at "
+            f"vram_fraction={frac}"
+        )
+    return blk
 
 
 # ---------------------------------------------------------------------------
@@ -51,8 +62,10 @@ def stream_gemm_right(X, Q, backend: Backend, dtype,
     """Return X @ Q  (n x m), streaming the rows of X. Q is resident (n x m)."""
     xp = backend.xp
     n, m = X.shape[0], Q.shape[1]
+    item = np.dtype(dtype).itemsize
+    static = (n * m + n * m) * item  # Q resident + (n x m) accumulator
     out = xp.empty((n, m), dtype=dtype)
-    blk = _row_block(n, X.shape[1], backend, np.dtype(dtype).itemsize, frac)
+    blk = _row_block(n, X.shape[1], backend, item, frac, static_bytes=static)
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
         Xr = backend.to_device(np.asarray(X[r0:r1, :]).astype(dtype, copy=False))
@@ -66,8 +79,10 @@ def stream_gemm_left_t(X, Q, backend: Backend, dtype,
     X^T @ Q = sum over row-blocks of X[rb,:]^T @ Q[rb,:]."""
     xp = backend.xp
     n, m = X.shape[0], Q.shape[1]
+    item = np.dtype(dtype).itemsize
+    static = (n * m + n * m) * item  # Q resident + (n x m) accumulator
     acc = xp.zeros((n, m), dtype=dtype)
-    blk = _row_block(n, X.shape[1], backend, np.dtype(dtype).itemsize, frac)
+    blk = _row_block(n, X.shape[1], backend, item, frac, static_bytes=static)
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
         Xr = backend.to_device(np.asarray(X[r0:r1, :]).astype(dtype, copy=False))
@@ -81,8 +96,10 @@ def compress(X, Q, backend: Backend, dtype,
     Q^T X Q = sum over row-blocks  Q[rb,:]^T @ (X[rb,:] @ Q)."""
     xp = backend.xp
     n, m = X.shape[0], Q.shape[1]
+    item = np.dtype(dtype).itemsize
+    static = (n * m + m * m) * item  # Q resident + (m x m) accumulator
     acc = xp.zeros((m, m), dtype=dtype)
-    blk = _row_block(n, X.shape[1], backend, np.dtype(dtype).itemsize, frac)
+    blk = _row_block(n, X.shape[1], backend, item, frac, static_bytes=static)
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
         Xr = backend.to_device(np.asarray(X[r0:r1, :]).astype(dtype, copy=False))
@@ -102,8 +119,11 @@ def reconstruct(Ctil, Q, C_out, backend: Backend, out_dtype,
     ``compute_dtype=None`` falls back to ``out_dtype`` (they match unless bumped).
     """
     n = Q.shape[0]
+    m = Q.shape[1]
     item_dtype = compute_dtype if compute_dtype is not None else out_dtype
-    blk = _row_block(n, n, backend, np.dtype(item_dtype).itemsize, frac)
+    item = np.dtype(item_dtype).itemsize
+    static = (n * m + m * m) * item  # Q and Ctil resident for the whole call
+    blk = _row_block(n, n, backend, item, frac, static_bytes=static)
     QT = Q.T
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
