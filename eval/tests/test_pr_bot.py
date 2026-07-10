@@ -547,7 +547,12 @@ def test_run_once_live_mode_comments_once_for_merge_conflict():
 
 def test_run_once_live_mode_does_not_repeat_merge_conflict_comment_for_same_head():
     pr1 = _pr(number=1, head_sha="sha1", merge_state_status="DIRTY", mergeable="CONFLICTING")
-    marker = "<!-- cco-merge-conflict:sha1:2026-07-10T02:00:00+00:00 -->"
+    # Marker must stay inside the 12h "still warning" window regardless of when the
+    # suite runs, so derive it from the current time instead of hardcoding a date
+    # (a fixed timestamp goes stale after 12h and the gate then returns
+    # close_stale_merge_conflict -- mirror the dynamic form used by the stale test).
+    recent = (datetime.now(timezone.utc) - timedelta(hours=1)).replace(microsecond=0)
+    marker = f"<!-- cco-merge-conflict:sha1:{recent.isoformat()} -->"
     client = FakeClient(
         prs={"all": [pr1], "open": [pr1]},
         diffs={1: SOME_DIFF},
