@@ -77,7 +77,12 @@ def fingerprint(diff_text: str) -> Fingerprint:
             if path and path != "/dev/null":
                 files.add(path)
             continue
-        if line.startswith("+++") or line.startswith("---"):
+        # Only the genuine "--- a/path" removal header (trailing space) is a header;
+        # the "+++ b/path" add header is already consumed above. A bare "+++"/"---"
+        # test here would also swallow ADDED CONTENT that starts with "++"/"--":
+        # git prefixes an added line "++idx;" as "+++idx;", so dropping it here would
+        # silently omit real added lines from the fingerprint and skew containment.
+        if line.startswith("--- "):
             continue
         if line.startswith("+"):
             content = line[1:].strip()

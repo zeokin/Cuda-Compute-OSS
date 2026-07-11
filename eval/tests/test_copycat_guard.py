@@ -176,6 +176,34 @@ def test_empty_diff_does_not_crash():
     assert not v.flagged
 
 
+# An added line whose source begins with "++" (e.g. C-style pre-increment) is
+# emitted by git as "+++idx;". The parser must record it as content "++idx;",
+# NOT mistake it for a file header and drop it.
+PLUSPLUS_CONTENT_DIFF = """\
+diff --git a/kernel.cu b/kernel.cu
+--- a/kernel.cu
++++ b/kernel.cu
+@@ -10,0 +11,3 @@
++    for (int idx = 0; idx < n; ) {
++++idx;
++    }
+"""
+
+
+def test_added_line_starting_with_plusplus_is_kept():
+    fp = fingerprint(PLUSPLUS_CONTENT_DIFF)
+    assert "kernel.cu" in fp.files
+    assert "++idx;" in fp.added, f"++-prefixed added line was dropped: {fp.added}"
+
+
+def test_plusplus_added_lines_count_toward_containment():
+    # A copy that only shares the "++"-prefixed lines must not evade the guard by
+    # having those lines silently discarded from the fingerprint.
+    orig = fingerprint(PLUSPLUS_CONTENT_DIFF)
+    copy = fingerprint(PLUSPLUS_CONTENT_DIFF)
+    assert containment(copy, orig) == 1.0
+
+
 class _FakeClientForOnePR:
     """Minimal fake covering just what check_one_pr() calls -- no subprocess."""
 
