@@ -162,6 +162,15 @@ def correlation_spectral_global_mix(
         raise ValueError("freq_decay must be >= 0")
 
     seq = v.shape[-2]
+    if causal:
+        # #154 made the V-convolution causal, but the lag kernel is still built
+        # from whole-sequence Q/K statistics (mean over all positions, a full-
+        # sequence FFT cross-correlation, softmax over all lags), so this single
+        # shared kernel still depends on future q/k -- out[t] leaks q/k[t+1..].
+        # A shared kernel cannot be causal, so use the causal spectral low-pass
+        # (mirrors the adaptive -> spectral and topk -> pooled causal fallbacks).
+        return spectral_global_mix(v, freq_decay=freq_decay, causal=True)
+
     real_dtype = torch.float64 if v.dtype == torch.float64 else torch.float32
     q_work = (q - q.mean(dim=-2, keepdim=True)).to(real_dtype)
     k_work = (k - k.mean(dim=-2, keepdim=True)).to(real_dtype)
