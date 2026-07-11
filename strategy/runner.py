@@ -121,8 +121,10 @@ def compare(n: int, cfg: Config, fill: str = "lowrank",
     report time, throughput and the smart strategy's reconstruction error."""
     backend = Backend(cfg.device, cfg.verbose)
     dt = cfg.np_dtype
+    # compare() materializes FOUR n x n matrices (A, B, Ce, Cs), not the three of
+    # run(), so the auto RAM-vs-disk decision must budget for four.
     on_disk = storage.should_use_disk(
-        n, cfg.item_bytes, cfg.storage, backend.host_available_bytes()
+        n, cfg.item_bytes, cfg.storage, backend.host_available_bytes(), n_matrices=4
     )
     pa, pb, pe, ps = (*_paths(cfg.workdir)[:2],
                       os.path.join(cfg.workdir, "Ce.dat"),

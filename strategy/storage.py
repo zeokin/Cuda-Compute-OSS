@@ -124,12 +124,18 @@ def bytes_human(nbytes: float) -> str:
     return f"{nbytes:.1f} PiB"
 
 
-def should_use_disk(n: int, item_bytes: int, storage: str, host_free: int) -> bool:
-    """Decide RAM vs disk for 'auto': three n x n matrices must fit comfortably
-    (<= 50% of free RAM) to stay in RAM."""
+def should_use_disk(n: int, item_bytes: int, storage: str, host_free: int,
+                    n_matrices: int = 3) -> bool:
+    """Decide RAM vs disk for 'auto': the resident n x n matrices must fit
+    comfortably (<= 50% of free RAM) to stay in RAM.
+
+    ``n_matrices`` is the size of the working set: ``run()`` holds 3 (A, B, C),
+    but ``compare()`` holds 4 (A, B, Ce, Cs), so it must pass ``n_matrices=4`` or
+    the RAM-vs-disk decision under-budgets by a whole matrix and can pick RAM for
+    a footprint that only fits on disk."""
     if storage == "ram":
         return False
     if storage == "disk":
         return True
-    need = 3 * n * n * item_bytes
+    need = n_matrices * n * n * item_bytes
     return need > 0.5 * host_free
