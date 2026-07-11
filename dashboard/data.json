@@ -18,7 +18,7 @@
       "pr": 178,
       "state": "non_gpu_review",
       "title": "fix(attention): reject non-int batch/heads/seq/dim/window/seed at con\u2026",
-      "updated_at": "2026-07-11T04:31:38Z",
+      "updated_at": "2026-07-11T06:41:38Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/178"
     },
     {
@@ -31,7 +31,7 @@
       "pr": 156,
       "state": "eval_pending",
       "title": "feat(strategy): rsvd captures 3 subspaces, not 4 (drop redundant col(B) sketch)",
-      "updated_at": "2026-07-11T04:31:45Z",
+      "updated_at": "2026-07-11T06:41:51Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/156"
     },
     {
@@ -44,7 +44,7 @@
       "pr": 165,
       "state": "non_gpu_review",
       "title": "fix(attention): make the default spectral global branch causal (Fixes #164)",
-      "updated_at": "2026-07-11T04:31:47Z",
+      "updated_at": "2026-07-11T06:41:53Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/165"
     },
     {
@@ -57,7 +57,7 @@
       "pr": 167,
       "state": "non_gpu_review",
       "title": "fix(strategy): stream compare()'s rel_err so --compare survives out-of-core n (Fixes #166)",
-      "updated_at": "2026-07-11T04:31:52Z",
+      "updated_at": "2026-07-11T06:42:01Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/167"
     },
     {
@@ -70,7 +70,7 @@
       "pr": 169,
       "state": "non_gpu_review",
       "title": "fix(matmul-cli): avoid KeyError on a skipped --verify result",
-      "updated_at": "2026-07-11T04:31:56Z",
+      "updated_at": "2026-07-11T06:42:09Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/169"
     },
     {
@@ -83,7 +83,7 @@
       "pr": 171,
       "state": "non_gpu_review",
       "title": "fix(attention): make causal topk landmark attention causal (no future leak)",
-      "updated_at": "2026-07-11T04:32:01Z",
+      "updated_at": "2026-07-11T06:42:16Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/171"
     },
     {
@@ -96,7 +96,7 @@
       "pr": 172,
       "state": "non_gpu_review",
       "title": "fix(attention): make adaptive spectral global branch causal (follow-up to #164)",
-      "updated_at": "2026-07-11T04:32:06Z",
+      "updated_at": "2026-07-11T06:42:23Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/172"
     },
     {
@@ -109,7 +109,7 @@
       "pr": 174,
       "state": "non_gpu_review",
       "title": "fix(attention): validate AttentionSpec.dtype at construction",
-      "updated_at": "2026-07-11T04:32:11Z",
+      "updated_at": "2026-07-11T06:42:30Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/174"
     },
     {
@@ -122,7 +122,7 @@
       "pr": 175,
       "state": "non_gpu_review",
       "title": "fix(cli): report invalid --n / config as a clean error, not a traceback",
-      "updated_at": "2026-07-11T04:32:16Z",
+      "updated_at": "2026-07-11T06:42:37Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/175"
     },
     {
@@ -135,7 +135,7 @@
       "pr": 176,
       "state": "non_gpu_review",
       "title": "fix(docs): correct BENCHMARKS FLOP-savings from ~4x to ~2x fewer",
-      "updated_at": "2026-07-11T04:32:20Z",
+      "updated_at": "2026-07-11T06:42:45Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/176"
     },
     {
@@ -148,8 +148,21 @@
       "pr": 177,
       "state": "non_gpu_review",
       "title": "fix(strategy): honor --data-rank 0 instead of silently falling back t\u2026",
-      "updated_at": "2026-07-11T04:32:25Z",
+      "updated_at": "2026-07-11T06:42:52Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/177"
+    },
+    {
+      "author": "RealDiligent",
+      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
+      "gpu_required": false,
+      "head_sha": "e0d14efbec330d98eab46e6948ab3de4fa513a75",
+      "kind": "fix",
+      "label": "status:ready-non-gpu",
+      "pr": 179,
+      "state": "non_gpu_review",
+      "title": "fix(attention): validate AttentionSpec.device at construction",
+      "updated_at": "2026-07-11T06:56:34Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/179"
     }
   ],
   "queue": [
@@ -164,9 +177,9 @@
       "pr": 156,
       "state": "eval_pending",
       "title": "feat(strategy): rsvd captures 3 subspaces, not 4 (drop redundant col(B) sketch)",
-      "updated_at": "2026-07-11T04:31:45Z",
+      "updated_at": "2026-07-11T06:41:51Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/156"
     }
   ],
-  "updated": "2026-07-11T06:42:57+00:00"
+  "updated": "2026-07-11T06:58:55+00:00"
 }
