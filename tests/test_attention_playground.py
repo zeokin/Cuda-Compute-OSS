@@ -65,6 +65,30 @@ def test_attention_spec_rejects_invalid_dimensions():
             raise AssertionError(f"AttentionSpec({kwargs!r}) should raise ValueError")
 
 
+def test_attention_spec_rejects_non_integer_fields():
+    # window=2.5 used to construct successfully (only `window < 0` was
+    # checked) and then crash later inside local_window_attention's tensor
+    # slicing -- but only for (seq, window, block_size) combinations where a
+    # block boundary lands on the non-integer value, so it passed for some
+    # configs and crashed for others with a raw TypeError far from the real
+    # cause. It and the other int-typed fields must be rejected at
+    # construction instead.
+    for kwargs in (
+        {"batch": 1.5},
+        {"heads": 2.5},
+        {"seq": 10.0},
+        {"dim": 8.5},
+        {"window": 2.5},
+        {"seed": 1.5},
+    ):
+        try:
+            AttentionSpec(**kwargs)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"AttentionSpec({kwargs!r}) should raise ValueError")
+
+
 def test_attention_spec_rejects_invalid_branch_weights():
     for kwargs in (
         {"local_weight": -0.1},

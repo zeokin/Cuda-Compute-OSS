@@ -20,6 +20,15 @@ class AttentionSpec:
     device: str = "auto"
 
     def __post_init__(self) -> None:
+        # Check type before range: an int-typed field holding e.g. a float
+        # (window=2.5) can pass every range check below yet still crash later,
+        # deep inside tensor slicing, only for some (seq, window, block_size)
+        # combinations -- confusing and data-shape-dependent. Fail clearly here
+        # instead.
+        for name in ("batch", "heads", "seq", "dim", "window", "seed"):
+            value = getattr(self, name)
+            if not isinstance(value, int):
+                raise ValueError(f"{name} must be an int, got {type(value).__name__}")
         for name in ("batch", "heads", "seq", "dim"):
             if getattr(self, name) <= 0:
                 raise ValueError(f"{name} must be > 0")
