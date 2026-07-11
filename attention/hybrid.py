@@ -112,6 +112,7 @@ def adaptive_spectral_global_mix(
     *,
     freq_decay: float = 1.0,
     gate_strength: float = 0.25,
+    causal: bool = False,
 ):
     """FFT global mixer with a deterministic input-adaptive frequency gate.
 
@@ -124,6 +125,13 @@ def adaptive_spectral_global_mix(
         raise ValueError("freq_decay must be >= 0")
     if gate_strength < 0:
         raise ValueError("gate_strength must be >= 0")
+
+    if causal:
+        # The adaptive gate is a zero-phase (symmetric) frequency-domain filter
+        # modulated by a summary of ALL queries, so out[t] would depend on future
+        # q/v. It cannot be causal cheaply, so use the causally-correct spectral
+        # low-pass (mirrors the topk -> pooled causal fallback).
+        return spectral_global_mix(v, freq_decay=freq_decay, causal=True)
 
     seq = v.shape[-2]
     real_dtype = torch.float64 if v.dtype == torch.float64 else torch.float32
@@ -386,7 +394,7 @@ def adaptive_hybrid_attention(
     if gw == 0:
         return local
     global_ = adaptive_spectral_global_mix(
-        q, v, freq_decay=freq_decay, gate_strength=gate_strength
+        q, v, freq_decay=freq_decay, gate_strength=gate_strength, causal=causal
     )
     return lw * local + gw * global_
 
