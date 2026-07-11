@@ -39,8 +39,9 @@ and swappable/updatable via a registry:
 | transform | kind | best for |
 |---|---|---|
 | `rsvd`   | **data-dependent** range finder over A and B | general low-rank data (accurate) |
+| `dct`    | **fixed** type-II DCT (lowest-frequency modes) | smooth / decaying-spectrum data |
 
-`rsvd` is the **only** built-in transform. New transforms are the contribution
+`rsvd` and `dct` are the built-in transforms. New transforms are the contribution
 surface — subclass `Transform` and register your own below.
 
 Register your own (the updatable hook):
