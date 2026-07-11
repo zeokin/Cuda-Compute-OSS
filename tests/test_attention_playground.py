@@ -80,6 +80,24 @@ def test_attention_spec_rejects_invalid_branch_weights():
             raise AssertionError(f"AttentionSpec({kwargs!r}) should raise ValueError")
 
 
+def test_attention_spec_rejects_invalid_device():
+    # Invalid device strings used to construct successfully and only failed
+    # later inside generate_qkv/resolve_device with an opaque runtime error.
+    for device in ("gpu", "cuda:abc", "cuda:-1", "bf16"):
+        try:
+            AttentionSpec(device=device)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"AttentionSpec(device={device!r}) should raise ValueError")
+
+
+def test_attention_spec_accepts_valid_devices():
+    for device in ("auto", "cpu", "cuda", "cuda:0", "cuda:3"):
+        spec = AttentionSpec(device=device)
+        assert spec.device == device
+
+
 def test_generate_qkv_uses_spec_shape():
     if _skip_if_no_torch():
         return

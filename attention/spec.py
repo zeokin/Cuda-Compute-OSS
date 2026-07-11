@@ -31,6 +31,20 @@ class AttentionSpec:
             raise ValueError("at least one branch weight must be positive")
         if self.freq_decay < 0:
             raise ValueError("freq_decay must be >= 0")
+        if not _valid_device(self.device):
+            raise ValueError(
+                "device must be 'auto', 'cpu', 'cuda', or 'cuda:N' "
+                f"(non-negative index), got {self.device!r}"
+            )
 
     def as_dict(self) -> dict:
         return asdict(self)
+
+
+def _valid_device(device: str) -> bool:
+    if device in ("auto", "cpu", "cuda"):
+        return True
+    if device.startswith("cuda:"):
+        suffix = device.split(":", 1)[1]
+        return suffix.isdigit() and int(suffix) >= 0
+    return False
