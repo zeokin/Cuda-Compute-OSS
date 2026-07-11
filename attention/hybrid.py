@@ -112,12 +112,21 @@ def adaptive_spectral_global_mix(
     *,
     freq_decay: float = 1.0,
     gate_strength: float = 0.25,
+    causal: bool = False,
 ):
     """FFT global mixer with a deterministic input-adaptive frequency gate.
 
     The current fixed spectral branch applies the same low-pass filter to every
     input. This branch keeps the same FFT/IFFT structure but lets a summary of
     Q modulate the frequency response per batch, head, and channel.
+
+    Because the Q-gate is constant across frequency, it factors out as a
+    per-(batch, head, channel) amplitude on the low-pass output:
+    ``adaptive == (1 + gate_strength * tanh(mean_seq(q))) * spectral_global_mix(v)``.
+    With ``causal=True`` both parts become causal -- the low-pass uses the causal
+    branch of :func:`spectral_global_mix`, and the global ``mean_seq(q)`` becomes a
+    causal running mean ``mean(q[0..t])`` -- so ``out[t]`` depends only on
+    ``q[0..t]`` and ``v[0..t]`` while keeping the same adaptive form.
     """
     torch = _torch()
     if freq_decay < 0:
@@ -130,15 +139,24 @@ def adaptive_spectral_global_mix(
     v_work = v.to(real_dtype)
     q_work = q.to(real_dtype)
 
-    vf = torch.fft.rfft(v_work, dim=-2)
-    freqs = torch.arange(vf.shape[-2], device=v.device, dtype=real_dtype)
-    base_gain = 1.0 / (1.0 + freq_decay * freqs)
+    if not causal:
+        vf = torch.fft.rfft(v_work, dim=-2)
+        freqs = torch.arange(vf.shape[-2], device=v.device, dtype=real_dtype)
+        base_gain = 1.0 / (1.0 + freq_decay * freqs)
 
-    q_summary = torch.tanh(q_work.mean(dim=-2, keepdim=True))
-    gate = base_gain.view(1, 1, -1, 1) * (1.0 + gate_strength * q_summary)
-    mixed = vf * gate.to(vf.dtype)
-    out = torch.fft.irfft(mixed, n=seq, dim=-2)
-    return out.to(v.dtype)
+        q_summary = torch.tanh(q_work.mean(dim=-2, keepdim=True))
+        gate = base_gain.view(1, 1, -1, 1) * (1.0 + gate_strength * q_summary)
+        mixed = vf * gate.to(vf.dtype)
+        out = torch.fft.irfft(mixed, n=seq, dim=-2)
+        return out.to(v.dtype)
+
+    # Causal: same adaptive form, but the low-pass is causal and the Q summary is
+    # a causal running mean instead of a whole-sequence mean.
+    low = spectral_global_mix(v, freq_decay=freq_decay, causal=True).to(real_dtype)
+    counts = torch.arange(1, seq + 1, device=v.device, dtype=real_dtype).view(1, 1, -1, 1)
+    q_running = torch.cumsum(q_work, dim=-2) / counts
+    gate = 1.0 + gate_strength * torch.tanh(q_running)
+    return (low * gate).to(v.dtype)
 
 
 def correlation_spectral_global_mix(
@@ -386,7 +404,7 @@ def adaptive_hybrid_attention(
     if gw == 0:
         return local
     global_ = adaptive_spectral_global_mix(
-        q, v, freq_decay=freq_decay, gate_strength=gate_strength
+        q, v, freq_decay=freq_decay, gate_strength=gate_strength, causal=causal
     )
     return lw * local + gw * global_
 

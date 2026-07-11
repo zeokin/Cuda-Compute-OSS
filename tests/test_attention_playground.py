@@ -201,6 +201,70 @@ def test_correlation_spectral_global_mix_preserves_shape_and_finiteness():
     assert torch.isfinite(out).all()
 
 
+def test_adaptive_spectral_global_mix_causal_does_not_see_the_future():
+    """Regression for #180: causal must not read future v OR future q (the gate
+    used a whole-sequence mean of q)."""
+    if _skip_if_no_torch():
+        return
+    torch.manual_seed(0)
+    seq = 24
+    q = torch.randn(1, 2, seq, 4, dtype=torch.float64)
+    v = torch.randn(1, 2, seq, 4, dtype=torch.float64)
+    base = adaptive_spectral_global_mix(q, v, freq_decay=1.0, gate_strength=0.25, causal=True)
+    for which in ("v", "q"):
+        q2, v2 = q.clone(), v.clone()
+        (v2 if which == "v" else q2)[:, :, -1, :] += 100.0
+        moved = adaptive_spectral_global_mix(q2, v2, freq_decay=1.0, gate_strength=0.25, causal=True)
+        assert (moved - base)[:, :, :-1, :].abs().max() < 1e-9, which
+
+
+def test_adaptive_spectral_global_mix_causal_prefix_depends_only_on_prefix():
+    """out[:cut] must be stable when the q and v tails are both replaced."""
+    if _skip_if_no_torch():
+        return
+    torch.manual_seed(1)
+    seq, cut = 20, 8
+    q = torch.randn(1, 2, seq, 4, dtype=torch.float64)
+    v = torch.randn(1, 2, seq, 4, dtype=torch.float64)
+    q2, v2 = q.clone(), v.clone()
+    q2[:, :, cut:, :] = torch.randn_like(q2[:, :, cut:, :])
+    v2[:, :, cut:, :] = torch.randn_like(v2[:, :, cut:, :])
+    a = adaptive_spectral_global_mix(q, v, causal=True)
+    b = adaptive_spectral_global_mix(q2, v2, causal=True)
+    assert (a - b)[:, :, :cut, :].abs().max() < 1e-9
+
+
+def test_adaptive_spectral_global_mix_noncausal_unchanged_by_new_flag():
+    """The default branch must be bit-identical to the pre-flag behavior."""
+    if _skip_if_no_torch():
+        return
+    torch.manual_seed(2)
+    q = torch.randn(1, 2, 22, 5, dtype=torch.float64)
+    v = torch.randn(1, 2, 22, 5, dtype=torch.float64)
+    for fd, gs in ((0.0, 0.25), (0.3, 0.1), (1.0, 0.5)):
+        a = adaptive_spectral_global_mix(q, v, freq_decay=fd, gate_strength=gs)
+        b = adaptive_spectral_global_mix(q, v, freq_decay=fd, gate_strength=gs, causal=False)
+        assert torch.equal(a, b)
+
+
+def test_adaptive_hybrid_causal_does_not_see_the_future():
+    """The leak must not survive through the adaptive hybrid wrapper (#180)."""
+    if _skip_if_no_torch():
+        return
+    torch.manual_seed(3)
+    seq, window = 24, 3
+    q = torch.randn(1, 2, seq, 4, dtype=torch.float64)
+    k = torch.randn(1, 2, seq, 4, dtype=torch.float64)
+    v = torch.randn(1, 2, seq, 4, dtype=torch.float64)
+    base = adaptive_hybrid_attention(q, k, v, window=window, causal=True)
+    q2, v2 = q.clone(), v.clone()
+    q2[:, :, -1, :] += 100.0
+    v2[:, :, -1, :] += 100.0
+    moved = adaptive_hybrid_attention(q2, k, v2, window=window, causal=True)
+    horizon = seq - 1 - window          # v[-1] reaches out[t] locally only past this
+    assert (moved - base)[:, :, :horizon, :].abs().max() < 1e-9
+
+
 def _corr_sample(seq, dim=4, seed=0):
     torch.manual_seed(seed)
     return tuple(torch.randn(1, 2, seq, dim, dtype=torch.float64) for _ in range(3))
