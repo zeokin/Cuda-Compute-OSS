@@ -207,6 +207,34 @@ def test_rsvd_more_dims_not_worse_on_low_rank():
     assert _rel(_run(A, B, 48, "rsvd"), A @ B) <= _rel(_run(A, B, 16, "rsvd"), A @ B) + 1e-9
 
 
+def test_subspace_iter_recovers_low_rank_product():
+    # Exact low-rank product is captured (M/3 >= r per space), like rsvd.
+    rng = np.random.default_rng(11)
+    n, r, m = 96, 5, 48
+    A = rng.standard_normal((n, r)) @ rng.standard_normal((r, n))
+    B = rng.standard_normal((n, r)) @ rng.standard_normal((r, n))
+    assert _rel(_run(A, B, m, "subspace-iter"), A @ B) < 1e-6
+
+
+def test_subspace_iter_beats_rsvd_on_decaying_spectrum():
+    # Power iteration concentrates a below-rank budget on the dominant
+    # components, so on a k^-alpha spectrum it reconstructs more accurately than
+    # rsvd's single random sketch at the same M.
+    rng = np.random.default_rng(12)
+    n, R, m = 160, 48, 45                   # m < 3R: budget below the numerical rank
+    def decaying(seed):
+        g = rng
+        U = g.standard_normal((n, R))
+        V = g.standard_normal((R, n)) / np.sqrt(R)
+        V = V * (np.arange(1, R + 1, dtype=float) ** -1.0)[:, None]
+        return U @ V
+    A, B = decaying(0), decaying(1)
+    C = A @ B
+    err_iter = _rel(_run(A, B, m, "subspace-iter"), C)
+    err_rsvd = _rel(_run(A, B, m, "rsvd"), C)
+    assert err_iter < err_rsvd, (err_iter, err_rsvd)
+
+
 # -- registry / extensibility --------------------------------------------
 def test_registry_custom_transform():
     class IdentityBlock(Transform):
