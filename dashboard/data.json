@@ -30,7 +30,7 @@
       "pr": 190,
       "state": "non_gpu_review",
       "title": "fix(attention): reject non-int, invalid dtype, and invalid device at construction",
-      "updated_at": "2026-07-11T10:06:21Z",
+      "updated_at": "2026-07-11T11:21:19Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/190"
     },
     {
@@ -43,7 +43,7 @@
       "pr": 186,
       "state": "non_gpu_review",
       "title": "fix(attention): validate AttentionSpec.dtype instead of a late KeyError (Fixes #173)",
-      "updated_at": "2026-07-11T10:06:30Z",
+      "updated_at": "2026-07-11T11:21:23Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/186"
     },
     {
@@ -56,7 +56,7 @@
       "pr": 183,
       "state": "non_gpu_review",
       "title": "fix(attention): make the adaptive spectral global branch causal (Fixes #180)",
-      "updated_at": "2026-07-11T10:06:34Z",
+      "updated_at": "2026-07-11T11:21:28Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/183"
     },
     {
@@ -69,7 +69,7 @@
       "pr": 156,
       "state": "eval_pending",
       "title": "feat(strategy): rsvd captures 3 subspaces, not 4 (drop redundant col(B) sketch)",
-      "updated_at": "2026-07-11T10:06:41Z",
+      "updated_at": "2026-07-11T11:21:35Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/156"
     },
     {
@@ -82,7 +82,7 @@
       "pr": 182,
       "state": "non_gpu_review",
       "title": "fix(attention): make the adaptive global branch causal (no future leak)",
-      "updated_at": "2026-07-11T10:06:43Z",
+      "updated_at": "2026-07-11T11:21:36Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/182"
     },
     {
@@ -95,7 +95,7 @@
       "pr": 185,
       "state": "eval_pending",
       "title": "feat(strategy): subspace-iteration transform for decaying spectra",
-      "updated_at": "2026-07-11T10:06:51Z",
+      "updated_at": "2026-07-11T11:21:43Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/185"
     },
     {
@@ -108,7 +108,7 @@
       "pr": 188,
       "state": "non_gpu_review",
       "title": "fix(attention): close the causal correlation mixer Q/K kernel future-leak",
-      "updated_at": "2026-07-11T10:06:53Z",
+      "updated_at": "2026-07-11T11:21:45Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/188"
     },
     {
@@ -121,7 +121,7 @@
       "pr": 189,
       "state": "non_gpu_review",
       "title": "fix(strategy): reject non-positive --data-rank instead of silently reinterpreting or crashing",
-      "updated_at": "2026-07-11T10:06:58Z",
+      "updated_at": "2026-07-11T11:21:49Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/189"
     }
   ],
@@ -137,7 +137,7 @@
       "pr": 156,
       "state": "eval_pending",
       "title": "feat(strategy): rsvd captures 3 subspaces, not 4 (drop redundant col(B) sketch)",
-      "updated_at": "2026-07-11T10:06:41Z",
+      "updated_at": "2026-07-11T11:21:35Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/156"
     },
     {
@@ -151,9 +151,9 @@
       "pr": 185,
       "state": "eval_pending",
       "title": "feat(strategy): subspace-iteration transform for decaying spectra",
-      "updated_at": "2026-07-11T10:06:51Z",
+      "updated_at": "2026-07-11T11:21:43Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/185"
     }
   ],
-  "updated": "2026-07-11T11:21:52+00:00"
+  "updated": "2026-07-11T12:32:40+00:00"
 }
