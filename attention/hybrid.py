@@ -112,12 +112,20 @@ def adaptive_spectral_global_mix(
     *,
     freq_decay: float = 1.0,
     gate_strength: float = 0.25,
+    causal: bool = False,
 ):
     """FFT global mixer with a deterministic input-adaptive frequency gate.
 
     The current fixed spectral branch applies the same low-pass filter to every
     input. This branch keeps the same FFT/IFFT structure but lets a summary of
     Q modulate the frequency response per batch, head, and channel.
+
+    In causal mode the non-causal path leaks the future twice: the zero-phase
+    rfft low-pass mixes V across the whole sequence, and the Q gate averages over
+    every query (including future ones). The causal branch replaces both with
+    strictly-past-only counterparts -- the EMA linear convolution used by
+    ``spectral_global_mix`` for V, and a cumulative (running) mean of Q for the
+    gate -- so ``out[t]`` depends only on ``q[0..t]`` and ``v[0..t]``.
     """
     torch = _torch()
     if freq_decay < 0:
@@ -130,14 +138,38 @@ def adaptive_spectral_global_mix(
     v_work = v.to(real_dtype)
     q_work = q.to(real_dtype)
 
-    vf = torch.fft.rfft(v_work, dim=-2)
-    freqs = torch.arange(vf.shape[-2], device=v.device, dtype=real_dtype)
-    base_gain = 1.0 / (1.0 + freq_decay * freqs)
+    if not causal:
+        vf = torch.fft.rfft(v_work, dim=-2)
+        freqs = torch.arange(vf.shape[-2], device=v.device, dtype=real_dtype)
+        base_gain = 1.0 / (1.0 + freq_decay * freqs)
 
-    q_summary = torch.tanh(q_work.mean(dim=-2, keepdim=True))
-    gate = base_gain.view(1, 1, -1, 1) * (1.0 + gate_strength * q_summary)
-    mixed = vf * gate.to(vf.dtype)
-    out = torch.fft.irfft(mixed, n=seq, dim=-2)
+        q_summary = torch.tanh(q_work.mean(dim=-2, keepdim=True))
+        gate = base_gain.view(1, 1, -1, 1) * (1.0 + gate_strength * q_summary)
+        mixed = vf * gate.to(vf.dtype)
+        out = torch.fft.irfft(mixed, n=seq, dim=-2)
+        return out.to(v.dtype)
+
+    # Causal base low-pass: the same first-order EMA (pole a = 1/(1+freq_decay),
+    # geometric kernel g[l]=(1-a)^l) applied as a LINEAR (zero-padded) convolution
+    # and renormalized by the partial kernel mass, so no future V token leaks in
+    # -- identical recipe to spectral_global_mix's causal branch.
+    alpha = 1.0 / (1.0 + freq_decay)
+    lags = torch.arange(seq, device=v.device, dtype=real_dtype)
+    kernel = (1.0 - alpha) ** lags
+    length = 2 * seq
+    kf = torch.fft.rfft(kernel, n=length)
+    vf = torch.fft.rfft(v_work, n=length, dim=-2)
+    conv = torch.fft.irfft(vf * kf.view(1, 1, -1, 1), n=length, dim=-2)[..., :seq, :]
+    mass = torch.cumsum(kernel, dim=0).clamp_min(1e-12).view(1, 1, -1, 1)
+    filtered = conv / mass
+
+    # Causal adaptive gate: a running mean of Q up to position t (converging to the
+    # non-causal whole-sequence mean at the last position) instead of the global
+    # mean, so the gate at t sees only q[0..t].
+    counts = torch.arange(1, seq + 1, device=v.device, dtype=real_dtype).view(1, 1, -1, 1)
+    q_run_mean = torch.cumsum(q_work, dim=-2) / counts
+    gate = 1.0 + gate_strength * torch.tanh(q_run_mean)
+    out = filtered * gate
     return out.to(v.dtype)
 
 
@@ -386,7 +418,7 @@ def adaptive_hybrid_attention(
     if gw == 0:
         return local
     global_ = adaptive_spectral_global_mix(
-        q, v, freq_decay=freq_decay, gate_strength=gate_strength
+        q, v, freq_decay=freq_decay, gate_strength=gate_strength, causal=causal
     )
     return lw * local + gw * global_
 
