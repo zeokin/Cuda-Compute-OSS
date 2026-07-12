@@ -18,7 +18,7 @@
       "pr": 190,
       "state": "non_gpu_review",
       "title": "fix(attention): reject non-int, invalid dtype, and invalid device at construction",
-      "updated_at": "2026-07-12T12:42:50Z",
+      "updated_at": "2026-07-12T12:47:29Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/190"
     },
     {
@@ -31,7 +31,7 @@
       "pr": 186,
       "state": "non_gpu_review",
       "title": "fix(attention): validate AttentionSpec.dtype instead of a late KeyError (Fixes #173)",
-      "updated_at": "2026-07-12T12:42:54Z",
+      "updated_at": "2026-07-12T12:47:33Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/186"
     },
     {
@@ -44,7 +44,7 @@
       "pr": 183,
       "state": "non_gpu_review",
       "title": "fix(attention): make the adaptive spectral global branch causal (Fixes #180)",
-      "updated_at": "2026-07-12T12:42:58Z",
+      "updated_at": "2026-07-12T12:47:37Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/183"
     },
     {
@@ -57,7 +57,7 @@
       "pr": 156,
       "state": "eval_pending",
       "title": "feat(strategy): rsvd captures 3 subspaces, not 4 (drop redundant col(B) sketch)",
-      "updated_at": "2026-07-12T12:43:05Z",
+      "updated_at": "2026-07-12T12:47:44Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/156"
     },
     {
@@ -70,7 +70,7 @@
       "pr": 182,
       "state": "non_gpu_review",
       "title": "fix(attention): make the adaptive global branch causal (no future leak)",
-      "updated_at": "2026-07-12T12:43:06Z",
+      "updated_at": "2026-07-12T12:47:45Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/182"
     },
     {
@@ -83,7 +83,7 @@
       "pr": 185,
       "state": "eval_pending",
       "title": "feat(strategy): subspace-iteration transform for decaying spectra",
-      "updated_at": "2026-07-12T12:43:13Z",
+      "updated_at": "2026-07-12T12:47:52Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/185"
     },
     {
@@ -96,7 +96,7 @@
       "pr": 188,
       "state": "non_gpu_review",
       "title": "fix(attention): close the causal correlation mixer Q/K kernel future-leak",
-      "updated_at": "2026-07-12T12:43:14Z",
+      "updated_at": "2026-07-12T12:47:53Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/188"
     },
     {
@@ -109,7 +109,7 @@
       "pr": 189,
       "state": "non_gpu_review",
       "title": "fix(strategy): reject non-positive --data-rank instead of silently reinterpreting or crashing",
-      "updated_at": "2026-07-12T12:43:18Z",
+      "updated_at": "2026-07-12T12:47:58Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/189"
     },
     {
@@ -122,7 +122,7 @@
       "pr": 192,
       "state": "eval_pending",
       "title": "feat(strategy): add fixed DCT-II basis transform for smooth data",
-      "updated_at": "2026-07-12T12:43:26Z",
+      "updated_at": "2026-07-12T12:48:04Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/192"
     },
     {
@@ -135,7 +135,7 @@
       "pr": 194,
       "state": "eval_pending",
       "title": "feat(strategy): add nystrom landmark-column transform for low-rank data",
-      "updated_at": "2026-07-12T12:43:30Z",
+      "updated_at": "2026-07-12T12:48:08Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/194"
     },
     {
@@ -148,7 +148,7 @@
       "pr": 195,
       "state": "non_gpu_review",
       "title": "fix(attention): make adaptive spectral global branch causal (Fixes #180, resubmit #172)",
-      "updated_at": "2026-07-12T12:43:32Z",
+      "updated_at": "2026-07-12T12:48:10Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/195"
     },
     {
@@ -161,7 +161,7 @@
       "pr": 196,
       "state": "non_gpu_review",
       "title": "fix(attention): make adaptive spectral global branch causal",
-      "updated_at": "2026-07-12T12:43:36Z",
+      "updated_at": "2026-07-12T12:48:14Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/196"
     },
     {
@@ -174,7 +174,7 @@
       "pr": 203,
       "state": "non_gpu_review",
       "title": "fix(strategy): budget stream_gemm_right's resident (n,m) device output (Fixes #202)",
-      "updated_at": "2026-07-12T12:43:41Z",
+      "updated_at": "2026-07-12T12:48:18Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/203"
     },
     {
@@ -187,7 +187,7 @@
       "pr": 205,
       "state": "non_gpu_review",
       "title": "fix(strategy): budget stream_gemm_left_t's resident (n,m) accumulator (Fixes #204)",
-      "updated_at": "2026-07-12T12:43:45Z",
+      "updated_at": "2026-07-12T12:48:22Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/205"
     },
     {
@@ -200,7 +200,7 @@
       "pr": 206,
       "state": "non_gpu_review",
       "title": "fix(strategy): report unknown --transform cleanly instead of KeyError traceback (Fixes #199)",
-      "updated_at": "2026-07-12T12:45:46Z",
+      "updated_at": "2026-07-12T12:48:26Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/206"
     }
   ],
@@ -216,7 +216,7 @@
       "pr": 156,
       "state": "eval_pending",
       "title": "feat(strategy): rsvd captures 3 subspaces, not 4 (drop redundant col(B) sketch)",
-      "updated_at": "2026-07-12T12:43:05Z",
+      "updated_at": "2026-07-12T12:47:44Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/156"
     },
     {
@@ -230,7 +230,7 @@
       "pr": 185,
       "state": "eval_pending",
       "title": "feat(strategy): subspace-iteration transform for decaying spectra",
-      "updated_at": "2026-07-12T12:43:13Z",
+      "updated_at": "2026-07-12T12:47:52Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/185"
     },
     {
@@ -244,7 +244,7 @@
       "pr": 192,
       "state": "eval_pending",
       "title": "feat(strategy): add fixed DCT-II basis transform for smooth data",
-      "updated_at": "2026-07-12T12:43:26Z",
+      "updated_at": "2026-07-12T12:48:04Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/192"
     },
     {
@@ -258,9 +258,9 @@
       "pr": 194,
       "state": "eval_pending",
       "title": "feat(strategy): add nystrom landmark-column transform for low-rank data",
-      "updated_at": "2026-07-12T12:43:30Z",
+      "updated_at": "2026-07-12T12:48:08Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/194"
     }
   ],
-  "updated": "2026-07-12T12:48:29+00:00"
+  "updated": "2026-07-12T14:19:20+00:00"
 }
