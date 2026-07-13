@@ -48,7 +48,7 @@
       "title": "fix(strategy): --data-rank help omits decaying-spectrum and misstates its default",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-13T18:25:02Z",
+      "updated_at": "2026-07-13T19:52:44Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/229"
     },
     {
@@ -63,7 +63,7 @@
       "title": "fix(strategy): stop reporting a <1x FLOP ratio as \"fewer FLOPs than exact\"",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-13T18:25:10Z",
+      "updated_at": "2026-07-13T19:52:50Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/215"
     },
     {
@@ -78,7 +78,7 @@
       "title": "fix(strategy): budget compress()'s resident (m,m) accumulator, not just the product (Fixes #220)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-13T18:25:19Z",
+      "updated_at": "2026-07-13T19:52:55Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/221"
     },
     {
@@ -93,7 +93,7 @@
       "title": "fix(strategy): validate dtype in the public subspace_matmul() API (Fixes #222)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-13T18:25:26Z",
+      "updated_at": "2026-07-13T19:53:01Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/223"
     },
     {
@@ -108,7 +108,7 @@
       "title": "fix(strategy): report unknown --transform cleanly instead of KeyError traceback (Fixes #199)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-13T18:25:34Z",
+      "updated_at": "2026-07-13T19:53:07Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/206"
     },
     {
@@ -123,7 +123,7 @@
       "title": "fix(strategy): reject non-positive --rank-m at CLI boundary",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-13T18:25:41Z",
+      "updated_at": "2026-07-13T19:53:13Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/224"
     },
     {
@@ -138,7 +138,7 @@
       "title": "fix(strategy): print a summary for --compare --quiet instead of nothing",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-13T18:25:48Z",
+      "updated_at": "2026-07-13T19:53:19Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/228"
     },
     {
@@ -153,10 +153,10 @@
       "title": "fix(docs): make matmul README FLOP table use one (decimal) n convention (Fixes #102)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-13T18:25:55Z",
+      "updated_at": "2026-07-13T19:53:24Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/230"
     }
   ],
   "queue": [],
-  "updated": "2026-07-13T19:53:28+00:00"
+  "updated": "2026-07-13T21:02:10+00:00"
 }
