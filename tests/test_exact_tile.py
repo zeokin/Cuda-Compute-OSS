@@ -27,7 +27,11 @@ def test_exact_tile_within_budget():
     backend = _FakeBackend(free)
     t = _exact_tile(n, backend, item, frac)
     budget_elems = int(free * frac) // item
-    assert t * (2 * n + t) <= budget_elems
+    # _exact_tile sizes against the real per-(row, k) working set T*(3n+T)
+    # (acc + A panel + B panel + the GEMM output), i.e. it solves T^2 + 3nT =
+    # budget (see #144). Assert that exact bound: the weaker T*(2n+T) <= budget
+    # would still pass even if the code regressed to the old, OOM-prone model.
+    assert t * (3 * n + t) <= budget_elems
 
 
 def test_exact_tile_at_least_one():
