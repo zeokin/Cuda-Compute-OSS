@@ -37,6 +37,21 @@
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/227"
     },
     {
+      "author": "statxc",
+      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
+      "gpu_required": false,
+      "head_sha": "b6df7a4ef728fd326181675a5290f0ccde12b26f",
+      "kind": "fix",
+      "label": "status:ready-non-gpu",
+      "pr": 229,
+      "state": "non_gpu_review",
+      "title": "fix(strategy): --data-rank help omits decaying-spectrum and misstates its default",
+      "track": null,
+      "transform": null,
+      "updated_at": "2026-07-13T15:44:20Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/229"
+    },
+    {
       "author": "galuis116",
       "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
       "gpu_required": false,
@@ -48,7 +63,7 @@
       "title": "fix(strategy): stop reporting a <1x FLOP ratio as \"fewer FLOPs than exact\"",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-13T15:00:31Z",
+      "updated_at": "2026-07-13T15:45:38Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/215"
     },
     {
@@ -63,7 +78,7 @@
       "title": "fix(strategy): budget compress()'s resident (m,m) accumulator, not just the product (Fixes #220)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-13T15:00:37Z",
+      "updated_at": "2026-07-13T15:45:46Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/221"
     },
     {
@@ -78,7 +93,7 @@
       "title": "fix(strategy): validate dtype in the public subspace_matmul() API (Fixes #222)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-13T15:00:44Z",
+      "updated_at": "2026-07-13T15:45:54Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/223"
     },
     {
@@ -93,7 +108,7 @@
       "title": "fix(strategy): report unknown --transform cleanly instead of KeyError traceback (Fixes #199)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-13T15:00:50Z",
+      "updated_at": "2026-07-13T15:46:01Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/206"
     },
     {
@@ -108,7 +123,7 @@
       "title": "fix(strategy): reject non-positive --rank-m at CLI boundary",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-13T15:00:57Z",
+      "updated_at": "2026-07-13T15:46:08Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/224"
     },
     {
@@ -123,10 +138,10 @@
       "title": "fix(strategy): print a summary for --compare --quiet instead of nothing",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-13T15:42:40Z",
+      "updated_at": "2026-07-13T15:46:16Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/228"
     }
   ],
   "queue": [],
-  "updated": "2026-07-13T15:46:21+00:00"
+  "updated": "2026-07-13T15:50:36+00:00"
 }
