@@ -31,6 +31,20 @@ Example:
 - uv run --extra test python -m pytest tests/ strategy/tests/ eval/tests/ -v
 -->
 
+## Target track (feat PRs — declare exactly one)
+
+- [ ] full-rank — random data, the hard general case (accuracy floor 0.80)
+- [ ] low-rank — rank ≪ N (accuracy floor 0.95)
+- [ ] decaying-spectrum — polynomially decaying singular values (accuracy floor 0.90)
+
+<!--
+The GPU bot re-scores your PR at this track's PINNED regime (fixed rank / M /
+data), on FRESH unseen seeds, rebased onto current `main`, and computes the tier
+against the ledger's recorded frontier. So the numbers you paste below are
+context, not the verdict — you cannot pick the rank/M that flatters your method,
+and the baseline is always the current frontier, never the rsvd on your branch.
+-->
+
 ## GPU Result (required for feat PRs only)
 
 | metric          | value          |
