@@ -18,8 +18,23 @@
       "state": "skip_draft",
       "title": "feat(strategy): nystrom captures 3 subspaces, not 4 (drop redundant col(B) landmark block)",
       "track": null,
+      "transform": null,
       "updated_at": "2026-07-13T14:43:04Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/226"
+    },
+    {
+      "author": "RenzoMXD",
+      "detail": "",
+      "gpu_required": false,
+      "head_sha": "c48c68a3d7864ef5193e2aa6e4e61cb90bd3c558",
+      "kind": null,
+      "pr": 227,
+      "state": "skip_draft",
+      "title": "feat(strategy): nystrom-iter -- landmark-seeded power iteration for decaying-spectrum data",
+      "track": null,
+      "transform": null,
+      "updated_at": "2026-07-13T14:58:02Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/227"
     },
     {
       "author": "galuis116",
@@ -32,7 +47,8 @@
       "state": "non_gpu_review",
       "title": "fix(strategy): stop reporting a <1x FLOP ratio as \"fewer FLOPs than exact\"",
       "track": null,
-      "updated_at": "2026-07-13T14:46:15Z",
+      "transform": null,
+      "updated_at": "2026-07-13T15:00:31Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/215"
     },
     {
@@ -46,7 +62,8 @@
       "state": "non_gpu_review",
       "title": "fix(strategy): budget compress()'s resident (m,m) accumulator, not just the product (Fixes #220)",
       "track": null,
-      "updated_at": "2026-07-13T14:46:23Z",
+      "transform": null,
+      "updated_at": "2026-07-13T15:00:37Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/221"
     },
     {
@@ -60,7 +77,8 @@
       "state": "non_gpu_review",
       "title": "fix(strategy): validate dtype in the public subspace_matmul() API (Fixes #222)",
       "track": null,
-      "updated_at": "2026-07-13T14:46:30Z",
+      "transform": null,
+      "updated_at": "2026-07-13T15:00:44Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/223"
     },
     {
@@ -74,7 +92,8 @@
       "state": "non_gpu_review",
       "title": "fix(strategy): report unknown --transform cleanly instead of KeyError traceback (Fixes #199)",
       "track": null,
-      "updated_at": "2026-07-13T14:46:37Z",
+      "transform": null,
+      "updated_at": "2026-07-13T15:00:50Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/206"
     },
     {
@@ -88,23 +107,26 @@
       "state": "non_gpu_review",
       "title": "fix(strategy): reject non-positive --rank-m at CLI boundary",
       "track": null,
-      "updated_at": "2026-07-13T14:46:44Z",
+      "transform": null,
+      "updated_at": "2026-07-13T15:00:57Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/224"
     },
     {
-      "author": "RenzoMXD",
-      "detail": "",
+      "author": "statxc",
+      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
       "gpu_required": false,
-      "head_sha": "c48c68a3d7864ef5193e2aa6e4e61cb90bd3c558",
-      "kind": null,
-      "pr": 227,
-      "state": "skip_draft",
-      "title": "feat(strategy): nystrom-iter -- landmark-seeded power iteration for decaying-spectrum data",
+      "head_sha": "6f45a5cbae093889ca173047afeeba2bd55c03d1",
+      "kind": "fix",
+      "label": "status:ready-non-gpu",
+      "pr": 228,
+      "state": "non_gpu_review",
+      "title": "fix(strategy): print a summary for --compare --quiet instead of nothing",
       "track": null,
-      "updated_at": "2026-07-13T14:58:02Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/227"
+      "transform": null,
+      "updated_at": "2026-07-13T15:42:40Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/228"
     }
   ],
   "queue": [],
-  "updated": "2026-07-13T15:01:02+00:00"
+  "updated": "2026-07-13T15:46:21+00:00"
 }
