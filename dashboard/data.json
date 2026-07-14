@@ -34,7 +34,7 @@
       "title": "fix(attention): validate --gate-strength before benchmark warmup",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T19:15:29Z",
+      "updated_at": "2026-07-14T19:46:30Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/239"
     },
     {
@@ -49,7 +49,7 @@
       "title": "fix(strategy): expose --spectral-alpha for the decaying-spectrum fill",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T19:15:37Z",
+      "updated_at": "2026-07-14T19:46:36Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/232"
     },
     {
@@ -64,7 +64,7 @@
       "title": "fix(strategy): budget the reassigned-tile transient in the streaming primitives (Fixes #234)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T19:15:44Z",
+      "updated_at": "2026-07-14T19:46:43Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/235"
     },
     {
@@ -79,7 +79,7 @@
       "title": "fix(strategy): charge the resident Q operand in stream_gemm_*/compress budgets (Fixes #236)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T19:15:51Z",
+      "updated_at": "2026-07-14T19:46:50Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/237"
     },
     {
@@ -94,10 +94,25 @@
       "title": "fix(strategy): reject --rank-m > --n at CLI boundary",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T19:15:58Z",
+      "updated_at": "2026-07-14T19:46:57Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/238"
+    },
+    {
+      "author": "andriypolanski",
+      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
+      "gpu_required": false,
+      "head_sha": "ac26d88d5d6b8feca9e8d7c4accc1c38079f0864",
+      "kind": "fix",
+      "label": "status:ready-non-gpu",
+      "pr": 240,
+      "state": "non_gpu_review",
+      "title": "fix(strategy): reject unknown --transform with clean exit 2",
+      "track": null,
+      "transform": null,
+      "updated_at": "2026-07-14T20:08:44Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/240"
     }
   ],
   "queue": [],
-  "updated": "2026-07-14T19:47:01+00:00"
+  "updated": "2026-07-14T20:12:38+00:00"
 }
