@@ -38,6 +38,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--data-rank", type=int, default=None,
                    help="rank of generated matrices when --fill lowrank "
                         "(default n//32)")
+    p.add_argument("--spectral-alpha", type=float, default=1.0,
+                   help="singular-value decay exponent k^-alpha for "
+                        "--fill decaying-spectrum (default 1.0; larger = faster "
+                        "decay). Ignored by other fills.")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--verify", action="store_true",
                    help="report reconstruction error vs a float64 reference")
@@ -53,6 +57,8 @@ def main(argv=None) -> int:
             raise ValueError(f"--n must be a positive integer, got {args.n}")
         if args.data_rank is not None and args.data_rank < 1:
             raise ValueError(f"--data-rank must be a positive integer, got {args.data_rank}")
+        if args.spectral_alpha < 0:
+            raise ValueError(f"--spectral-alpha must be >= 0, got {args.spectral_alpha}")
         cfg = Config(
             device=args.device,
             dtype=args.dtype,
@@ -67,10 +73,11 @@ def main(argv=None) -> int:
         )
         if args.compare:
             runner.compare(args.n, cfg, fill=args.fill, data_rank=args.data_rank,
-                           keep=args.keep)
+                           keep=args.keep, spectral_alpha=args.spectral_alpha)
             return 0
         info = runner.run(args.n, cfg, fill=args.fill, verify=args.verify,
-                          keep=args.keep, data_rank=args.data_rank)
+                          keep=args.keep, data_rank=args.data_rank,
+                          spectral_alpha=args.spectral_alpha)
     except (ValueError, RuntimeError, MemoryError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2

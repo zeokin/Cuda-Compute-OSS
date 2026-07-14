@@ -47,6 +47,22 @@ def test_bad_data_rank_exits_cleanly(argv, capsys):
     assert "error:" in capsys.readouterr().err
 
 
+# --spectral-alpha is the k^-alpha decay exponent for --fill decaying-spectrum;
+# a negative exponent would *grow* the tail (not a decaying spectrum), so it is
+# rejected on CPU before any device work, like the other knobs.
+STRATEGY_BAD_SPECTRAL_ALPHA_ARGS = [
+    ["--n", "8", "--spectral-alpha", "-0.5"],
+    ["--n", "8", "--spectral-alpha", "-1"],
+]
+
+
+@pytest.mark.parametrize("argv", STRATEGY_BAD_SPECTRAL_ALPHA_ARGS, ids=lambda a: " ".join(a))
+def test_bad_spectral_alpha_exits_cleanly(argv, capsys):
+    rc = strategy_cli.main(argv)
+    assert rc == 2, f"expected exit 2 for {argv}, got {rc}"
+    assert "error:" in capsys.readouterr().err
+
+
 def test_positive_data_rank_is_unaffected(capsys):
     # --data-rank 1 (smallest valid rank) must not be rejected by validation --
     # this guards against the check being off-by-one. This test runs without a
