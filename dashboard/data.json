@@ -34,7 +34,7 @@
       "title": "fix(attention): validate --gate-strength before benchmark warmup",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T19:46:30Z",
+      "updated_at": "2026-07-14T20:11:55Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/239"
     },
     {
@@ -49,7 +49,7 @@
       "title": "fix(strategy): expose --spectral-alpha for the decaying-spectrum fill",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T19:46:36Z",
+      "updated_at": "2026-07-14T20:12:03Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/232"
     },
     {
@@ -64,7 +64,7 @@
       "title": "fix(strategy): budget the reassigned-tile transient in the streaming primitives (Fixes #234)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T19:46:43Z",
+      "updated_at": "2026-07-14T20:12:10Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/235"
     },
     {
@@ -79,7 +79,7 @@
       "title": "fix(strategy): charge the resident Q operand in stream_gemm_*/compress budgets (Fixes #236)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T19:46:50Z",
+      "updated_at": "2026-07-14T20:12:18Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/237"
     },
     {
@@ -94,7 +94,7 @@
       "title": "fix(strategy): reject --rank-m > --n at CLI boundary",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T19:46:57Z",
+      "updated_at": "2026-07-14T20:12:25Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/238"
     },
     {
@@ -109,10 +109,10 @@
       "title": "fix(strategy): reject unknown --transform with clean exit 2",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T20:08:44Z",
+      "updated_at": "2026-07-14T20:25:27Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/240"
     }
   ],
   "queue": [],
-  "updated": "2026-07-14T20:12:38+00:00"
+  "updated": "2026-07-14T20:29:14+00:00"
 }
