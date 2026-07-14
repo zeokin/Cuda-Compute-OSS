@@ -36,8 +36,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="test-matrix content. 'lowrank' = compressible data "
                         "where the strategy is accurate (default)")
     p.add_argument("--data-rank", type=int, default=None,
-                   help="rank of generated matrices when --fill lowrank "
-                        "(default n//32)")
+                   help="rank of generated matrices for --fill lowrank / "
+                        "decaying-spectrum (default max(1, n//32))")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--verify", action="store_true",
                    help="report reconstruction error vs a float64 reference")
