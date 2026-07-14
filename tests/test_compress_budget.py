@@ -51,11 +51,12 @@ def _compress_fixed_bytes(n, m, dtype):
 
 
 def test_compress_charges_accumulator_and_product():
-    # Both the resident acc and the per-step product are (m, m): 2*m*m, not m*m.
+    # Resident acc (m, m) + per-step product (m, m) + resident Q operand (n, m):
+    # 2*m*m + n*m, not just m*m.
     for n, m, dtype in [(64, 16, np.float32), (128, 32, np.float64), (256, 256, np.float32)]:
         seen = _compress_fixed_bytes(n, m, dtype)
         item = np.dtype(dtype).itemsize
-        assert seen["fixed_bytes"] == 2 * m * m * item, (n, m, dtype, seen)
+        assert seen["fixed_bytes"] == (2 * m * m + n * m) * item, (n, m, dtype, seen)
         assert seen["fixed_bytes"] != m * m * item      # explicitly not the old model
 
 

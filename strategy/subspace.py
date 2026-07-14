@@ -96,8 +96,12 @@ def stream_gemm_right(X, Q, backend: Backend, dtype,
     # entire budget at M = N), risking OOM. Each block also allocates
     # matmul(Xr, Q) -> (blk, m): m output cols per staged row. Xr is reassigned
     # each iteration, so its (blk, cols) tile has a transient duplicate (#234).
+    # ``out`` (n, m) and the resident ``Q`` operand (n, m) are both live for the
+    # whole loop -- like reconstruct's Q/Ctil (#216), charge them up front so the
+    # budget holds on MPS, where free_compute_bytes() is a static ceiling that
+    # never reflects the caller-allocated Q.
     blk = _row_block(n, X.shape[1], backend, item, frac,
-                     out_cols=m, fixed_bytes=n * m * item,
+                     out_cols=m, fixed_bytes=(n * m + n * m) * item,
                      transient_cols=X.shape[1])
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
@@ -120,10 +124,12 @@ def stream_gemm_left_t(X, Q, backend: Backend, dtype,
     # accumulator unbudgeted and sizes the block against the whole budget, risking
     # OOM (cf. #138 and stream_gemm_right's resident output).
     # Xr is reassigned each iteration -> its (blk, cols) tile has a transient
-    # duplicate (#234).
+    # duplicate (#234). The resident Q operand (n, m) is also live for the whole
+    # loop, so add it to acc + product (2*n*m -> 3*n*m), like reconstruct charges
+    # its Q/Ctil (#216) -- MPS's free_compute_bytes() never reflects it otherwise.
     item = np.dtype(dtype).itemsize
     blk = _row_block(n, X.shape[1], backend, item, frac,
-                     fixed_bytes=2 * n * m * item, transient_cols=X.shape[1])
+                     fixed_bytes=(2 * n * m + n * m) * item, transient_cols=X.shape[1])
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
         Xr = backend.to_device(np.asarray(X[r0:r1, :]).astype(dtype, copy=False))
@@ -146,9 +152,12 @@ def compress(X, Q, backend: Backend, dtype,
     # ceiling), exactly as stream_gemm_left_t does for its (n, m) accumulator.
     # Each block also stages Xr and its matmul(Xr, Q) -> (blk, m) intermediate.
     # Xr is reassigned each iteration -> a transient (blk, cols) duplicate (#234).
+    # The resident Q operand (n, m) is live for the whole loop too, so add it to
+    # the acc + product charge (2*m*m + n*m), like reconstruct's Q/Ctil (#216) --
+    # MPS's free_compute_bytes() is a static ceiling that never reflects it.
     item = np.dtype(dtype).itemsize
     blk = _row_block(n, X.shape[1], backend, item, frac,
-                     out_cols=m, fixed_bytes=2 * m * m * item,
+                     out_cols=m, fixed_bytes=(2 * m * m + n * m) * item,
                      transient_cols=X.shape[1])
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
