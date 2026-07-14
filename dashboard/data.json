@@ -23,20 +23,6 @@
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/226"
     },
     {
-      "author": "philluiz2323",
-      "detail": "PR touches maintainer-owned files: eval/evaluator.py, eval/tests/test_crown_best.py, eval/tests/test_eval.py. Miner PRs cannot modify maintainer-owned files. Open a fresh PR that only changes allowed miner-owned files.",
-      "gpu_required": false,
-      "head_sha": "03b04328027d4c15a97ede1a6257e2eb89e6f419",
-      "kind": null,
-      "pr": 242,
-      "state": "close_protected_path",
-      "title": "fix(eval): don't crown a 'best' when nothing beats exact (#82)",
-      "track": null,
-      "transform": null,
-      "updated_at": "2026-07-14T21:05:08Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/242"
-    },
-    {
       "author": "RealDiligent",
       "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
       "gpu_required": false,
@@ -48,7 +34,7 @@
       "title": "fix(attention): validate --gate-strength before benchmark warmup",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T21:05:34Z",
+      "updated_at": "2026-07-14T21:08:51Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/239"
     },
     {
@@ -63,7 +49,7 @@
       "title": "fix(strategy): expose --spectral-alpha for the decaying-spectrum fill",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T21:05:41Z",
+      "updated_at": "2026-07-14T21:08:55Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/232"
     },
     {
@@ -78,7 +64,7 @@
       "title": "fix(strategy): budget the reassigned-tile transient in the streaming primitives (Fixes #234)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T21:05:49Z",
+      "updated_at": "2026-07-14T21:09:00Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/235"
     },
     {
@@ -93,7 +79,7 @@
       "title": "fix(strategy): charge the resident Q operand in stream_gemm_*/compress budgets (Fixes #236)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T21:05:56Z",
+      "updated_at": "2026-07-14T21:09:06Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/237"
     },
     {
@@ -108,7 +94,7 @@
       "title": "fix(strategy): reject --rank-m > --n at CLI boundary",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T21:06:02Z",
+      "updated_at": "2026-07-14T21:09:11Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/238"
     },
     {
@@ -123,10 +109,25 @@
       "title": "fix(storage): make --fill iota seed-dependent so eval couples are independent (#104)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T21:06:09Z",
+      "updated_at": "2026-07-14T21:09:16Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/241"
+    },
+    {
+      "author": "andriypolanski",
+      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
+      "gpu_required": false,
+      "head_sha": "3334afc0eb33f6d3d9a0bfd9fe7baf0d89733b89",
+      "kind": "fix",
+      "label": "status:ready-non-gpu",
+      "pr": 243,
+      "state": "non_gpu_review",
+      "title": "fix(matmul,strategy): reject config.dtype that disagrees with A/B arrays",
+      "track": null,
+      "transform": null,
+      "updated_at": "2026-07-14T21:14:41Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/243"
     }
   ],
   "queue": [],
-  "updated": "2026-07-14T21:09:20+00:00"
+  "updated": "2026-07-14T21:18:44+00:00"
 }
