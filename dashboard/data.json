@@ -34,7 +34,7 @@
       "title": "fix(strategy): expose --spectral-alpha for the decaying-spectrum fill",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T17:56:24Z",
+      "updated_at": "2026-07-14T17:59:57Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/232"
     },
     {
@@ -49,10 +49,10 @@
       "title": "fix(strategy): budget the reassigned-tile transient in the streaming primitives (Fixes #234)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T17:56:29Z",
+      "updated_at": "2026-07-14T18:00:05Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/235"
     }
   ],
   "queue": [],
-  "updated": "2026-07-14T18:00:10+00:00"
+  "updated": "2026-07-14T18:08:29+00:00"
 }
