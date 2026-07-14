@@ -31,7 +31,8 @@ def _timed(fn, backend) -> float:
 
 
 def run(n: int, cfg: Config, fill: str = "lowrank", verify: bool = False,
-        keep: bool = False, data_rank: int | None = None) -> dict:
+        keep: bool = False, data_rank: int | None = None,
+        spectral_alpha: float = 1.0) -> dict:
     """Generate A, B, compute C = A @ B with the subspace strategy, report.
 
     Default fill is 'lowrank' because that is the regime the strategy targets;
@@ -54,9 +55,9 @@ def run(n: int, cfg: Config, fill: str = "lowrank", verify: bool = False,
 
     try:
         A = storage.generate(n, dt, on_disk, pa if on_disk else None, cfg.seed, fill,
-                             data_rank=data_rank)
+                             data_rank=data_rank, spectral_alpha=spectral_alpha)
         B = storage.generate(n, dt, on_disk, pb if on_disk else None, cfg.seed + 1, fill,
-                             data_rank=data_rank)
+                             data_rank=data_rank, spectral_alpha=spectral_alpha)
         C = storage.allocate(n, dt, on_disk, pc if on_disk else None)
 
         info = {}
@@ -121,7 +122,8 @@ def _rel_frobenius_streamed(Ce, Cs, block_bytes: int = 256 * 1024**2) -> float:
 
 
 def compare(n: int, cfg: Config, fill: str = "lowrank",
-            data_rank: int | None = None, keep: bool = False) -> dict:
+            data_rank: int | None = None, keep: bool = False,
+            spectral_alpha: float = 1.0) -> dict:
     """Run the exact baseline and the subspace strategy on the SAME inputs and
     report time, throughput and the smart strategy's reconstruction error."""
     backend = Backend(cfg.device, cfg.verbose)
@@ -135,9 +137,9 @@ def compare(n: int, cfg: Config, fill: str = "lowrank",
 
     try:
         A = storage.generate(n, dt, on_disk, pa if on_disk else None, cfg.seed, fill,
-                             data_rank=data_rank)
+                             data_rank=data_rank, spectral_alpha=spectral_alpha)
         B = storage.generate(n, dt, on_disk, pb if on_disk else None, cfg.seed + 1, fill,
-                             data_rank=data_rank)
+                             data_rank=data_rank, spectral_alpha=spectral_alpha)
         Ce = storage.allocate(n, dt, on_disk, pe if on_disk else None)
         Cs = storage.allocate(n, dt, on_disk, ps if on_disk else None)
 
