@@ -34,7 +34,7 @@
       "title": "fix(strategy): expose --spectral-alpha for the decaying-spectrum fill",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T18:08:20Z",
+      "updated_at": "2026-07-14T18:11:25Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/232"
     },
     {
@@ -49,7 +49,7 @@
       "title": "fix(strategy): budget the reassigned-tile transient in the streaming primitives (Fixes #234)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T18:08:26Z",
+      "updated_at": "2026-07-14T18:11:31Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/235"
     },
     {
@@ -64,10 +64,25 @@
       "title": "fix(strategy): charge the resident Q operand in stream_gemm_*/compress budgets (Fixes #236)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T18:08:44Z",
+      "updated_at": "2026-07-14T18:11:37Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/237"
+    },
+    {
+      "author": "RealDiligent",
+      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
+      "gpu_required": false,
+      "head_sha": "ce957c1994103b28a5bf102ebab3997799772ba9",
+      "kind": "fix",
+      "label": "status:ready-non-gpu",
+      "pr": 238,
+      "state": "non_gpu_review",
+      "title": "fix(strategy): reject --rank-m > --n at CLI boundary",
+      "track": null,
+      "transform": null,
+      "updated_at": "2026-07-14T19:09:17Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/238"
     }
   ],
   "queue": [],
-  "updated": "2026-07-14T18:11:41+00:00"
+  "updated": "2026-07-14T19:12:05+00:00"
 }
