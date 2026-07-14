@@ -126,11 +126,16 @@ def compress(X, Q, backend: Backend, dtype,
     xp = backend.xp
     n, m = X.shape[0], Q.shape[1]
     acc = xp.zeros((m, m), dtype=dtype)
-    # per block: matmul(Xr, Q) -> (blk, m) (m cols per row), then the (m, m)
-    # product folded into acc -- a fixed per-iteration temporary.
+    # Two (m, m) buffers are live and neither scales with the block: the resident
+    # accumulator ``acc`` and the ``matmul(...) -> (m, m)`` product, which cannot
+    # alias ``acc`` and coexists with it during ``acc += ...``. Charge both up
+    # front (2*m*m) -- counting only the product leaves the accumulator
+    # unbudgeted (invisible on MPS, where free_compute_bytes() is a static
+    # ceiling), exactly as stream_gemm_left_t does for its (n, m) accumulator.
+    # Each block also stages Xr and its matmul(Xr, Q) -> (blk, m) intermediate.
     item = np.dtype(dtype).itemsize
     blk = _row_block(n, X.shape[1], backend, item, frac,
-                     out_cols=m, fixed_bytes=m * m * item)
+                     out_cols=m, fixed_bytes=2 * m * m * item)
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
         Xr = backend.to_device(np.asarray(X[r0:r1, :]).astype(dtype, copy=False))
