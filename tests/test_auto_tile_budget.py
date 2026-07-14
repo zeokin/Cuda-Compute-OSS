@@ -38,35 +38,50 @@ def test_tile_operand_bytes_fp16_upcast():
 
 def test_tile_workspace_counts_fp16_upcast():
     fp16_acc = Config(dtype="fp16", accumulate_fp32=True)
-    # acc fp32 (4) + two fp32 operand tiles (4 + 4) + the fp32 bmm output tile (4)
-    assert _tile_workspace_bytes_per_elem(fp16_acc) == 16
+    # acc fp32 (4) + four fp32 operand-sized tiles (4*4) -- see
+    # test_tile_workspace_counts_the_transient_fifth_tile for why it's four.
+    assert _tile_workspace_bytes_per_elem(fp16_acc) == 20
 
     fp16_raw = Config(dtype="fp16", accumulate_fp32=False)
-    # acc fp16 (2) + two fp16 operand tiles (2 + 2) + the fp16 bmm output tile (2)
-    assert _tile_workspace_bytes_per_elem(fp16_raw) == 8
+    # acc fp16 (2) + four fp16 operand-sized tiles (4*2)
+    assert _tile_workspace_bytes_per_elem(fp16_raw) == 10
 
 
 def test_tile_workspace_counts_the_bmm_output_tile():
-    """Regression for #95: the per-step working set holds four T×T tiles —
+    """Regression for #95: the per-step working set holds a fourth T×T tile —
     acc + A + B + the GEMM output `prod` — so the model must budget the output
-    tile too. Before the fix it counted only acc + 2 operands (undersizing the
-    per-element cost and over-picking T)."""
+    tile too, not just acc + 2 operands."""
     for cfg in (
         Config(dtype="fp32"),
         Config(dtype="fp16", accumulate_fp32=True),
         Config(dtype="fp16", accumulate_fp32=False),
     ):
         operand = _tile_operand_bytes(cfg)
-        # acc + two operand tiles + one output tile (output produced in operand dtype).
-        assert _tile_workspace_bytes_per_elem(cfg) == cfg.acc_dtype.itemsize + 3 * operand
-        # It must be exactly one operand tile larger than the old 3-term model.
-        assert (
-            _tile_workspace_bytes_per_elem(cfg)
-            == cfg.acc_dtype.itemsize + 2 * operand + operand
-        )
+        # Must be at least acc + three operand tiles (two operands + output) --
+        # the current model charges a fourth on top; see the transient-fifth-
+        # tile test below for why.
+        assert _tile_workspace_bytes_per_elem(cfg) >= cfg.acc_dtype.itemsize + 3 * operand
 
-    # fp32 concretely: 4 (acc) + 4 + 4 (operands) + 4 (output) = 16, not the old 12.
-    assert _tile_workspace_bytes_per_elem(Config(dtype="fp32")) == 16
+
+def test_tile_workspace_counts_the_transient_fifth_tile():
+    """_gemm_tiled_sync reassigns a_dev, b_dev, and prod every k-iteration
+    (e.g. `a_dev = backend.to_device(...)`). Python evaluates the right-hand
+    side -- allocating the NEW tile -- before the name rebinds and the OLD
+    tile's reference drops, so whichever of those three lines is executing has
+    the previous iteration's tile it's about to replace still live alongside
+    the freshly allocated one: a fifth T×T tile, momentarily, on top of the
+    steady-state four (acc, a_dev, b_dev, prod). Budgeting only four
+    under-counts true peak device usage by one operand-sized tile."""
+    for cfg in (
+        Config(dtype="fp32"),
+        Config(dtype="fp16", accumulate_fp32=True),
+        Config(dtype="fp16", accumulate_fp32=False),
+    ):
+        operand = _tile_operand_bytes(cfg)
+        assert _tile_workspace_bytes_per_elem(cfg) == cfg.acc_dtype.itemsize + 4 * operand
+
+    # fp32 concretely: 4 (acc) + 4*4 (four operand-sized tiles) = 20, not 16.
+    assert _tile_workspace_bytes_per_elem(Config(dtype="fp32")) == 20
 
 
 def _legacy_auto_tile(n: int, cfg: Config, free_bytes: int) -> int:

@@ -685,6 +685,119 @@ def test_queue_dashboard_write_skips_timestamp_only_churn():
         assert open(path, encoding="utf-8").read() == first
 
 
+def test_run_once_continues_when_one_pr_write_back_fails():
+    """A failed write-back on one PR (e.g. a transient GitHub 504 while
+    labeling it) must not abort the sweep, fail an unrelated PR, or skip the
+    dashboard publish -- the other PRs are still processed and the queue is
+    still written."""
+    import subprocess
+
+    pr1 = _pr(number=1, author="alice", head_sha="s1")
+    pr2 = _pr(number=2, author="bob", head_sha="s2")
+
+    class BoomOnPR1(FakeClient):
+        def add_label(self, pr_number, label):
+            if pr_number == 1:
+                raise subprocess.CalledProcessError(1, "gh", "", "504 gateway timeout")
+            super().add_label(pr_number, label)
+
+    client = BoomOnPR1(prs={"all": [pr1, pr2], "open": [pr1, pr2]},
+                       diffs={1: SOME_DIFF, 2: SOME_DIFF})
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "data.json")
+        outcomes = run_once(client, dry_run=False, dashboard_data=path)
+        # both PRs decided despite #1's write-back exploding
+        assert {o.pr for o in outcomes} == {1, 2}
+        # PR #2's write-back still happened, and the dashboard still published
+        assert any(a[1] == 2 for a in client.actions)
+        assert os.path.exists(path)
+
+
+def test_is_transient_classifies_5xx_and_timeouts():
+    from eval.github_client import _is_transient
+    assert _is_transient("HTTP 504 Gateway Timeout")
+    assert _is_transient("secondary rate limit exceeded")
+    assert _is_transient("connection reset by peer")
+    assert not _is_transient("could not find label 'nope'")
+    assert not _is_transient("")
+
+
+def test_exec_retries_transient_then_succeeds():
+    import subprocess
+    from unittest import mock
+
+    from eval import github_client as gc
+
+    calls = {"n": 0}
+
+    def fake_run(cmd, capture_output, text):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            return subprocess.CompletedProcess(cmd, 1, "", "504 Gateway Timeout")
+        return subprocess.CompletedProcess(cmd, 0, "ok", "")
+
+    with mock.patch.object(gc.subprocess, "run", fake_run), \
+            mock.patch.object(gc.time, "sleep", lambda _s: None):
+        gc.GitHubClient("z/r").add_label(1, "x")   # succeeds after 2 retries, no raise
+    assert calls["n"] == 3
+
+
+def test_exec_does_not_retry_non_transient():
+    import subprocess
+    from unittest import mock
+
+    from eval import github_client as gc
+
+    calls = {"n": 0}
+
+    def fake_run(cmd, capture_output, text):
+        calls["n"] += 1
+        return subprocess.CompletedProcess(cmd, 1, "", "label not found")
+
+    raised = False
+    with mock.patch.object(gc.subprocess, "run", fake_run), \
+            mock.patch.object(gc.time, "sleep", lambda _s: None):
+        try:
+            gc.GitHubClient("z/r").add_label(1, "x")
+        except subprocess.CalledProcessError:
+            raised = True
+    assert raised and calls["n"] == 1   # raised immediately, no wasted retries
+
+
+def test_declared_track_parses_checked_box():
+    from eval.pr_bot import declared_track
+    body = "## Target track\n- [ ] full-rank\n- [x] low-rank\n- [ ] decaying-spectrum\n"
+    assert declared_track(body) == "low-rank"
+    assert declared_track("- [X] decaying-spectrum — smooth data") == "decaying-spectrum"
+    assert declared_track("- [ ] full-rank\n- [ ] low-rank") is None   # none checked
+    assert declared_track("") is None
+
+
+def test_queue_record_carries_declared_track():
+    from eval.pr_bot import _queue_record, GateOutcome
+    pr = _pr(number=7, body="- [x] low-rank\n" + SCORECARD_BODY)
+    rec = _queue_record(pr, GateOutcome(7, "eval_pending", kind="feat"))
+    assert rec["track"] == "low-rank"
+    # unspecified track -> None (gpu bot falls back to the full-rank reference)
+    pr2 = _pr(number=8, body=SCORECARD_BODY)
+    assert _queue_record(pr2, GateOutcome(8, "eval_pending", kind="feat"))["track"] is None
+
+
+def test_declared_transform_parses_and_ignores_placeholder():
+    from eval.pr_bot import declared_transform
+    assert declared_transform("**Transform:** `nystrom`") == "nystrom"
+    assert declared_transform("**transform:** dct") == "dct"
+    assert declared_transform("**Transform:** `____`") is None    # unfilled placeholder
+    assert declared_transform("no transform field here") is None
+
+
+def test_queue_record_carries_declared_transform():
+    from eval.pr_bot import _queue_record, GateOutcome
+    pr = _pr(number=9, body="**Transform:** `nystrom`\n" + SCORECARD_BODY)
+    rec = _queue_record(pr, GateOutcome(9, "eval_pending", kind="feat"))
+    assert rec["transform"] == "nystrom"
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

@@ -65,6 +65,64 @@ def test_attention_spec_rejects_invalid_dimensions():
             raise AssertionError(f"AttentionSpec({kwargs!r}) should raise ValueError")
 
 
+def test_attention_spec_rejects_non_integer_fields():
+    # window=2.5 used to construct successfully (only `window < 0` was
+    # checked) and then crash later inside local_window_attention's tensor
+    # slicing -- but only for (seq, window, block_size) combinations where a
+    # block boundary lands on the non-integer value, so it passed for some
+    # configs and crashed for others with a raw TypeError far from the real
+    # cause. It and the other int-typed fields must be rejected at
+    # construction instead. bool is also rejected even though it's a technical
+    # int subclass (isinstance(True, int) is True) -- never a meaningful value
+    # here.
+    for kwargs in (
+        {"batch": 1.5},
+        {"heads": 2.5},
+        {"seq": 10.0},
+        {"dim": 8.5},
+        {"window": 2.5},
+        {"seed": 1.5},
+        {"batch": True},
+        {"window": False},
+    ):
+        try:
+            AttentionSpec(**kwargs)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"AttentionSpec({kwargs!r}) should raise ValueError")
+
+
+def test_attention_spec_rejects_invalid_dtype():
+    # dtype used to construct successfully and only fail later, deep in
+    # data.torch_dtype, as an opaque KeyError.
+    for bad in ("bf16", "float32", "int8", "", "FP16"):
+        try:
+            AttentionSpec(dtype=bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"AttentionSpec(dtype={bad!r}) should raise ValueError")
+    for good in ("fp16", "fp32", "fp64"):
+        AttentionSpec(dtype=good)  # must not raise
+
+
+def test_attention_spec_rejects_invalid_device():
+    # device used to construct successfully and only fail later, deep in
+    # resolve_device (or not at all, for a syntactically-valid-but-wrong
+    # string), well after construction and after generate_qkv had already
+    # started building tensors.
+    for bad in ("gpu", "cuda:abc", "tpu", "cuda:", "", "Cuda:0"):
+        try:
+            AttentionSpec(device=bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"AttentionSpec(device={bad!r}) should raise ValueError")
+    for good in ("auto", "cpu", "mps", "cuda", "cuda:0", "cuda:7"):
+        AttentionSpec(device=good)  # must not raise
+
+
 def test_attention_spec_rejects_invalid_branch_weights():
     for kwargs in (
         {"local_weight": -0.1},
@@ -192,6 +250,72 @@ def test_hybrid_attention_causal_does_not_see_the_future():
     assert (moved - base)[:, :, :horizon, :].abs().max() < 1e-9
 
 
+def _corr_sample(seq, dim=4, seed=0):
+    torch.manual_seed(seed)
+    return tuple(torch.randn(1, 2, seq, dim, dtype=torch.float64) for _ in range(3))
+
+
+def test_adaptive_spectral_global_mix_causal_does_not_see_the_future():
+    """Regression for #180: the default adaptive branch used a global q.mean over
+    the full sequence and a symmetric FFT low-pass on V -- both leak the future."""
+    if _skip_if_no_torch():
+        return
+    torch.manual_seed(10)
+    seq = 32
+    q, k, v = _corr_sample(seq, seed=10)
+    bumped = v.clone()
+    bumped[:, :, -1, :] += 100.0
+    for freq_decay in (0.0, 0.7, 3.0):
+        base = adaptive_spectral_global_mix(
+            q, v, freq_decay=freq_decay, gate_strength=0.25, causal=True
+        )
+        moved = adaptive_spectral_global_mix(
+            q, bumped, freq_decay=freq_decay, gate_strength=0.25, causal=True
+        )
+        assert (moved - base)[:, :, :-1, :].abs().max() < 1e-9, freq_decay
+
+
+def test_adaptive_spectral_global_mix_causal_q_gate_is_prefix_only():
+    """The adaptive gate must not read future Q either."""
+    if _skip_if_no_torch():
+        return
+    torch.manual_seed(11)
+    seq = 24
+    q, k, v = _corr_sample(seq, seed=11)
+    q2 = q.clone()
+    q2[:, :, -1, :] += 50.0
+    a = adaptive_spectral_global_mix(q, v, causal=True, gate_strength=0.5)
+    b = adaptive_spectral_global_mix(q2, v, causal=True, gate_strength=0.5)
+    assert (a - b)[:, :, :-1, :].abs().max() < 1e-9
+
+
+def test_adaptive_hybrid_causal_does_not_see_the_future():
+    """The leak must not survive through adaptive_hybrid_attention (#180)."""
+    if _skip_if_no_torch():
+        return
+    seq, window = 32, 2
+    q, k, v = _corr_sample(seq, seed=12)
+    bumped = v.clone()
+    bumped[:, :, -1, :] += 100.0
+    base = adaptive_hybrid_attention(q, k, v, window=window, causal=True)
+    moved = adaptive_hybrid_attention(q, k, bumped, window=window, causal=True)
+    horizon = seq - 1 - window
+    assert (moved - base)[:, :, :horizon, :].abs().max() < 1e-9
+
+
+def test_adaptive_spectral_global_mix_noncausal_unchanged_by_new_flag():
+    """Default branch must match pre-flag behavior."""
+    if _skip_if_no_torch():
+        return
+    torch.manual_seed(13)
+    q, k, v = _corr_sample(20, seed=13)
+    a = adaptive_spectral_global_mix(q, v, freq_decay=0.5, gate_strength=0.2)
+    b = adaptive_spectral_global_mix(
+        q, v, freq_decay=0.5, gate_strength=0.2, causal=False
+    )
+    assert torch.allclose(a, b, atol=1e-12)
+
+
 def test_correlation_spectral_global_mix_preserves_shape_and_finiteness():
     if _skip_if_no_torch():
         return
@@ -199,11 +323,6 @@ def test_correlation_spectral_global_mix_preserves_shape_and_finiteness():
     out = correlation_spectral_global_mix(q, k, v, temperature=1.0, freq_decay=0.1)
     assert tuple(out.shape) == tuple(v.shape)
     assert torch.isfinite(out).all()
-
-
-def _corr_sample(seq, dim=4, seed=0):
-    torch.manual_seed(seed)
-    return tuple(torch.randn(1, 2, seq, dim, dtype=torch.float64) for _ in range(3))
 
 
 def test_correlation_spectral_global_mix_causal_does_not_see_the_future():

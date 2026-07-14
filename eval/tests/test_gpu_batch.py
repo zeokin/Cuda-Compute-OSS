@@ -141,6 +141,126 @@ def test_run_item_mock_writes_result_without_checkout():
         tmp.cleanup()
 
 
+def test_load_queue_reads_track():
+    tmp, path = _queue_file([
+        {"pr": 5, "head_sha": "s", "track": "low-rank"},
+        {"pr": 6, "head_sha": "t"},   # no track -> None
+    ])
+    try:
+        items = {it.pr: it for it in load_queue(path)}
+        assert items[5].track == "low-rank"
+        assert items[6].track is None
+    finally:
+        tmp.cleanup()
+
+
+def test_spec_for_track_pins_the_regime():
+    from eval.gpu_batch import spec_for_track
+    base = EvalSpec(n=8192, rank_m=999, fill="random", data_rank=None)
+    lr = spec_for_track(base, "low-rank")
+    # the PR's chosen rank_m/fill are IGNORED -> pinned low-rank regime
+    assert (lr.fill, lr.data_rank, lr.rank_m) == ("lowrank", 16, 64)
+    # unknown / unspecified track -> unchanged (full-rank reference fallback)
+    assert spec_for_track(base, None) is base
+    assert spec_for_track(base, "no-such-track") is base
+
+
+def _run_cell(acc, lat, dom):
+    return {"accuracy": acc, "latency_s": lat, "peak_vram_bytes": 100,
+            "peak_vram_mib": 1.0, "flop_ratio_vs_exact": 10.0,
+            "faster_than_exact": dom, "less_vram_than_exact": True,
+            "fewer_flops_than_exact": True, "gated": not dom,
+            "improvement": dom, "score": 5.0 if dom else 0.0}
+
+
+def _run_out(seed, cell):
+    return {"config": {"seed": seed}, "exact": {}, "transforms": {"ny": cell}}
+
+
+def test_aggregate_admits_only_if_every_run_dominates():
+    from eval.gpu_batch import aggregate_runs
+    # all 3 seeds dominate -> admitted, worst-case metrics, min score
+    agg = aggregate_runs([
+        _run_out(1, _run_cell(0.99, 0.20, True)),
+        _run_out(2, _run_cell(0.97, 0.25, True)),
+        _run_out(3, _run_cell(0.98, 0.22, True)),
+    ])
+    ny = agg["transforms"]["ny"]
+    assert ny["improvement"] is True
+    assert ny["accuracy"] == 0.97 and ny["latency_s"] == 0.25   # min acc, max latency
+    assert ny["score"] == 5.0 and ny["runs"] == 3
+    assert agg["aggregation"]["runs"] == 3
+
+
+def test_aggregate_rejects_lucky_seed():
+    from eval.gpu_batch import aggregate_runs
+    # one seed fails the gate -> NOT admitted, score forced to 0
+    agg = aggregate_runs([
+        _run_out(1, _run_cell(0.99, 0.20, True)),
+        _run_out(2, _run_cell(0.90, 0.60, False)),   # loses on this seed
+        _run_out(3, _run_cell(0.98, 0.22, True)),
+    ])
+    assert agg["transforms"]["ny"]["improvement"] is False
+    assert agg["transforms"]["ny"]["score"] == 0.0
+
+
+_TRANSFORMS_SRC = '''\
+class Transform:
+    name = "base"
+
+class RandomizedSVDTransform(Transform):
+    name = "rsvd"
+    def basis(self, n, m):
+        return qr(n, m)
+
+class NystromTransform(Transform):
+    name = "nystrom"
+    def basis(self, n, m):
+        return cols(n, m)
+'''
+
+_UPDATE_RSVD_DIFF = '''\
+--- a/strategy/transforms.py
++++ b/strategy/transforms.py
+@@ -6,2 +6,2 @@ class RandomizedSVDTransform(Transform):
+-    def basis(self, n, m):
+-        return qr4(n, m)
++    def basis(self, n, m):
++        return qr(n, m)
+'''
+
+_ADD_NYSTROM_DIFF = '''\
+--- a/strategy/transforms.py
++++ b/strategy/transforms.py
+@@ -8,0 +9,4 @@
++class NystromTransform(Transform):
++    name = "nystrom"
++    def basis(self, n, m):
++        return cols(n, m)
+'''
+
+_UNRELATED_DIFF = '''\
+--- a/tests/test_x.py
++++ b/tests/test_x.py
+@@ -1 +1 @@
+-x
++y
+'''
+
+
+def test_transform_touched_new_and_update_validate_equally():
+    from eval.gpu_batch import transform_touched_in
+    # UPDATE: modifying rsvd's class body counts, even though the string "rsvd"
+    # never appears in the changed lines -- this is the #156 case that the old
+    # name-in-diff check wrongly rejected.
+    assert transform_touched_in(_TRANSFORMS_SRC, _UPDATE_RSVD_DIFF, "rsvd") is True
+    assert transform_touched_in(_TRANSFORMS_SRC, _UPDATE_RSVD_DIFF, "nystrom") is False
+    # NEW: adding the nystrom class counts -- the #194 case.
+    assert transform_touched_in(_TRANSFORMS_SRC, _ADD_NYSTROM_DIFF, "nystrom") is True
+    # claiming a transform the PR does not touch -> not verified.
+    assert transform_touched_in(_TRANSFORMS_SRC, _UNRELATED_DIFF, "rsvd") is False
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

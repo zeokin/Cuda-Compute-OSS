@@ -31,6 +31,28 @@ Example:
 - uv run --extra test python -m pytest tests/ strategy/tests/ eval/tests/ -v
 -->
 
+## Target track (feat PRs — declare exactly one)
+
+- [ ] full-rank — random data, the hard general case (accuracy floor 0.80)
+- [ ] low-rank — rank ≪ N (accuracy floor 0.95)
+- [ ] decaying-spectrum — polynomially decaying singular values (accuracy floor 0.90)
+
+<!--
+The GPU bot re-scores your PR at this track's PINNED regime (fixed rank / M /
+data), on FRESH unseen seeds, rebased onto current `main`, and computes the tier
+against the ledger's recorded frontier. So the numbers you paste below are
+context, not the verdict — you cannot pick the rank/M that flatters your method,
+and the baseline is always the current frontier, never the rsvd on your branch.
+-->
+
+**Transform:** `____`
+
+<!--
+The transform your PR adds or changes (the name in `register_transform("…")`),
+e.g. `nystrom`. The bot scores THIS transform, and verifies your diff actually
+adds or modifies it — you cannot claim credit for a transform you did not write.
+-->
+
 ## GPU Result (required for feat PRs only)
 
 | metric          | value          |
@@ -47,7 +69,7 @@ latency         — mean wall-clock ms of the smart multiply, GPU-synchronized
 VRAM usage      — peak incremental GPU memory during the multiply
 -->
 
-**Regime measured:** N=12000, dtype=fp32, fill=full-rank, rank M=____, device=RTX 5090
+**Regime measured:** N=8192, dtype=fp32, fill=full-rank, rank M=____, device=RTX 5090
 
 <details>
 <summary>Raw scorecard (paste <code>python -m eval …</code> output or <code>--json</code>)</summary>

@@ -30,6 +30,7 @@ from strategy.subspace import default_rank_m
 
 from . import metrics
 from .memory import MemoryProbe
+from .tracks import track_floor as default_floor  # re-exported: floor for a fill's track
 
 
 @dataclass
@@ -48,8 +49,10 @@ class EvalConfig:
     data_rank    : rank used when fill='lowrank' or 'decaying-spectrum'
                    (None => N//32).
     transforms   : transform names to evaluate (None => all registered).
-    accuracy_floor: accuracy below this hard-gates the score to 0 (default 0.8;
-                    set 0.0 to disable the gate).
+    accuracy_floor: accuracy below this hard-gates the score to 0. None (the
+                    default) uses the per-track floor for ``fill`` (full-rank
+                    0.80, low-rank 0.95, decaying-spectrum 0.90); pass a float to
+                    override (0.0 disables the gate).
     vram_unit    : unit for Peak_VRAM inside the score ('gib'|'mib'|'bytes').
     seed         : base RNG seed (pair i uses seed+2i, seed+2i+1). None (the
                    default) draws a fresh unpredictable seed each run --
@@ -59,18 +62,25 @@ class EvalConfig:
     verbose      : print the report.
     """
 
-    n: int = 12000
+    n: int = 8192
     pairs: int = 3
     dtype: str = "fp32"
     rank_m: int | None = None
     fill: str = "random"          # full-rank by default (the honest, general case)
     data_rank: int | None = None
     transforms: list[str] | None = None
-    accuracy_floor: float = 0.8
+    accuracy_floor: float | None = None
     vram_unit: str = "gib"
     seed: int | None = None
     device: int = 0
     verbose: bool = True
+
+    def __post_init__(self):
+        # None => use the per-track floor for this fill (whitepaper 6.2). An
+        # explicit float overrides it (e.g. contributor self-runs, or a track
+        # whose floor is being tuned).
+        if self.accuracy_floor is None:
+            self.accuracy_floor = default_floor(self.fill)
 
 
 def _resolve_seed(seed: int | None) -> int:

@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import label as verdict_label
+from . import tracks
 from .github_client import GitHubClient
 from .ledger import (
     append_entry,
@@ -21,7 +22,13 @@ from .ledger import (
     reference_anchor,
     write_dashboard_data,
 )
-from .pr_bot import GPU_QUEUE_LABEL
+from .pr_bot import GPU_QUEUE_LABEL, CHANGES_REQUESTED_LABEL
+
+# Result states from gpu_batch that mean "not scored" -- no verdict/ledger entry.
+BLOCKED_STATES = {
+    "needs_rebase": "conflicts with `main`; rebase to be scored against the current frontier",
+    "unverified_transform": "the declared transform is not added or modified by this PR's diff",
+}
 
 DEFAULT_LEDGER = "eval/ledger.jsonl"
 DEFAULT_DASHBOARD_RESULTS = "dashboard/results.json"
@@ -37,12 +44,7 @@ def load_result(path: str | Path) -> dict:
 
 
 def track_from_config(config: dict) -> str:
-    fill = config.get("fill", "random")
-    if fill == "random":
-        return "full-rank"
-    if fill == "lowrank":
-        return "low-rank"
-    return str(fill)
+    return tracks.track_for_fill(config.get("fill", "random"))
 
 
 def best_transform(payload: dict) -> tuple[str, dict]:
@@ -51,6 +53,18 @@ def best_transform(payload: dict) -> tuple[str, dict]:
     if not name:
         raise ValueError("result has no best transform")
     return name, ev["transforms"][name]
+
+
+def candidate_transform(payload: dict) -> tuple[str, dict]:
+    """The transform this PR is scored on: the DECLARED candidate (verified by
+    gpu_batch), not merely the best-scoring transform in the run -- otherwise a
+    PR could be credited for rsvd's (or another existing transform's) result.
+    Falls back to the best transform only when nothing was declared."""
+    name = payload.get("transform")
+    ev = payload["eval"]
+    if name and name in ev.get("transforms", {}):
+        return name, ev["transforms"][name]
+    return best_transform(payload)
 
 
 def entry_key(entry: dict) -> tuple:
@@ -72,8 +86,8 @@ def find_recorded(entries: list[dict], pr: int | None, commit: str | None) -> di
 def result_entry(payload: dict, entries: list[dict]) -> dict:
     ev = payload["eval"]
     config = ev.get("config", {})
-    transform, result = best_transform(payload)
-    track = track_from_config(config)
+    transform, result = candidate_transform(payload)
+    track = payload.get("track") or track_from_config(config)
     verdict = verdict_label.label(
         result,
         frontier_score(entries, track),
@@ -146,6 +160,22 @@ def apply_github_result(
         client.close_pr(pr, "Closed after GPU evaluation: eval:REJECT")
 
 
+def apply_blocked(client: GitHubClient, payload: dict, state: str) -> None:
+    """A PR that was not scored (rebase conflict / unverified transform): drop it
+    from the queue, request changes, and explain -- no verdict, no ledger entry."""
+    pr = int(payload["pr"])
+    client.remove_label(pr, GPU_QUEUE_LABEL)
+    client.add_label(pr, CHANGES_REQUESTED_LABEL)
+    marker = f"<!-- cco-{state}:{payload.get('head_sha', '')} -->"
+    if not any(marker in body for body in client.get_comments(pr)):
+        detail = payload.get("detail", BLOCKED_STATES[state])
+        client.post_comment(
+            pr,
+            f"{marker}\nGPU scoring skipped — {detail}. "
+            "Fix and push a new commit to re-enter the queue.",
+        )
+
+
 def process_results(
     paths: list[str | Path],
     *,
@@ -160,6 +190,13 @@ def process_results(
     processed = []
     for path in paths:
         payload = load_result(path)
+        state = payload.get("state")
+        if state in BLOCKED_STATES:          # rebase conflict / unverified transform
+            if client is not None:
+                apply_blocked(client, payload, state)
+            processed.append({"pr": payload.get("pr"), "state": state,
+                              "detail": payload.get("detail", BLOCKED_STATES[state])})
+            continue
         existing = find_recorded(entries, payload.get("pr"), payload.get("head_sha", ""))
         if existing is not None:
             entry = existing
@@ -174,7 +211,7 @@ def process_results(
     data = build_dashboard_data(
         entries,
         gpu="RTX 5090",
-        accuracy_floors={"full-rank": 0.8, "low-rank": 0.8, "decaying-spectrum": 0.8},
+        accuracy_floors=tracks.accuracy_floors(),
         roadmap=[
             {"phase": 1, "target": "governance and CPU validation", "status": "done"},
             {"phase": 2, "target": "queued sequential GPU batches", "status": "ready"},
@@ -211,6 +248,9 @@ def main(argv=None) -> int:
         close_rejected=args.close_rejected,
     )
     for entry in entries:
+        if entry.get("state") in BLOCKED_STATES:
+            print(f"PR #{entry['pr']}: skipped ({entry['state']})")
+            continue
         mode = "mock " if entry.get("mock") else ""
         print(f"PR #{entry['pr']}: {mode}eval:{entry['verdict']} score={entry['score']}")
     return 0

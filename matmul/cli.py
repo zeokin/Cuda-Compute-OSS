@@ -13,7 +13,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="matmul",
         description="GPU matrix x matrix (square n x n) with out-of-core tiling.",
     )
-    p.add_argument("--n", type=int, default=12000, help="matrix dimension n (n x n). default 12000")
+    p.add_argument("--n", type=int, default=8192, help="matrix dimension n (n x n). default 8192")
     p.add_argument("--dtype", choices=list(DTYPES), default="fp32")
     p.add_argument("--device", type=int, default=0, help="CUDA device index")
     p.add_argument("--tile", type=int, default=None,

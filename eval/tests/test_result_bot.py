@@ -89,6 +89,41 @@ def test_load_result_roundtrip():
         assert load_result(path)["pr"] == 14
 
 
+def test_candidate_transform_scores_declared_not_best():
+    from eval.result_bot import candidate_transform
+    # 'rsvd' is the best-scoring transform, but the PR declared 'nystrom' ->
+    # the PR must be scored on nystrom, not credited for rsvd's result.
+    payload = {"transform": "nystrom", "eval": {"best": "rsvd", "transforms": {
+        "rsvd": {"score": 13.0}, "nystrom": {"score": 17.0}}}}
+    name, res = candidate_transform(payload)
+    assert name == "nystrom" and res["score"] == 17.0
+    # nothing declared -> fall back to the best transform
+    p2 = {"eval": {"best": "rsvd", "transforms": {"rsvd": {"score": 13.0}}}}
+    assert candidate_transform(p2)[0] == "rsvd"
+
+
+def test_result_entry_uses_declared_track_and_transform():
+    payload = _mock_payload(pr=21, fill="lowrank")
+    payload["track"] = "low-rank"
+    payload["transform"] = "mine"
+    entry = result_entry(payload, [])
+    assert entry["track"] == "low-rank" and entry["transform"] == "mine"
+
+
+def test_process_results_skips_blocked_state():
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        rp = _write_payload(root / "r.json", {
+            "pr": 5, "head_sha": "s5", "state": "needs_rebase",
+            "detail": "conflicts with main"})
+        ledger = root / "ledger.jsonl"
+        out = process_results([rp], ledger_path=ledger,
+                              dashboard_results=root / "results.json")
+        assert out[0]["state"] == "needs_rebase"
+        # a blocked PR gets NO ledger entry (no verdict)
+        assert not ledger.exists() or ledger.read_text().strip() == ""
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

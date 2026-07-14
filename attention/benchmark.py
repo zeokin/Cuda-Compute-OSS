@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sys
 import time
 
 from .data import generate_qkv, resolve_device
@@ -281,25 +282,34 @@ def main(argv=None) -> int:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
-    result = run_once(
-        batch=args.batch,
-        heads=args.heads,
-        seq=args.seq,
-        dim=args.dim,
-        dtype=args.dtype,
-        window=args.window,
-        local_weight=args.local_weight,
-        global_weight=args.global_weight,
-        freq_decay=args.freq_decay,
-        gate_strength=args.gate_strength,
-        temperature=args.temperature,
-        landmarks=args.landmarks,
-        landmark_policy=args.landmark_policy,
-        mode=args.mode,
-        causal=args.causal,
-        seed=args.seed,
-        device=args.device,
-    )
+    # Invalid knobs (--batch 0, --temperature 0, a bad --landmark-policy, ...) are
+    # rejected by AttentionSpec / the hybrid helpers, and a missing GPU / PyTorch
+    # raises inside run_once. Report all of these as a clean stderr line and exit
+    # 2, matching the matmul and strategy CLIs (see tests/test_cli_errors.py, #175)
+    # instead of dumping an uncaught traceback (#201).
+    try:
+        result = run_once(
+            batch=args.batch,
+            heads=args.heads,
+            seq=args.seq,
+            dim=args.dim,
+            dtype=args.dtype,
+            window=args.window,
+            local_weight=args.local_weight,
+            global_weight=args.global_weight,
+            freq_decay=args.freq_decay,
+            gate_strength=args.gate_strength,
+            temperature=args.temperature,
+            landmarks=args.landmarks,
+            landmark_policy=args.landmark_policy,
+            mode=args.mode,
+            causal=args.causal,
+            seed=args.seed,
+            device=args.device,
+        )
+    except (ValueError, RuntimeError, MemoryError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
 
     if args.json:
         print(json.dumps(result, indent=2))

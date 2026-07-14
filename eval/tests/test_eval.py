@@ -96,6 +96,19 @@ def test_score_no_floor_by_default():
     assert metrics.score(0.01, 1e6, 0.01) > 0.0
 
 
+def test_per_track_accuracy_floors():
+    # EvalConfig with accuracy_floor=None (the default) resolves the floor from
+    # the fill's track (whitepaper 6.2), instead of a flat 0.8.
+    from eval.evaluator import EvalConfig, default_floor
+    assert EvalConfig(fill="random").accuracy_floor == 0.80             # full-rank
+    assert EvalConfig(fill="lowrank").accuracy_floor == 0.95            # low-rank (easy -> higher bar)
+    assert EvalConfig(fill="decaying-spectrum").accuracy_floor == 0.90
+    assert EvalConfig(fill="iota").accuracy_floor == 0.80
+    assert default_floor("unknown-fill") == 0.80                       # safe default
+    # an explicit floor overrides the per-track default
+    assert EvalConfig(fill="lowrank", accuracy_floor=0.5).accuracy_floor == 0.5
+
+
 def test_score_monotonic_in_accuracy():
     lo = metrics.score(0.2, 1e6, 0.01)
     hi = metrics.score(0.9, 1e6, 0.01)
@@ -106,7 +119,7 @@ def test_default_rank_m_matches_strategy_floor():
     # Strategy floors M at 64; eval must report the same default, not bare N//8.
     assert default_rank_m(256) == 64
     assert default_rank_m(256) != 256 // 8
-    assert default_rank_m(12000) == 1500
+    assert default_rank_m(8192) == 1024
     assert default_rank_m(32) == 32
 
 

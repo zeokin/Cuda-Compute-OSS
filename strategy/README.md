@@ -38,9 +38,10 @@ and swappable/updatable via a registry:
 
 | transform | kind | best for |
 |---|---|---|
-| `rsvd`   | **data-dependent** range finder over A and B | general low-rank data (accurate) |
+| `rsvd`    | **data-dependent** range finder over A and B | general low-rank data (accurate) |
+| `nystrom` | **data-dependent** landmark columns of A/B + thin QR | low-rank data (cheaper basis than rsvd) |
 
-`rsvd` is the **only** built-in transform. New transforms are the contribution
+`rsvd` and `nystrom` are the built-in transforms. New transforms are the contribution
 surface — subclass `Transform` and register your own below.
 
 Register your own (the updatable hook):
@@ -63,22 +64,22 @@ C = subspace_matmul(A, B, config=Config(transform="mine", rank_m=256))
 CLI:
 
 ```bash
-# full-rank 12000 (the honest hard case): reconstruction error is large by design.
-python -m strategy --n 12000 --transform rsvd --fill random --verify
+# full-rank 8192 (the honest hard case): reconstruction error is large by design.
+python -m strategy --n 8192 --transform rsvd --fill random --verify
 
 # smart multiply on compressible data (where it works), report error:
-python -m strategy --n 12000 --transform rsvd --fill lowrank --data-rank 16 --verify
+python -m strategy --n 8192 --transform rsvd --fill lowrank --data-rank 16 --verify
 
 # normal (exact) vs smart, side by side on the same inputs:
-python -m strategy --n 12000 --compare --transform rsvd --fill lowrank --data-rank 16
+python -m strategy --n 8192 --compare --transform rsvd --fill lowrank --data-rank 16
 ```
 
-(`M` defaults to `min(n, max(64, n // 8))` — e.g. 1500 at `n = 12000`, but
+(`M` defaults to `min(n, max(64, n // 8))` — e.g. 1024 at `n = 8192`, but
 floored at 64 for small `n` (so `n = 256` gives `M = 64`, not 32); set it with
 `--rank-m`.)
 
 Key flags: `--n`, `--dtype {fp16,fp32,fp64}`, `--rank-m M`, `--transform`,
-`--compare`, `--fill {lowrank,random,iota,zeros}`, `--data-rank`, `--storage`,
+`--compare`, `--fill {lowrank,random,decaying-spectrum,iota,zeros}`, `--data-rank`, `--storage`,
 `--device`, `--verify`.
 
 Compute is **GPU-only** — PyTorch on **CUDA → Apple MPS**. Every product in this

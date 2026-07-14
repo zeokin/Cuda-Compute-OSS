@@ -150,7 +150,7 @@ than private, parallel guessing.
 
 - **Code**: the transform/strategy, registered and selectable by name.
 - **Scorecard**: the machine-readable output of
-  `python -m eval --n 12000 --pairs 3 --transforms mine --json`, produced on
+  `python -m eval --n 8192 --pairs 3 --transforms mine --json`, produced on
   the contributor's GPU.
 - **Honest FLOP accounting**: `basis_flops()` for any non-negligible basis
   construction cost (verified by the harness, §7).
@@ -226,7 +226,7 @@ so every merged PR is one comparable point on one public curve.*
 | Pin | Value |
 |---|---|
 | **GPU** | One fixed evaluation device (reference: NVIDIA RTX 5090), same physical class for every eval; clocks recorded per run |
-| **Workload** | `N = 12000`, fp32, **full-rank** random couples, 3 pairs, per-eval logged seeds |
+| **Workload** | `N = 8192`, fp32, **full-rank** random couples, 3 pairs, per-eval logged seeds |
 | **Baseline** | Exact `torch.matmul` product, pinned PyTorch + CUDA versions, measured in the same run on the same box |
 | **Environment** | Pinned container image; any change to a pin starts a new, clearly-marked frontier era |
 
@@ -266,8 +266,8 @@ project's progress report; if the curve doesn't move, nothing is claimed.
 
 ```bash
 git clone https://github.com/zeokin/Cuda-Compute-OSS && cd Cuda-Compute-OSS
-python -m eval --n 12000 --pairs 3                 # reference regime scorecard
-python -m eval --n 12000 --pairs 3 --json          # machine-readable
+python -m eval --n 8192 --pairs 3                 # reference regime scorecard
+python -m eval --n 8192 --pairs 3 --json          # machine-readable
 python tests/test_correctness.py                   # the baseline's own gates
 ```
 

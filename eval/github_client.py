@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import time
 from dataclasses import dataclass
 
 
@@ -38,14 +39,52 @@ class ReviewInfo:
     author_association: str = ""
 
 
+_TRANSIENT_MARKERS = (
+    "502", "503", "504", "gateway timeout", "timeout",
+    "temporarily unavailable", "secondary rate limit", "rate limit",
+    "connection reset", "connection refused", "eof", "tls handshake",
+    "could not resolve host",
+)
+
+
+def _is_transient(text: str) -> bool:
+    """True for gh/GitHub failures worth retrying rather than aborting on:
+    5xx gateways, timeouts, secondary rate limits, dropped connections."""
+    low = (text or "").lower()
+    return any(marker in low for marker in _TRANSIENT_MARKERS)
+
+
 class GitHubClient:
     def __init__(self, repo: str):
         self.repo = repo
 
+    def _exec(self, args, *, repo: bool = True, check: bool = True,
+              retries: int = 3, backoff: float = 2.0) -> subprocess.CompletedProcess:
+        """Run one ``gh`` command, retrying transient failures (5xx / timeout /
+        secondary rate limit / dropped connection) with exponential backoff
+        before giving up. A single transient GitHub hiccup must not abort the
+        whole PR sweep (see eval.pr_bot.run_once). On persistent failure this
+        raises when ``check`` (matching subprocess semantics), else returns the
+        failed result. ``repo=False`` omits the ``-R`` flag, for ``gh api``
+        calls that carry the repo in the URL."""
+        cmd = ["gh", *args] + (["-R", self.repo] if repo else [])
+        last = None
+        for attempt in range(max(1, retries)):
+            proc = subprocess.run(cmd, capture_output=True, text=True)
+            if proc.returncode == 0:
+                return proc
+            last = proc
+            transient = _is_transient(proc.stderr) or _is_transient(proc.stdout)
+            if not transient or attempt == retries - 1:
+                break
+            time.sleep(backoff * (2 ** attempt))
+        if check and last is not None:
+            raise subprocess.CalledProcessError(
+                last.returncode, cmd, last.stdout, last.stderr)
+        return last
+
     def _run(self, *args: str) -> str:
-        result = subprocess.run(["gh", *args, "-R", self.repo],
-                                capture_output=True, text=True, check=True)
-        return result.stdout
+        return self._exec(list(args)).stdout
 
     def list_prs(self, state: str = "open") -> list:
         out = self._run("pr", "list", "--state", state, "-L", "300", "--json",
@@ -97,13 +136,10 @@ class GitHubClient:
         return "\n\n".join(part for part in parts if part)
 
     def get_reviews(self, pr_number: int) -> list[ReviewInfo]:
-        result = subprocess.run(
-            ["gh", "api", f"repos/{self.repo}/pulls/{pr_number}/reviews"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        out = result.stdout
+        out = self._exec(
+            ["api", f"repos/{self.repo}/pulls/{pr_number}/reviews"],
+            repo=False,
+        ).stdout
         data = json.loads(out)
         return [
             ReviewInfo(
@@ -117,17 +153,14 @@ class GitHubClient:
         ]
 
     def post_comment(self, pr_number: int, body: str) -> None:
-        subprocess.run(["gh", "pr", "comment", str(pr_number), "-R", self.repo,
-                       "--body", body], check=True)
+        self._exec(["pr", "comment", str(pr_number), "--body", body])
 
     def add_label(self, pr_number: int, label: str) -> None:
-        subprocess.run(["gh", "pr", "edit", str(pr_number), "-R", self.repo,
-                       "--add-label", label], check=True)
+        self._exec(["pr", "edit", str(pr_number), "--add-label", label])
 
     def remove_label(self, pr_number: int, label: str) -> None:
-        subprocess.run(["gh", "pr", "edit", str(pr_number), "-R", self.repo,
-                       "--remove-label", label], check=False)
+        self._exec(["pr", "edit", str(pr_number), "--remove-label", label],
+                   check=False)
 
     def close_pr(self, pr_number: int, reason: str) -> None:
-        subprocess.run(["gh", "pr", "close", str(pr_number), "-R", self.repo,
-                       "--comment", reason], check=True)
+        self._exec(["pr", "close", str(pr_number), "--comment", reason])

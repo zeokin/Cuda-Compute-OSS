@@ -30,11 +30,11 @@ If you want to get involved, start here in the repo:
 - **The whitepaper** — the full vision, roadmap, and how Gittensor rewards work: [`docs/whitepaper.md`](docs/whitepaper.md)
 - **Landing page** — the project overview site: [zeokin.github.io/Cuda-Compute-OSS](https://zeokin.github.io/Cuda-Compute-OSS/index/index.html)
 
-Reference setup: **`12000 × 12000`** matrices, **full-rank** (random) data, on an
+Reference setup: **`8192 × 8192`** matrices, **full-rank** (random) data, on an
 **RTX 5090** GPU via PyTorch.
 
 ```bash
-python -m eval --n 12000 --pairs 3        # full-rank is the default
+python -m eval --n 8192 --pairs 3        # full-rank is the default
 ```
 
 ---
@@ -72,7 +72,7 @@ which is the part you innovate on.
  A,B ──[ transform → basis Q ]──▶ compress (N,N)→(M,M) ──▶ multiply (M,M) ──▶ reconstruct (N,N) ≈ C
 ```
 
-> **The bar is deliberately hard.** The reference regime is **full-rank** `12000`
+> **The bar is deliberately hard.** The reference regime is **full-rank** `8192`
 > data — the general case, with no low-rank structure to exploit. A subspace of
 > `M ≪ N` cannot capture a full-rank product, so the reference subspace strategy
 > **does not beat exact here** (its accuracy collapses below any floor). That
@@ -142,9 +142,11 @@ itself verified.
 
 The fast way to a good score is usually a lie. These are rejected on sight:
 
-- **No accuracy laundering.** You cannot buy latency/VRAM with accuracy. An
-  improvement requires cost to drop while accuracy holds — see the dominance
-  rule in [BENCHMARKS.md](BENCHMARKS.md).
+- **No accuracy laundering.** You cannot drop **below your track's accuracy
+  floor** to buy latency/VRAM and call it a win — below the floor gates the score
+  to `0`. Above the floor a cheaper method *is* a real improvement, discounted by
+  how much accuracy it trades away (the composite score) — see the rule in
+  [BENCHMARKS.md](BENCHMARKS.md).
 - **No teaching to the test.** No hardcoding, caching, or looking up the
   evaluation matrices, seeds, or products. A strategy must work on unseen
   couples drawn from the same distribution.
@@ -187,15 +189,15 @@ and opt into the GPU extra:
 # 4. install PyTorch for GPU scoring
 uv sync --extra test --extra gpu
 
-# 5. see the exact baseline work (n defaults to 12000)
-uv run python -m matmul --n 12000 --verify
+# 5. see the exact baseline work (n defaults to 8192)
+uv run python -m matmul --n 8192 --verify
 
 # 6. run a smart strategy
-uv run python -m strategy --n 12000 --transform rsvd --verify
+uv run python -m strategy --n 8192 --transform rsvd --verify
 
-# 7. self-score all strategies on the reference regime: 12000, full-rank
+# 7. self-score all strategies on the reference regime: 8192, full-rank
 #    (this is what you paste in a PR)
-uv run python -m eval --n 12000 --pairs 3
+uv run python -m eval --n 8192 --pairs 3
 
 # 8. run the GPU-aware tests (GPU-only cases skip if no GPU is present)
 uv run python tests/test_correctness.py

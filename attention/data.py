@@ -39,7 +39,12 @@ def generate_qkv(spec: AttentionSpec, device=None):
     """Return synthetic Q/K/V tensors for one attention benchmark run."""
     torch = _torch()
     dev = device if device is not None else resolve_device(spec.device)
-    gen = torch.Generator(device=dev.type if dev.type != "mps" else "cpu").manual_seed(spec.seed)
+    # The RNG must live on the SAME device as the tensors it seeds -- including
+    # the index. dev.type drops the index, so a --device cuda:1 run built the
+    # generator on "cuda" (= cuda:0) and torch.randn(generator=..., device=cuda:1)
+    # then raised a device mismatch. MPS has no device-side generator -> use CPU.
+    gen_device = "cpu" if dev.type == "mps" else dev
+    gen = torch.Generator(device=gen_device).manual_seed(spec.seed)
     dtype = torch_dtype(spec.dtype)
     shape = (spec.batch, spec.heads, spec.seq, spec.dim)
     q = torch.randn(shape, generator=gen, device=dev, dtype=dtype)

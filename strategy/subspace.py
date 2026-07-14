@@ -18,6 +18,7 @@ Standalone: no imports from the sibling `matmul` package.
 """
 from __future__ import annotations
 
+import inspect
 import math
 
 import numpy as np
@@ -78,10 +79,16 @@ def stream_gemm_right(X, Q, backend: Backend, dtype,
     """Return X @ Q  (n x m), streaming the rows of X. Q is resident (n x m)."""
     xp = backend.xp
     n, m = X.shape[0], Q.shape[1]
+    item = np.dtype(dtype).itemsize
     out = xp.empty((n, m), dtype=dtype)
-    # each block also allocates matmul(Xr, Q) -> (blk, m): m output cols per row.
-    blk = _row_block(n, X.shape[1], backend, np.dtype(dtype).itemsize, frac,
-                     out_cols=m)
+    # `out` is a full (n, m) device buffer resident for the whole loop, so it is a
+    # fixed cost that does not scale with the block -- charge it up front, exactly
+    # as stream_gemm_left_t does for its (n, m) accumulator. Omitting it sizes the
+    # block against the whole budget and under-counts device use by n*m (up to the
+    # entire budget at M = N), risking OOM. Each block also allocates
+    # matmul(Xr, Q) -> (blk, m): m output cols per staged row.
+    blk = _row_block(n, X.shape[1], backend, item, frac,
+                     out_cols=m, fixed_bytes=n * m * item)
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
         Xr = backend.to_device(np.asarray(X[r0:r1, :]).astype(dtype, copy=False))
@@ -96,11 +103,15 @@ def stream_gemm_left_t(X, Q, backend: Backend, dtype,
     xp = backend.xp
     n, m = X.shape[0], Q.shape[1]
     acc = xp.zeros((n, m), dtype=dtype)
-    # matmul(Xr.T, Q[rb]) is (n, m) regardless of the block size, so it is a
-    # fixed per-iteration cost rather than a per-row one.
+    # Two (n, m) buffers are live at the peak of each step and neither scales with
+    # the block: the resident accumulator ``acc`` and the ``matmul(Xr.T, Q[rb])``
+    # product, which cannot alias ``acc`` and coexists with it during ``acc += ...``.
+    # Charge both up front (2*n*m) -- counting only the product (n*m) leaves the
+    # accumulator unbudgeted and sizes the block against the whole budget, risking
+    # OOM (cf. #138 and stream_gemm_right's resident output).
     item = np.dtype(dtype).itemsize
     blk = _row_block(n, X.shape[1], backend, item, frac,
-                     fixed_bytes=n * m * item)
+                     fixed_bytes=2 * n * m * item)
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
         Xr = backend.to_device(np.asarray(X[r0:r1, :]).astype(dtype, copy=False))
@@ -115,11 +126,16 @@ def compress(X, Q, backend: Backend, dtype,
     xp = backend.xp
     n, m = X.shape[0], Q.shape[1]
     acc = xp.zeros((m, m), dtype=dtype)
-    # per block: matmul(Xr, Q) -> (blk, m) (m cols per row), then the (m, m)
-    # product folded into acc -- a fixed per-iteration temporary.
+    # Two (m, m) buffers are live and neither scales with the block: the resident
+    # accumulator ``acc`` and the ``matmul(...) -> (m, m)`` product, which cannot
+    # alias ``acc`` and coexists with it during ``acc += ...``. Charge both up
+    # front (2*m*m) -- counting only the product leaves the accumulator
+    # unbudgeted (invisible on MPS, where free_compute_bytes() is a static
+    # ceiling), exactly as stream_gemm_left_t does for its (n, m) accumulator.
+    # Each block also stages Xr and its matmul(Xr, Q) -> (blk, m) intermediate.
     item = np.dtype(dtype).itemsize
     blk = _row_block(n, X.shape[1], backend, item, frac,
-                     out_cols=m, fixed_bytes=m * m * item)
+                     out_cols=m, fixed_bytes=2 * m * m * item)
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
         Xr = backend.to_device(np.asarray(X[r0:r1, :]).astype(dtype, copy=False))
@@ -140,10 +156,18 @@ def reconstruct(Ctil, Q, C_out, backend: Backend, out_dtype,
     """
     n, m = Q.shape
     item_dtype = compute_dtype if compute_dtype is not None else out_dtype
+    item = np.dtype(item_dtype).itemsize
     # per row: the (rb, n) product plus the (rb, m) intermediate Q[rb] @ Ctil,
-    # which is still live while the outer matmul against QT runs.
-    blk = _row_block(n, n, backend, np.dtype(item_dtype).itemsize, frac,
-                     out_cols=m)
+    # which is still live while the outer matmul against QT runs. Q (n, m) and
+    # Ctil (m, m) are also both fully resident for the entire loop -- unlike
+    # the streamed inputs elsewhere in this module, they arrive already on the
+    # device and are never staged per block. That is a fixed n*m + m*m cost
+    # that does not shrink with the block, so it must be taken off the budget
+    # up front (cf. stream_gemm_right's resident output, stream_gemm_left_t's
+    # resident accumulator) rather than left to a live free-memory reading
+    # that, on MPS, is a static ceiling and never reflects it at all.
+    blk = _row_block(n, n, backend, item, frac,
+                     out_cols=m, fixed_bytes=(n * m + m * m) * item)
     QT = Q.T
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
@@ -190,12 +214,17 @@ def multiply_subspace(A, B, C, backend: Backend, cfg: Config) -> dict:
         raise ValueError(f"rank_m must be in [1, n]; got {m} for n={n}")
     cdt = cfg.compute_dtype
 
+    frac = cfg.vram_fraction
     transform = get_transform(cfg.transform, cfg.transform_seed)
-    Q = transform.basis(n, m, backend, cdt, A=A, B=B)     # (n, m) orthonormal
+    # Give the basis stage the same VRAM budget as compress/reconstruct. Pass frac
+    # only if the transform accepts it, so custom transforms with the older
+    # basis(...) signature keep working.
+    if "frac" in inspect.signature(transform.basis).parameters:
+        Q = transform.basis(n, m, backend, cdt, A=A, B=B, frac=frac)  # (n, m) orthonormal
+    else:
+        Q = transform.basis(n, m, backend, cdt, A=A, B=B)
     if Q.shape != (n, m):
         raise ValueError(f"transform returned basis {Q.shape}, expected {(n, m)}")
-
-    frac = cfg.vram_fraction
     Atil = compress(A, Q, backend, cdt, frac)             # (m, m)
     Btil = compress(B, Q, backend, cdt, frac)             # (m, m)
     Ctil = backend.matmul(Atil, Btil)                     # (m, m)  -- cheap core

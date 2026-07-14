@@ -1,10 +1,71 @@
 {
-  "prs": [],
-  "roadmap": [],
+  "updated": "2026-07-13T14:18:06+00:00",
   "status": {
-    "gpu": "RTX 5090",
-    "tracks": {}
+    "gpu": "NVIDIA RTX PRO 500 Blackwell Generation Laptop GPU",
+    "tracks": {
+      "decaying-spectrum": {
+        "frontier_score": 0.0,
+        "accuracy_floor": 0.9
+      },
+      "full-rank": {
+        "frontier_score": 0.0,
+        "accuracy_floor": 0.8
+      },
+      "low-rank": {
+        "frontier_score": 17.10663599129213,
+        "accuracy_floor": 0.95
+      }
+    }
   },
-  "tracks": {},
-  "updated": ""
+  "tracks": {
+    "decaying-spectrum": {
+      "landed": []
+    },
+    "full-rank": {
+      "landed": []
+    },
+    "low-rank": {
+      "landed": [
+        {
+          "name": "rsvd",
+          "pr": 156,
+          "date": "2026-07-13T12:53:52+00:00",
+          "score": 13.105299437298006,
+          "label": "BASELINE"
+        },
+        {
+          "name": "nystrom",
+          "pr": 194,
+          "date": "2026-07-13T14:00:56+00:00",
+          "score": 17.10663599129213,
+          "label": "L"
+        }
+      ]
+    }
+  },
+  "prs": [
+    {
+      "num": 156,
+      "title": "feat(strategy): rsvd captures 3 subspaces, not 4 (drop redundant col(B) sketch)",
+      "track": "low-rank",
+      "label": "BASELINE",
+      "accuracy": 0.9999648764374242,
+      "latency_s": 0.3016433666634839,
+      "peak_vram_mib": 259.0263671875,
+      "flop_ratio": 42.41776102360575,
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/156"
+    },
+    {
+      "num": 194,
+      "title": "feat(strategy): add nystrom landmark-column transform for low-rank data",
+      "track": "low-rank",
+      "label": "L",
+      "accuracy": 0.9999967740350341,
+      "latency_s": 0.23018779999983963,
+      "peak_vram_mib": 260.046875,
+      "flop_ratio": 42.22595389107017,
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/194"
+    }
+  ],
+  "roadmap": []
 }

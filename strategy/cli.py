@@ -6,7 +6,7 @@ import sys
 
 from .config import Config, DTYPES
 from . import runner
-from .transforms import available as available_transforms
+from .transforms import available as available_transforms, get_transform
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -15,7 +15,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Smart (subspace) matrix x matrix: compress -> compute -> "
                     "reconstruct. Approximate; for low-rank / smooth data.",
     )
-    p.add_argument("--n", type=int, default=12000, help="matrix dimension n (n x n). default 12000")
+    p.add_argument("--n", type=int, default=8192, help="matrix dimension n (n x n). default 8192")
     p.add_argument("--dtype", choices=list(DTYPES), default="fp32")
     p.add_argument("--device", type=int, default=0, help="CUDA device index")
     p.add_argument("--rank-m", type=int, default=None,
@@ -36,8 +36,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="test-matrix content. 'lowrank' = compressible data "
                         "where the strategy is accurate (default)")
     p.add_argument("--data-rank", type=int, default=None,
-                   help="rank of generated matrices when --fill lowrank "
-                        "(default n//32)")
+                   help="rank of generated matrices for --fill lowrank / "
+                        "decaying-spectrum (default max(1, n//32))")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--verify", action="store_true",
                    help="report reconstruction error vs a float64 reference")
@@ -60,6 +60,10 @@ def main(argv=None) -> int:
             raise ValueError(
                 f"unknown transform {args.transform!r}; available: {known}"
             )
+        if args.data_rank is not None and args.data_rank < 1:
+            raise ValueError(f"--data-rank must be a positive integer, got {args.data_rank}")
+        if args.rank_m is not None and args.rank_m < 1:
+            raise ValueError(f"--rank-m must be a positive integer, got {args.rank_m}")
         cfg = Config(
             device=args.device,
             dtype=args.dtype,
@@ -72,13 +76,20 @@ def main(argv=None) -> int:
             seed=args.seed,
             verbose=not args.quiet,
         )
+        get_transform(cfg.transform, cfg.transform_seed)
         if args.compare:
-            runner.compare(args.n, cfg, fill=args.fill, data_rank=args.data_rank,
-                           keep=args.keep)
+            out = runner.compare(args.n, cfg, fill=args.fill, data_rank=args.data_rank,
+                                 keep=args.keep)
+            if args.quiet:
+                # compare() only prints when verbose (i.e. not --quiet), so
+                # without this a --compare --quiet run produced NO output at all.
+                print(f"exact {out['exact_seconds']:.4f}s  "
+                      f"smart {out['smart_seconds']:.4f}s  "
+                      f"speedup {out['speedup']:.2f}x  rel_err {out['rel_err']:.2e}")
             return 0
         info = runner.run(args.n, cfg, fill=args.fill, verify=args.verify,
                           keep=args.keep, data_rank=args.data_rank)
-    except (ValueError, RuntimeError, MemoryError) as e:
+    except (ValueError, RuntimeError, MemoryError, KeyError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
     if args.quiet:

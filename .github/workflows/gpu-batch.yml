@@ -14,7 +14,7 @@ on:
       n:
         description: "Matrix edge N"
         required: true
-        default: "12000"
+        default: "8192"
       pairs:
         description: "Random couples per PR"
         required: true
@@ -97,6 +97,8 @@ jobs:
             --limit "$LIMIT"
             --n "$N"
             --pairs "$PAIRS"
+            --runs 5
+            --sweep 2048,4096,8192
             --run
             --clean
           )

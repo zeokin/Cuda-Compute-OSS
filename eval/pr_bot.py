@@ -87,6 +87,19 @@ STRATEGY_HINT_RE = re.compile(
     r"register_transform|class\s+\w+\(Transform\)|\btransform\b|\bstrategy\b",
     re.IGNORECASE,
 )
+# The target track a feat PR declares in its template (checked box). The GPU bot
+# scores the PR at THIS track's pinned regime (eval.tracks), so it must ride on
+# the queue entry -- gpu_batch reads it, and can't guess the regime otherwise.
+TRACK_BODY_RE = re.compile(
+    r"^\s*-\s*\[[xX]\]\s*(full-rank|low-rank|decaying-spectrum)\b",
+    re.IGNORECASE | re.MULTILINE,
+)
+# The transform name a feat PR declares (e.g. **Transform:** `nystrom`). The GPU
+# bot scores this transform and verifies the diff actually adds/modifies it.
+TRANSFORM_DECL_RE = re.compile(
+    r"\*\*Transform:\*\*\s*`?\s*([A-Za-z0-9_.\-]+)\s*`?",
+    re.IGNORECASE,
+)
 CODING_AGENT_COAUTHOR_RE = re.compile(
     r"(?im)^co-authored-by:\s*.*"
     r"(cursor|codex|claude|copilot|openai|anthropic|aider|windsurf|devin|"
@@ -200,6 +213,30 @@ def has_merge_conflict(pr: PRInfo) -> bool:
 
 def has_scorecard(body: str) -> bool:
     return bool(SCORECARD_RE.search(body or ""))
+
+
+def declared_track(body: str) -> str | None:
+    """The track a feat PR declares in its template, or None if unspecified.
+
+    The GPU bot scores at this track's pinned regime (eval.tracks); an
+    unspecified track means the bot falls back to the full-rank reference.
+    """
+    m = TRACK_BODY_RE.search(body or "")
+    return m.group(1).lower() if m else None
+
+
+def declared_transform(body: str) -> str | None:
+    """The transform name a feat PR declares in its template, or None.
+
+    The GPU bot scores THIS transform (and verifies, post-rebase, that the PR's
+    diff actually adds/modifies it). None / the unfilled placeholder means the
+    bot falls back to the best-scoring transform in the run.
+    """
+    m = TRANSFORM_DECL_RE.search(body or "")
+    name = m.group(1) if m else None
+    if not name or set(name) <= {"_"}:      # unfilled `____` placeholder
+        return None
+    return name
 
 
 def has_coding_agent_coauthor(commit_messages: str) -> bool:
@@ -573,6 +610,8 @@ def _queue_record(pr: PRInfo, outcome: GateOutcome, position: int | None = None)
         "updated_at": pr.updated_at,
         "kind": outcome.kind,
         "gpu_required": outcome.kind == "feat",
+        "track": declared_track(pr.body),
+        "transform": declared_transform(pr.body),
         "state": outcome.action,
         "detail": outcome.detail,
     }
@@ -666,30 +705,48 @@ def run_once(
 
     outcomes = []
     for pr in open_prs:
-        diff = diff_by_pr.get(pr.number, client.get_diff(pr.number))
-        comments = client.get_comments(pr.number)
-        # Every earlier PR (any state -- open, closed, or merged) is a valid
-        # copycat comparison target; PR number order is creation order.
-        originals = [(p.author, fp_by_pr[p.number]) for p in all_prs if p.number < pr.number]
-        outcome = process_pr(
-            pr,
-            diff,
-            comments,
-            blocked,
-            originals,
-            excess_pr_numbers,
-            commit_messages_by_pr.get(pr.number, ""),
-            now,
-            run_eval,
-            reviews=reviews_by_pr.get(pr.number, []),
-        )
+        # One PR's failure -- a transient GitHub error on its read, or an
+        # unexpected decision-time bug -- must not abort the whole sweep or
+        # fail an unrelated PR's status check. Isolate each PR: log and skip.
+        try:
+            diff = diff_by_pr.get(pr.number, client.get_diff(pr.number))
+            comments = client.get_comments(pr.number)
+            # Every earlier PR (any state -- open, closed, or merged) is a valid
+            # copycat comparison target; PR number order is creation order.
+            originals = [(p.author, fp_by_pr[p.number]) for p in all_prs if p.number < pr.number]
+            outcome = process_pr(
+                pr,
+                diff,
+                comments,
+                blocked,
+                originals,
+                excess_pr_numbers,
+                commit_messages_by_pr.get(pr.number, ""),
+                now,
+                run_eval,
+                reviews=reviews_by_pr.get(pr.number, []),
+            )
+        except Exception as exc:  # noqa: BLE001 -- resilience: never abort the batch
+            print(f"PR #{pr.number}: skipped this sweep -- {exc}")
+            continue
         outcomes.append(outcome)
 
         if not dry_run:
-            _apply(client, pr, outcome, comments)
+            try:
+                _apply(client, pr, outcome, comments)
+            except Exception as exc:  # noqa: BLE001
+                # The decision is already recorded in `outcomes`, so the
+                # dashboard still reflects it; the next sweep retries the
+                # write-back idempotently via the SHA/result markers.
+                print(f"PR #{pr.number}: write-back failed, continuing -- {exc}")
 
     if dashboard_data:
-        write_queue_dashboard(dashboard_data, build_queue_dashboard(open_prs, outcomes))
+        # The queue feed is built from already-computed outcomes, so publish it
+        # even if some individual write-backs failed above.
+        try:
+            write_queue_dashboard(dashboard_data, build_queue_dashboard(open_prs, outcomes))
+        except Exception as exc:  # noqa: BLE001
+            print(f"dashboard write failed -- {exc}")
     return outcomes
 
 

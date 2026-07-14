@@ -59,16 +59,16 @@ under the same units.
 ## Use it — CLI
 
 ```bash
-# Reference regime: 12000, full-rank, 3 couples (all defaults), + scaling fit.
+# Reference regime: 8192, full-rank, 3 couples (all defaults), + scaling fit.
 # Subspace can't approximate full-rank -> accuracy ~0; this is the honest baseline.
 # (--rank-m holds M fixed for the sweep so it isolates the ~N² term.)
-python -m eval --n 12000 --pairs 3 --rank-m 128 --sweep 512,1024,2048
+python -m eval --n 8192 --pairs 3 --rank-m 128 --sweep 512,1024,2048
 
 # The strategy's happy path — compressible (low-rank) data, where it wins:
-python -m eval --n 12000 --pairs 3 --fill lowrank --data-rank 16
+python -m eval --n 8192 --pairs 3 --fill lowrank --data-rank 16
 
 # The accuracy floor defaults to 0.8; override it (or 0 to disable), emit JSON:
-python -m eval --n 12000 --min-accuracy 0.9 --json
+python -m eval --n 8192 --min-accuracy 0.9 --json
 ```
 
 Compute is **GPU-only** (PyTorch on CUDA/MPS); with no GPU the CLI prints a clear
@@ -105,8 +105,8 @@ the JSON emitted by `python -m eval`.
 ```python
 from eval import EvalConfig, evaluate, estimate_scaling
 
-# reference regime: 12000, full-rank (fill defaults to "random")
-out = evaluate(EvalConfig(n=12000, pairs=3, rank_m=128))
+# reference regime: 8192, full-rank (fill defaults to "random")
+out = evaluate(EvalConfig(n=8192, pairs=3, rank_m=128))
 print(out["best"], out["ranking"])
 print(out["transforms"]["rsvd"])   # accuracy, latency_s, peak_vram_bytes, score
 
@@ -116,7 +116,7 @@ print(fit["fitted_exponent_p"])    # empirical p in latency ~ N^p
 
 ## Interpreting results
 
-On the reference **full-rank** `12000` data *no* subspace of `M ≪ N` can
+On the reference **full-rank** `8192` data *no* subspace of `M ≪ N` can
 approximate the product, so every transform's accuracy collapses to ≈ 0 (and any
 accuracy floor zeroes the score) — the honest baseline the strategy is **not**
 for. On **low-rank** data (`--fill lowrank`) the data-aware `rsvd` transform

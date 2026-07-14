@@ -60,7 +60,7 @@ def test_flop_actual_matches_matmul_sum():
     # count for every matmul multiply_subspace actually performs: two
     # compress() calls (X@Q then Q.T@(X@Q) each), the (m,m) core product,
     # and reconstruct() (Q@Ctil then (...)@Q.T).
-    for n, m in [(8, 2), (12000, 1500), (24, 24), (100, 1)]:
+    for n, m in [(8, 2), (8192, 1024), (24, 24), (100, 1)]:
         compress_call = 2 * n * n * m + 2 * n * m * m
         expected = (2 * compress_call            # compress(A) + compress(B)
                     + 2 * m * m * m               # Atil @ Btil

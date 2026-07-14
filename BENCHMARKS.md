@@ -1,6 +1,6 @@
 # Benchmarks
 
-Reference setup: **`12000 × 12000`** matrices, **full-rank** (random) data, `fp32`,
+Reference setup: **`8192 × 8192`** matrices, **full-rank** (random) data, `fp32`,
 on an **RTX 5090** GPU via PyTorch. This is the default the scorer
 runs, and the hardest, most honest case — there is no low-rank structure to
 exploit.
@@ -55,7 +55,7 @@ score = accuracy × (1 / Peak_VRAM) × (1 / Latency)
 Reproduce the reference comparison on your GPU with:
 
 ```bash
-python -m eval --n 12000 --pairs 3 --transforms rsvd \
+python -m eval --n 8192 --pairs 3 --transforms rsvd \
                --rank-m 128 --sweep 512,1024,2048
 ```
 
@@ -64,8 +64,8 @@ python -m eval --n 12000 --pairs 3 --transforms rsvd \
 ## general vs. suggested — the comparison
 
 The comparison is always **per regime** (dtype, matrix content, size), measured
-on your GPU. The reference regime is `N=12000`, 3 couples, `fp32`, **full-rank**
-(random) data, subspace `M = N//8 = 1500`:
+on your GPU. The reference regime is `N=8192`, 3 couples, `fp32`, **full-rank**
+(random) data, subspace `M = N//8 = 1024`:
 
 | aspect              | general (exact) | suggested (rsvd) | suggested better? |
 |---------------------|-----------------|------------------|-------------------|
@@ -79,22 +79,27 @@ must be measured on the target GPU and pasted in.
 
 ### The improvement rule
 
-> A suggested method is admitted as an **improvement** over the general method
-> only when, on the same regime, **all** of these hold at once:
+> A suggested method is admitted as an **improvement** over the general (exact)
+> method only when, on the same regime, **all** of these hold at once:
 >
-> - error (`1 − accuracy`) does **not** increase, **and**
-> - time complexity **reduces**, **and**
-> - latency **reduces**, **and**
-> - VRAM usage **reduces**.
+> - time complexity **reduces** versus exact, **and**
+> - latency **reduces** versus exact, **and**
+> - VRAM usage **reduces** versus exact, **and**
+> - accuracy **stays at or above the track's floor**.
 >
-> If *every* item reduces (with accuracy held), we admit the improvement. If any
-> one regresses, we do **not** — no averaging a win on one axis against a loss on
-> another.
+> Every cost axis must beat exact — no averaging a win on one axis against a loss
+> on another. **Exact matmul is accuracy `1.0`** (the ground truth), so an
+> approximate method is *always* below it: "accuracy held" means **above the
+> floor**, not equal to exact. Dropping below the floor gates the score to `0`
+> regardless of how cheap the method is.
 
-We express accuracy as **error** (`1 − accuracy`) precisely so all four axes read
-"lower is better" and the rule is a clean dominance check.
+The cost axes are a strict dominance check against exact; accuracy is a **floor
+gate** (per-track: full-rank `0.80`, low-rank `0.95`, decaying-spectrum `0.90`).
+Admitted methods are then ranked by the composite score `accuracy × (1/VRAM) ×
+(1/latency)`, so a cheaper method that gives up a little accuracy still wins,
+while trading away a lot of accuracy for a small cost gain scores lower.
 
-**Reading the verdict — full-rank is hard on purpose.** On full-rank `12000` data
+**Reading the verdict — full-rank is hard on purpose.** On full-rank `8192` data
 a subspace of `M ≪ N` cannot represent the product: the error is ~100%, accuracy
 `≈ 0`, and the accuracy floor forces the **score to 0**. Fewer FLOPs do not help
 when the answer is wrong. So on the reference regime the honest result is: **the
@@ -110,7 +115,7 @@ smooth) — then `M ≪ N` captures it and accuracy holds:
 - **Compressible data** (low-rank / smooth) at `M ≪ N` — accuracy holds and
   `O(N²M) ≪ O(N³)`. Show it explicitly:
   ```bash
-  python -m eval --n 12000 --pairs 3 --fill lowrank --data-rank 16 --transforms rsvd
+  python -m eval --n 8192 --pairs 3 --fill lowrank --data-rank 16 --transforms rsvd
   ```
 - **out-of-core scale** — where the exact `O(N³)` product does not fit in GPU
   memory at all, so a smaller subspace multiply is the *only* thing that runs.
@@ -153,12 +158,12 @@ they are not asserted here.
 All of this runs on a GPU (CUDA/MPS) via PyTorch.
 
 ```bash
-# the reference comparison on this page (12000, full-rank)
-python -m eval --n 12000 --pairs 3 --transforms rsvd \
+# the reference comparison on this page (8192, full-rank)
+python -m eval --n 8192 --pairs 3 --transforms rsvd \
                --rank-m 128 --sweep 512,1024,2048
 
 # machine-readable numbers (for a PR scorecard)
-python -m eval --n 12000 --pairs 3 --transforms rsvd --json
+python -m eval --n 8192 --pairs 3 --transforms rsvd --json
 
 # the correctness gates (skip if no GPU is present)
 python tests/test_correctness.py

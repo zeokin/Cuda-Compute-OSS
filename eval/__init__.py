@@ -11,10 +11,10 @@ latency, and peak VRAM:
 Quick API
 ---------
     from eval import EvalConfig, evaluate
-    out = evaluate(EvalConfig(n=12000, pairs=3))
+    out = evaluate(EvalConfig(n=8192, pairs=3))
     print(out["best"], out["ranking"])
 
-Or from the CLI:  ``python -m eval --n 12000 --pairs 3``
+Or from the CLI:  ``python -m eval --n 8192 --pairs 3``
 """
 from __future__ import annotations
 

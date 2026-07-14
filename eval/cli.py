@@ -19,7 +19,7 @@ def _parse_args(argv=None) -> argparse.Namespace:
         description="Score the smart (subspace) strategy vs normal (exact) "
                     "computing: accuracy, latency, peak VRAM -> composite score.",
     )
-    p.add_argument("--n", type=int, default=12000, help="matrix edge N (N x N). default 12000")
+    p.add_argument("--n", type=int, default=8192, help="matrix edge N (N x N). default 8192")
     p.add_argument("--pairs", type=int, default=3,
                    help="number of random couples to average over. default 3")
     p.add_argument("--dtype", choices=("fp16", "fp32", "fp64"), default="fp32")
@@ -36,9 +36,10 @@ def _parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--transforms", default=None,
                    help="comma-separated transform names (default: all registered: "
                         + ",".join(_transforms.available()) + ")")
-    p.add_argument("--min-accuracy", type=float, default=0.8,
-                   help="accuracy below this hard-gates a transform's score to 0 "
-                        "(default 0.8; use 0 to disable)")
+    p.add_argument("--min-accuracy", type=float, default=None,
+                   help="accuracy below this hard-gates a transform's score to 0. "
+                        "default: the per-track floor for --fill (full-rank 0.80, "
+                        "low-rank 0.95, decaying-spectrum 0.90); use 0 to disable")
     p.add_argument("--vram-unit", choices=("bytes", "mib", "gib"), default="gib",
                    help="unit for Peak_VRAM inside the score. default gib")
     p.add_argument("--seed", type=int, default=None,

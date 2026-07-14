@@ -41,44 +41,50 @@ def run(n: int, cfg: Config, fill: str = "random",
         print(f"[run] storage      : {'disk memmap' if on_disk else 'RAM'}"
               f"{' @ ' + cfg.workdir if on_disk else ''}")
 
-    A = storage.generate(n, dt, on_disk, pa if on_disk else None, cfg.seed, fill)
-    B = storage.generate(n, dt, on_disk, pb if on_disk else None, cfg.seed + 1, fill)
-    C = storage.allocate(n, dt, on_disk, pc if on_disk else None)
+    try:
+        A = storage.generate(n, dt, on_disk, pa if on_disk else None, cfg.seed, fill)
+        B = storage.generate(n, dt, on_disk, pb if on_disk else None, cfg.seed + 1, fill)
+        C = storage.allocate(n, dt, on_disk, pc if on_disk else None)
 
-    backend.synchronize()
-    t0 = time.perf_counter()
-    info = gemm.multiply(A, B, C, backend, cfg)
-    backend.synchronize()
-    elapsed = time.perf_counter() - t0
+        backend.synchronize()
+        t0 = time.perf_counter()
+        info = gemm.multiply(A, B, C, backend, cfg)
+        backend.synchronize()
+        elapsed = time.perf_counter() - t0
 
-    flop = 2.0 * n * n * n
-    info.update(
-        seconds=elapsed,
-        gflops=flop / elapsed / 1e9,
-        storage="disk" if on_disk else "ram",
-    )
+        flop = 2.0 * n * n * n
+        info.update(
+            seconds=elapsed,
+            gflops=flop / elapsed / 1e9,
+            storage="disk" if on_disk else "ram",
+        )
 
-    if cfg.verbose:
-        print(f"[run] mode         : {info['mode']}")
-        print(f"[run] time         : {elapsed:.4f} s")
-        print(f"[run] throughput   : {info['gflops']:.1f} GFLOP/s")
-
-    if verify:
-        info["verify"] = _verify(A, B, C, n, cfg, backend)
         if cfg.verbose:
-            v = info["verify"]
-            if v.get("skipped"):
-                print(f"[run] verify       : skipped ({v['skipped']})")
-            else:
-                print(f"[run] verify       : max_rel_err={v['max_rel_err']:.2e} "
-                      f"({'OK' if v['ok'] else 'MISMATCH'})")
+            print(f"[run] mode         : {info['mode']}")
+            print(f"[run] time         : {elapsed:.4f} s")
+            print(f"[run] throughput   : {info['gflops']:.1f} GFLOP/s")
 
-    if on_disk and not keep:
-        for p in (pa, pb, pc):
-            try:
-                os.remove(p)
-            except OSError:
-                pass
+        if verify:
+            info["verify"] = _verify(A, B, C, n, cfg, backend)
+            if cfg.verbose:
+                v = info["verify"]
+                if v.get("skipped"):
+                    print(f"[run] verify       : skipped ({v['skipped']})")
+                else:
+                    print(f"[run] verify       : max_rel_err={v['max_rel_err']:.2e} "
+                          f"({'OK' if v['ok'] else 'MISMATCH'})")
+    finally:
+        # Disk-backed A/B/C must not survive a crash (a bad --device index, a
+        # mid-multiply OOM) any more than a clean run -- generation happens
+        # before any of that can raise, so without a finally the cleanup below
+        # was simply never reached and the files (up to 3 * n^2 * item_bytes)
+        # leaked on every failure, --keep or not.
+        if on_disk and not keep:
+            for p in (pa, pb, pc):
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
 
     return info
 

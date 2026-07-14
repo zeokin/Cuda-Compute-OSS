@@ -32,7 +32,16 @@ def matmul(A: np.ndarray, B: np.ndarray, out: np.ndarray | None = None,
     """
     if A.shape != B.shape or A.ndim != 2 or A.shape[0] != A.shape[1]:
         raise ValueError("A and B must be square matrices of the same size")
-    cfg = config or Config(dtype=_dtype_name(A.dtype), verbose=False)
+    if np.dtype(A.dtype) != np.dtype(B.dtype):
+        raise ValueError(
+            f"A and B must share a dtype; got {np.dtype(A.dtype)} and {np.dtype(B.dtype)}"
+        )
+    # Validate the element dtype up front -- raises on int/uint/bf16/... -- so an
+    # unsupported input fails here with a clear message instead of deep inside
+    # torch.bmm after the backend is already built. (Called unconditionally, even
+    # when a config is supplied, so a bad A/B dtype never reaches the GPU.)
+    dtype_name = _dtype_name(A.dtype)
+    cfg = config or Config(dtype=dtype_name, verbose=False)
     backend = Backend(cfg.device, cfg.verbose)
     C = out if out is not None else np.empty_like(A, dtype=cfg.np_dtype)
     gemm.multiply(A, B, C, backend, cfg)
@@ -44,4 +53,9 @@ def _dtype_name(dt) -> str:
     for name, npdt in DTYPES.items():
         if np.dtype(npdt) == dt:
             return name
-    return "fp32"
+    # Reject rather than silently mislabel an unsupported dtype as fp32, which
+    # would either crash deep in torch.bmm (integers) or compute in a dtype the
+    # caller did not ask for. bf16 is intentionally not exposed (see README).
+    raise ValueError(
+        f"unsupported dtype {dt}; matmul supports {list(DTYPES)}"
+    )
