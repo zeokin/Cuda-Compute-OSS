@@ -63,6 +63,26 @@ def test_bad_spectral_alpha_exits_cleanly(argv, capsys):
     assert "error:" in capsys.readouterr().err
 
 
+STRATEGY_BAD_RANK_M_ARGS = [
+    ["--n", "8", "--rank-m", "0"],     # non-positive: rank_m must be >= 1
+    ["--n", "8", "--rank-m", "-2"],    # negative: previously hit GPU before subspace
+]
+
+
+@pytest.mark.parametrize("argv", STRATEGY_BAD_RANK_M_ARGS, ids=lambda a: " ".join(a))
+def test_bad_rank_m_exits_cleanly(argv, capsys):
+    rc = strategy_cli.main(argv)
+    assert rc == 2, f"expected exit 2 for {argv}, got {rc}"
+    assert "error:" in capsys.readouterr().err
+
+
+def test_positive_rank_m_is_unaffected(capsys):
+    # --rank-m 1 (smallest valid rank) must not be rejected by validation.
+    rc = strategy_cli.main(["--n", "8", "--rank-m", "1", "--quiet"])
+    if rc == 2:
+        assert "--rank-m" not in capsys.readouterr().err
+
+
 def test_positive_data_rank_is_unaffected(capsys):
     # --data-rank 1 (smallest valid rank) must not be rejected by validation --
     # this guards against the check being off-by-one. This test runs without a
@@ -101,6 +121,14 @@ def test_attention_benchmark_bad_args_exit_cleanly(argv, capsys):
     rc = attention_benchmark.main(argv)
     assert rc == 2, f"expected exit 2 for {argv}, got {rc}"
     assert "error:" in capsys.readouterr().err
+
+
+def test_strategy_unknown_transform_exits_cleanly(capsys):
+    rc = strategy_cli.main(["--n", "8", "--transform", "nope", "--quiet"])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "error:" in err
+    assert "unknown transform" in err
 
 
 if __name__ == "__main__":

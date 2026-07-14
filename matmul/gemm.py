@@ -36,14 +36,22 @@ def _tile_operand_bytes(cfg: Config) -> int:
 def _tile_workspace_bytes_per_elem(cfg: Config) -> int:
     """Device bytes per T×T element in one tiled (i, j, k) accumulation step.
 
-    Four T×T tiles are live at the peak of each k-step: the accumulator, the two
-    operand tiles (A, B), and the freshly allocated GEMM output returned by
-    ``backend.matmul`` — ``torch.bmm`` cannot write its result into either
-    operand, so ``acc``, ``a_dev``, ``b_dev`` and ``prod`` all coexist. The
-    output tile is produced in the operand/compute dtype, so it costs one more
-    ``_tile_operand_bytes`` term.
+    Four T×T tiles are steady-state live at each k-step -- the accumulator,
+    the two operand tiles (A, B), and the freshly allocated GEMM output
+    returned by ``backend.matmul`` (``torch.bmm`` cannot write its result into
+    either operand) -- but ``_gemm_tiled_sync`` reassigns ``a_dev``, ``b_dev``,
+    and ``prod`` every iteration (e.g. ``a_dev = backend.to_device(...)``), and
+    Python evaluates the right-hand side of an assignment -- allocating the NEW
+    tile -- before the name rebinds and the OLD tile's reference is dropped. So
+    at the moment any one of those three lines runs, the previous iteration's
+    tile it is about to replace is still live alongside the freshly allocated
+    one: a fifth T×T tile, momentarily, on top of the steady-state four.
+    Budgeting only four under-counts true peak device usage by one operand-
+    sized tile, risking OOM at a ``vram_fraction`` that leaves little headroom.
+    The output tile (and this fifth, transient one) are produced in the
+    operand/compute dtype, so each costs one ``_tile_operand_bytes`` term.
     """
-    return cfg.acc_dtype.itemsize + 3 * _tile_operand_bytes(cfg)
+    return cfg.acc_dtype.itemsize + 4 * _tile_operand_bytes(cfg)
 
 
 def auto_tile(n: int, cfg: Config, backend: Backend) -> int:

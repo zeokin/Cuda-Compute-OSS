@@ -6,7 +6,7 @@ import sys
 
 from .config import Config, DTYPES
 from . import runner
-from .transforms import available as available_transforms
+from .transforms import available as available_transforms, get_transform
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -36,8 +36,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="test-matrix content. 'lowrank' = compressible data "
                         "where the strategy is accurate (default)")
     p.add_argument("--data-rank", type=int, default=None,
-                   help="rank of generated matrices when --fill lowrank "
-                        "(default n//32)")
+                   help="rank of generated matrices for --fill lowrank / "
+                        "decaying-spectrum (default max(1, n//32))")
     p.add_argument("--spectral-alpha", type=float, default=1.0,
                    help="singular-value decay exponent k^-alpha for "
                         "--fill decaying-spectrum (default 1.0; larger = faster "
@@ -57,6 +57,8 @@ def main(argv=None) -> int:
             raise ValueError(f"--n must be a positive integer, got {args.n}")
         if args.data_rank is not None and args.data_rank < 1:
             raise ValueError(f"--data-rank must be a positive integer, got {args.data_rank}")
+        if args.rank_m is not None and args.rank_m < 1:
+            raise ValueError(f"--rank-m must be a positive integer, got {args.rank_m}")
         if args.spectral_alpha < 0:
             raise ValueError(f"--spectral-alpha must be >= 0, got {args.spectral_alpha}")
         cfg = Config(
@@ -71,14 +73,21 @@ def main(argv=None) -> int:
             seed=args.seed,
             verbose=not args.quiet,
         )
+        get_transform(cfg.transform, cfg.transform_seed)
         if args.compare:
-            runner.compare(args.n, cfg, fill=args.fill, data_rank=args.data_rank,
-                           keep=args.keep, spectral_alpha=args.spectral_alpha)
+            out = runner.compare(args.n, cfg, fill=args.fill, data_rank=args.data_rank,
+                                 keep=args.keep, spectral_alpha=args.spectral_alpha)
+            if args.quiet:
+                # compare() only prints when verbose (i.e. not --quiet), so
+                # without this a --compare --quiet run produced NO output at all.
+                print(f"exact {out['exact_seconds']:.4f}s  "
+                      f"smart {out['smart_seconds']:.4f}s  "
+                      f"speedup {out['speedup']:.2f}x  rel_err {out['rel_err']:.2e}")
             return 0
         info = runner.run(args.n, cfg, fill=args.fill, verify=args.verify,
                           keep=args.keep, data_rank=args.data_rank,
                           spectral_alpha=args.spectral_alpha)
-    except (ValueError, RuntimeError, MemoryError) as e:
+    except (ValueError, RuntimeError, MemoryError, KeyError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
     if args.quiet:

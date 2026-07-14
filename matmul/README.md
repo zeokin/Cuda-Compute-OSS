@@ -32,9 +32,9 @@ A square matrix in FP32 costs `n² × 4` bytes. You need three of them (A, B, C)
 
 | n | one matrix (FP32) | A + B + C | compute (2n³) |
 |---|---|---|---|
-| 1k | 4 MB | 12 MB | 2.1 GFLOP |
-| 16k | 1 GB | 3 GB | 8.8 TFLOP |
-| 32k | 4 GB | 12 GB | 70 TFLOP |
+| 1k | 4 MB | 12 MB | 2.0 GFLOP |
+| 16k | 1 GB | 3 GB | 8.2 TFLOP |
+| 32k | 4 GB | 12 GB | 66 TFLOP |
 | 128k | **65 GB** | **196 GB** | 4.2 PFLOP |
 
 An A100 has **80 GB**. Small sizes (the default `n = 8192` is ~0.8 GB

@@ -41,7 +41,16 @@ def subspace_matmul(A: np.ndarray, B: np.ndarray, out: np.ndarray | None = None,
     Returns C (newly allocated unless ``out`` is given)."""
     if A.shape != B.shape or A.ndim != 2 or A.shape[0] != A.shape[1]:
         raise ValueError("A and B must be square matrices of the same size")
-    cfg = config or Config(dtype=_dtype_name(A.dtype), verbose=False)
+    if np.dtype(A.dtype) != np.dtype(B.dtype):
+        raise ValueError(
+            f"A and B must have the same dtype; got {np.dtype(A.dtype)} vs {np.dtype(B.dtype)}"
+        )
+    # Resolve (and validate) the element dtype before touching the GPU, so an
+    # unsupported input raises here with a clear message rather than deep inside
+    # torch.matmul. Done unconditionally, even with a config, so a bad A/B dtype
+    # never reaches the device.
+    dtype_name = _dtype_name(A.dtype)
+    cfg = config or Config(dtype=dtype_name, verbose=False)
     backend = Backend(cfg.device, cfg.verbose)
     C = out if out is not None else np.empty_like(A, dtype=cfg.np_dtype)
     subspace.multiply_subspace(A, B, C, backend, cfg)
@@ -53,4 +62,9 @@ def _dtype_name(dt) -> str:
     for name, npdt in DTYPES.items():
         if np.dtype(npdt) == dt:
             return name
-    return "fp32"
+    # Reject an unsupported dtype instead of silently mislabelling it fp32, which
+    # would either crash inside torch.matmul (integers) or compute in a dtype the
+    # caller never asked for.
+    raise ValueError(
+        f"unsupported dtype {dt}; the subspace strategy supports {list(DTYPES)}"
+    )

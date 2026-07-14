@@ -30,6 +30,19 @@ def _timed(fn, backend) -> float:
     return time.perf_counter() - t0
 
 
+def _flop_ratio_line(ratio: float) -> str:
+    """Human phrasing for flop_exact / flop_actual.
+
+    ``ratio >= 1`` means the smart path did fewer FLOPs than exact; ``ratio < 1``
+    means it did MORE (M too large to save), so don't phrase it as a saving --
+    otherwise a sub-1x ratio prints as e.g. "0.3x fewer FLOPs", which reads as a
+    reduction that didn't happen.
+    """
+    if ratio >= 1.0:
+        return f"{ratio:.1f}x fewer FLOPs than exact"
+    return f"{1.0 / ratio:.1f}x MORE FLOPs than exact (M too large to save)"
+
+
 def run(n: int, cfg: Config, fill: str = "lowrank", verify: bool = False,
         keep: bool = False, data_rank: int | None = None,
         spectral_alpha: float = 1.0) -> dict:
@@ -71,8 +84,8 @@ def run(n: int, cfg: Config, fill: str = "lowrank", verify: bool = False,
             print(f"[strategy] mode       : {info['mode']}")
             print(f"[strategy] time       : {elapsed:.4f} s")
             print(f"[strategy] equiv-tput : {info['gflops']:.1f} GFLOP/s (vs 2N^3 work)")
-            print(f"[strategy] flop saved : {info['flop_exact'] / info['flop_actual']:.1f}x "
-                  f"fewer FLOPs than exact")
+            print(f"[strategy] flop ratio : "
+                  f"{_flop_ratio_line(info['flop_exact'] / info['flop_actual'])}")
 
         if verify:
             info["verify"] = _verify(A, B, C, n, cfg, backend)
@@ -161,7 +174,7 @@ def compare(n: int, cfg: Config, fill: str = "lowrank",
             print(f"  exact : {ex_t:.4f}s   ({ex['mode']})")
             print(f"  smart : {sm_t:.4f}s   ({sm['mode']})")
             print(f"  speedup(exact/smart) : {speedup:.2f}x")
-            print(f"  smart FLOPs          : {out['flop_ratio']:.1f}x fewer than exact")
+            print(f"  smart FLOPs          : {_flop_ratio_line(out['flop_ratio'])}")
             print(f"  smart rel. error     : {rel_err:.2e}")
     finally:
         # Same exception-safety gap as run(): the exact and smart multiplies
