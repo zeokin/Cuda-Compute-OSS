@@ -34,7 +34,7 @@
       "title": "fix(matmul): budget the transient fifth tile in _gemm_tiled_sync's per-step working set",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T06:00:23Z",
+      "updated_at": "2026-07-14T08:24:46Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/227"
     },
     {
@@ -49,7 +49,7 @@
       "title": "fix(strategy): --data-rank help omits decaying-spectrum and misstates its default",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T06:00:30Z",
+      "updated_at": "2026-07-14T08:24:52Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/229"
     },
     {
@@ -64,7 +64,7 @@
       "title": "fix(strategy): stop reporting a <1x FLOP ratio as \"fewer FLOPs than exact\"",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T06:00:37Z",
+      "updated_at": "2026-07-14T08:24:57Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/215"
     },
     {
@@ -79,7 +79,7 @@
       "title": "fix(strategy): budget compress()'s resident (m,m) accumulator, not just the product (Fixes #220)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T06:00:43Z",
+      "updated_at": "2026-07-14T08:25:02Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/221"
     },
     {
@@ -94,7 +94,7 @@
       "title": "fix(strategy): validate dtype in the public subspace_matmul() API (Fixes #222)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T06:00:51Z",
+      "updated_at": "2026-07-14T08:25:08Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/223"
     },
     {
@@ -109,7 +109,7 @@
       "title": "fix(strategy): report unknown --transform cleanly instead of KeyError traceback (Fixes #199)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T06:00:58Z",
+      "updated_at": "2026-07-14T08:25:13Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/206"
     },
     {
@@ -124,7 +124,7 @@
       "title": "fix(strategy): reject non-positive --rank-m at CLI boundary",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T06:01:05Z",
+      "updated_at": "2026-07-14T08:25:19Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/224"
     },
     {
@@ -139,7 +139,7 @@
       "title": "fix(strategy): print a summary for --compare --quiet instead of nothing",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T06:01:12Z",
+      "updated_at": "2026-07-14T08:25:24Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/228"
     },
     {
@@ -154,7 +154,7 @@
       "title": "fix(docs): make matmul README FLOP table use one (decimal) n convention (Fixes #102)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T06:01:19Z",
+      "updated_at": "2026-07-14T08:25:29Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/230"
     },
     {
@@ -169,7 +169,7 @@
       "title": "fix(strategy): expose --spectral-alpha for the decaying-spectrum fill",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T06:01:26Z",
+      "updated_at": "2026-07-14T08:25:35Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/232"
     },
     {
@@ -184,10 +184,10 @@
       "title": "fix(strategy): expose --spectral-alpha to set the decaying-spectrum decay rate (Fixes #231)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-14T06:01:34Z",
+      "updated_at": "2026-07-14T08:25:40Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/233"
     }
   ],
   "queue": [],
-  "updated": "2026-07-14T08:25:44+00:00"
+  "updated": "2026-07-14T10:21:10+00:00"
 }
