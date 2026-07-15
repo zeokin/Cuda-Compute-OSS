@@ -34,7 +34,7 @@
       "title": "fix(strategy): expose --spectral-alpha for the decaying-spectrum fill",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T18:58:21Z",
+      "updated_at": "2026-07-15T20:15:44Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/232"
     },
     {
@@ -49,7 +49,7 @@
       "title": "fix(attention): accept NumPy integer sizes in AttentionSpec (Fixes #254)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T18:58:27Z",
+      "updated_at": "2026-07-15T20:15:51Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/255"
     },
     {
@@ -64,7 +64,7 @@
       "title": "feat(strategy): subspace_iter transform \u2014 power iteration for decaying spectra (#184)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T18:58:37Z",
+      "updated_at": "2026-07-15T20:16:04Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/245"
     },
     {
@@ -79,7 +79,7 @@
       "title": "fix(strategy): budget the reassigned-tile transient in the streaming primitives (Fixes #234)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T18:58:39Z",
+      "updated_at": "2026-07-15T20:16:06Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/235"
     },
     {
@@ -94,7 +94,7 @@
       "title": "fix(strategy): charge the resident Q operand in stream_gemm_*/compress budgets (Fixes #236)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T18:58:45Z",
+      "updated_at": "2026-07-15T20:16:14Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/237"
     },
     {
@@ -109,7 +109,7 @@
       "title": "fix(strategy): finish the frac basis() signature across contributor-facing snippets (Fixes #252)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T18:58:51Z",
+      "updated_at": "2026-07-15T20:16:21Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/253"
     },
     {
@@ -124,22 +124,8 @@
       "title": "feat(strategy): add sparse-sign (OSNAP) sketch transform",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T18:59:02Z",
+      "updated_at": "2026-07-15T20:16:33Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/257"
-    },
-    {
-      "author": "real-venus",
-      "detail": "PR touches maintainer-owned files: eval/cli.py. Miner PRs cannot modify maintainer-owned files. Open a fresh PR that only changes allowed miner-owned files.",
-      "gpu_required": false,
-      "head_sha": "ba48d0f7d65fd593f715c77a896c8f767858cf0c",
-      "kind": null,
-      "pr": 259,
-      "state": "close_protected_path",
-      "title": "fix(eval): exit cleanly on invalid CLI arguments",
-      "track": null,
-      "transform": null,
-      "updated_at": "2026-07-15T20:12:26Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/259"
     }
   ],
   "queue": [
@@ -156,7 +142,7 @@
       "title": "feat(strategy): subspace_iter transform \u2014 power iteration for decaying spectra (#184)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T18:58:37Z",
+      "updated_at": "2026-07-15T20:16:04Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/245"
     },
     {
@@ -172,9 +158,9 @@
       "title": "feat(strategy): add sparse-sign (OSNAP) sketch transform",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T18:59:02Z",
+      "updated_at": "2026-07-15T20:16:33Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/257"
     }
   ],
-  "updated": "2026-07-15T20:16:36+00:00"
+  "updated": "2026-07-15T20:20:18+00:00"
 }
