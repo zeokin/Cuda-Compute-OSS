@@ -47,6 +47,12 @@ class Config:
             raise ValueError(
                 f"dtype must be one of {list(DTYPES)}, got {self.dtype!r}"
             )
+        if (isinstance(self.device, bool) or not isinstance(self.device, Integral)
+                or self.device < 0):
+            raise ValueError("device must be a non-negative integer")
+        if (isinstance(self.seed, bool) or not isinstance(self.seed, Integral)
+                or self.seed < 0):
+            raise ValueError("seed must be a non-negative integer")
         if not (0.0 < self.vram_fraction <= 0.95):
             raise ValueError("vram_fraction must be in (0, 0.95]")
         if self.tile is not None:
