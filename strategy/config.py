@@ -50,6 +50,14 @@ class Config:
     def __post_init__(self):
         if self.dtype not in DTYPES:
             raise ValueError(f"dtype must be one of {list(DTYPES)}, got {self.dtype!r}")
+        if (isinstance(self.device, bool) or not isinstance(self.device, Integral)
+                or self.device < 0):
+            raise ValueError("device must be a non-negative integer")
+        for name in ("transform_seed", "seed"):
+            value = getattr(self, name)
+            if (isinstance(value, bool) or not isinstance(value, Integral)
+                    or value < 0):
+                raise ValueError(f"{name} must be a non-negative integer")
         if not (0.0 < self.vram_fraction <= 0.95):
             raise ValueError("vram_fraction must be in (0, 0.95]")
         if self.rank_m is not None and (
