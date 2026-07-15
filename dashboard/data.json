@@ -9,20 +9,6 @@
   },
   "open_prs": [
     {
-      "author": "RenzoMXD",
-      "detail": "",
-      "gpu_required": false,
-      "head_sha": "9615bcf2c8d8f62f35636c2c7de0e543da4198f3",
-      "kind": null,
-      "pr": 226,
-      "state": "skip_draft",
-      "title": "feat(strategy): block-krylov -- landmark-seeded block Krylov subspace for decaying-spectrum data",
-      "track": null,
-      "transform": null,
-      "updated_at": "2026-07-15T04:09:46Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/226"
-    },
-    {
       "author": "RealDiligent",
       "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
       "gpu_required": false,
@@ -34,7 +20,7 @@
       "title": "fix(attention): validate --gate-strength before benchmark warmup",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T04:21:24Z",
+      "updated_at": "2026-07-15T05:44:21Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/239"
     },
     {
@@ -49,7 +35,7 @@
       "title": "fix(strategy): expose --spectral-alpha for the decaying-spectrum fill",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T04:21:32Z",
+      "updated_at": "2026-07-15T05:44:28Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/232"
     },
     {
@@ -64,7 +50,7 @@
       "title": "fix(strategy): budget the reassigned-tile transient in the streaming primitives (Fixes #234)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T04:21:39Z",
+      "updated_at": "2026-07-15T05:44:35Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/235"
     },
     {
@@ -79,7 +65,7 @@
       "title": "fix(strategy): charge the resident Q operand in stream_gemm_*/compress budgets (Fixes #236)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T04:21:45Z",
+      "updated_at": "2026-07-15T05:44:42Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/237"
     },
     {
@@ -94,7 +80,7 @@
       "title": "fix(strategy): reject --rank-m > --n at CLI boundary",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T04:21:52Z",
+      "updated_at": "2026-07-15T05:44:49Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/238"
     },
     {
@@ -109,7 +95,7 @@
       "title": "fix(storage): make --fill iota seed-dependent so eval couples are independent (#104)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T04:21:59Z",
+      "updated_at": "2026-07-15T05:44:56Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/241"
     },
     {
@@ -124,7 +110,7 @@
       "title": "fix(matmul,strategy): reject config.dtype that disagrees with A/B arrays",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T04:22:06Z",
+      "updated_at": "2026-07-15T05:45:04Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/243"
     },
     {
@@ -139,7 +125,7 @@
       "title": "fix(strategy): make --verify exit 1 on reconstruction mismatch",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T04:22:13Z",
+      "updated_at": "2026-07-15T05:45:11Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/244"
     },
     {
@@ -154,7 +140,7 @@
       "title": "feat(strategy): subspace_iter transform \u2014 power iteration for decaying spectra (#184)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T04:22:25Z",
+      "updated_at": "2026-07-15T05:45:22Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/245"
     },
     {
@@ -169,8 +155,22 @@
       "title": "fix(config): reject non-integer size knobs",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T05:41:14Z",
+      "updated_at": "2026-07-15T05:45:24Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/246"
+    },
+    {
+      "author": "RenzoMXD",
+      "detail": "",
+      "gpu_required": false,
+      "head_sha": "42d9d33447aadea15930e409b0ccf90e866b0785",
+      "kind": null,
+      "pr": 226,
+      "state": "skip_draft",
+      "title": "feat(strategy): block-krylov -- landmark-seeded block Krylov subspace for decaying-spectrum data",
+      "track": null,
+      "transform": null,
+      "updated_at": "2026-07-15T05:56:50Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/226"
     }
   ],
   "queue": [
@@ -187,9 +187,9 @@
       "title": "feat(strategy): subspace_iter transform \u2014 power iteration for decaying spectra (#184)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T04:22:25Z",
+      "updated_at": "2026-07-15T05:45:22Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/245"
     }
   ],
-  "updated": "2026-07-15T05:45:30+00:00"
+  "updated": "2026-07-15T05:59:49+00:00"
 }
