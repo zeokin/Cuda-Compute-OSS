@@ -34,7 +34,7 @@
       "title": "fix(strategy): expose --spectral-alpha for the decaying-spectrum fill",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T21:16:42Z",
+      "updated_at": "2026-07-15T21:20:05Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/232"
     },
     {
@@ -49,7 +49,7 @@
       "title": "fix(attention): accept NumPy integer sizes in AttentionSpec (Fixes #254)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T21:16:48Z",
+      "updated_at": "2026-07-15T21:20:10Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/255"
     },
     {
@@ -64,7 +64,7 @@
       "title": "feat(strategy): subspace_iter transform \u2014 power iteration for decaying spectra (#184)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T21:16:57Z",
+      "updated_at": "2026-07-15T21:20:18Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/245"
     },
     {
@@ -79,7 +79,7 @@
       "title": "fix(strategy): budget the reassigned-tile transient in the streaming primitives (Fixes #234)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T21:16:59Z",
+      "updated_at": "2026-07-15T21:20:19Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/235"
     },
     {
@@ -94,7 +94,7 @@
       "title": "fix(strategy): charge the resident Q operand in stream_gemm_*/compress budgets (Fixes #236)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T21:17:05Z",
+      "updated_at": "2026-07-15T21:20:24Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/237"
     },
     {
@@ -109,7 +109,7 @@
       "title": "fix(strategy): finish the frac basis() signature across contributor-facing snippets (Fixes #252)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T21:17:11Z",
+      "updated_at": "2026-07-15T21:20:29Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/253"
     },
     {
@@ -124,7 +124,7 @@
       "title": "feat(strategy): add sparse-sign (OSNAP) sketch transform",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T21:17:20Z",
+      "updated_at": "2026-07-15T21:20:37Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/257"
     },
     {
@@ -139,7 +139,7 @@
       "title": "fix(attention): accept numpy integer sizes in AttentionSpec",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T21:17:22Z",
+      "updated_at": "2026-07-15T21:20:39Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/261"
     },
     {
@@ -154,7 +154,7 @@
       "title": "feat(strategy): add power-rsvd subspace-iteration transform",
       "track": "decaying-spectrum",
       "transform": "power-rsvd",
-      "updated_at": "2026-07-15T21:17:32Z",
+      "updated_at": "2026-07-15T21:20:46Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/264"
     }
   ],
@@ -172,7 +172,7 @@
       "title": "feat(strategy): subspace_iter transform \u2014 power iteration for decaying spectra (#184)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T21:16:57Z",
+      "updated_at": "2026-07-15T21:20:18Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/245"
     },
     {
@@ -188,7 +188,7 @@
       "title": "feat(strategy): add sparse-sign (OSNAP) sketch transform",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T21:17:20Z",
+      "updated_at": "2026-07-15T21:20:37Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/257"
     },
     {
@@ -204,9 +204,9 @@
       "title": "feat(strategy): add power-rsvd subspace-iteration transform",
       "track": "decaying-spectrum",
       "transform": "power-rsvd",
-      "updated_at": "2026-07-15T21:17:32Z",
+      "updated_at": "2026-07-15T21:20:46Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/264"
     }
   ],
-  "updated": "2026-07-15T21:20:46+00:00"
+  "updated": "2026-07-15T22:34:04+00:00"
 }
