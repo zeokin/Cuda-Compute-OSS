@@ -173,6 +173,70 @@ class NystromTransform(Transform):
         return 2.0 * n * m * m
 
 
+class SparseSignSketchTransform(Transform):
+    """Sparse-sign (OSNAP-style) sketch over A and B.
+
+    A middle ground between ``nystrom`` (gather single columns — cheap, but a
+    lone column can miss structure) and ``rsvd`` (dense Gaussian mixture — accurate,
+    but a full ``O(2 N² M)`` sketch). Each basis column is a **signed sum of ``s``
+    randomly chosen columns** (resp. rows), i.e. ``A @ Ω`` with a *sparse* sign
+    matrix ``Ω`` (``s`` nonzeros per column). The random mixing captures structure
+    a single sampled column misses — so it reaches a given accuracy at a smaller M
+    than ``nystrom`` — while touching only ``~s·M`` columns instead of all N.
+    The three necessary spaces col(A), row(A), row(B) are sketched (col(B) is
+    redundant, per ``rsvd``), then a thin QR orthonormalizes.
+
+    Cost: the QR (``~2 N M²``) plus the sparse combine (``~2 s N M``), between
+    ``nystrom`` and ``rsvd``.
+
+    In-core: A and B are staged to the device for the gather, so this variant needs
+    them to fit in device memory (like ``matmul``'s in-core path). ``s`` is the
+    ``sparsity`` class attribute.
+    """
+
+    name = "sparsesign"
+    sparsity = 8
+
+    def basis(self, n, m, backend, dtype, A=None, B=None, frac=None):
+        if A is None or B is None:
+            raise ValueError("sparsesign transform needs A and B")
+        if m < 1 or m > n:
+            raise ValueError(f"sparsesign requires 1 <= m <= n; got m={m}, n={n}")
+
+        s = self.sparsity
+        rng = np.random.default_rng(self.seed)
+        base, rem = divmod(m, 3)
+        widths = [base + (1 if i < rem else 0) for i in range(3)]   # col(A), row(A), row(B)
+
+        Ad = backend.to_device(np.ascontiguousarray(A))
+        Bd = backend.to_device(np.ascontiguousarray(B))
+
+        def sketch(Xd, w, axis):
+            # w basis columns, each a signed sum of s columns (axis=1) / rows (axis=0) of X.
+            idx = backend.to_device(rng.integers(0, Xd.shape[axis], size=w * s))
+            signs = backend.to_device(
+                rng.choice(np.array([-1.0, 1.0], dtype=dtype), size=(1, w, s)))
+            mixed = Xd.index_select(axis, idx)         # gather s*w columns/rows
+            if axis == 0:
+                mixed = mixed.T                        # rows-as-columns -> (n, s*w)
+            return (mixed.reshape(mixed.shape[0], w, s) * signs).sum(dim=2)   # (n, w)
+
+        parts = []
+        if widths[0]:
+            parts.append(sketch(Ad, widths[0], 1))     # col(A): mix columns of A
+        if widths[1]:
+            parts.append(sketch(Ad, widths[1], 0))     # row(A): mix rows of A
+        if widths[2]:
+            parts.append(sketch(Bd, widths[2], 0))     # row(B): mix rows of B
+        Y = backend.xp.concatenate(parts, axis=1)      # (n, m)
+        return self._orthonormalize(Y, backend)
+
+    def basis_flops(self, n, m):
+        # QR of the (n, m) sketch (~2 N M²) plus the sparse signed combine
+        # (s multiply-adds per basis entry over n rows -> ~2 s N M).
+        return 2.0 * n * m * m + 2.0 * self.sparsity * n * m
+
+
 _REGISTRY: dict[str, type[Transform]] = {}
 
 
@@ -194,5 +258,5 @@ def available() -> list[str]:
     return sorted(_REGISTRY)
 
 
-for _cls in (RandomizedSVDTransform, NystromTransform):
+for _cls in (RandomizedSVDTransform, NystromTransform, SparseSignSketchTransform):
     register_transform(_cls.name, _cls)
