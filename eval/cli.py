@@ -67,7 +67,11 @@ def main(argv=None) -> int:
         if a.sweep:
             ns = [int(x) for x in a.sweep.split(",")]
             out["scaling"] = estimate_scaling(ns, ev)
-    except RuntimeError as e:
+    # Match the sibling CLIs (strategy/cli.py #199, attention/benchmark.py #201):
+    # a bad --transforms (KeyError from get_transform), an out-of-range --rank-m
+    # (ValueError from multiply_subspace), or a malformed --sweep (ValueError from
+    # int()) must exit 2 with a clean message, not dump an uncaught traceback.
+    except (ValueError, RuntimeError, MemoryError, KeyError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
 

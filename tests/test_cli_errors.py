@@ -117,5 +117,49 @@ def test_strategy_unknown_transform_exits_cleanly(capsys):
     assert "unknown transform" in err
 
 
+# eval is the fourth CLI; it must convert the same class of failures into exit 2
+# + an ``error:`` line, not an uncaught traceback (#258). Unlike matmul/strategy,
+# eval builds its GPU Backend *before* the transform/rank_m paths are reached, so
+# on a GPU box an unknown --transforms raises KeyError from get_transform and a
+# bad --rank-m raises ValueError from multiply_subspace -- both of which the old
+# ``except RuntimeError`` let escape. These CPU-safe tests drive main() with
+# ``evaluate`` stubbed to raise those types directly, verifying the widened
+# handler, rather than relying on a GPU being present.
+def test_eval_value_error_exits_cleanly(monkeypatch, capsys):
+    from eval import cli as eval_cli
+
+    def _boom(_ev):
+        raise ValueError("rank_m must be in [1, n]; got 0 for n=8")
+
+    monkeypatch.setattr(eval_cli, "evaluate", _boom)
+    rc = eval_cli.main(["--n", "8", "--rank-m", "0"])
+    assert rc == 2
+    assert "error:" in capsys.readouterr().err
+
+
+def test_eval_key_error_exits_cleanly(monkeypatch, capsys):
+    from eval import cli as eval_cli
+
+    def _boom(_ev):
+        raise KeyError("unknown transform 'bogus'")
+
+    monkeypatch.setattr(eval_cli, "evaluate", _boom)
+    rc = eval_cli.main(["--n", "8", "--transforms", "bogus"])
+    assert rc == 2
+    assert "error:" in capsys.readouterr().err
+
+
+def test_eval_bad_sweep_exits_cleanly(monkeypatch, capsys):
+    # --sweep is parsed with int() after evaluate() returns; a non-numeric value
+    # raises ValueError, which used to escape. Stub evaluate() to a bare success
+    # so the sweep parse is the only thing that can fail.
+    from eval import cli as eval_cli
+
+    monkeypatch.setattr(eval_cli, "evaluate", lambda _ev: {})
+    rc = eval_cli.main(["--n", "8", "--sweep", "foo", "--json"])
+    assert rc == 2
+    assert "error:" in capsys.readouterr().err
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))
