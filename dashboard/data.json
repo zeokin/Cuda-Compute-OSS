@@ -20,7 +20,7 @@
       "title": "fix(attention): validate --gate-strength before benchmark warmup",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T01:04:20Z",
+      "updated_at": "2026-07-15T02:59:08Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/239"
     },
     {
@@ -35,7 +35,7 @@
       "title": "fix(strategy): expose --spectral-alpha for the decaying-spectrum fill",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T01:04:25Z",
+      "updated_at": "2026-07-15T02:59:13Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/232"
     },
     {
@@ -50,7 +50,7 @@
       "title": "fix(strategy): budget the reassigned-tile transient in the streaming primitives (Fixes #234)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T01:04:31Z",
+      "updated_at": "2026-07-15T02:59:19Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/235"
     },
     {
@@ -65,7 +65,7 @@
       "title": "fix(strategy): charge the resident Q operand in stream_gemm_*/compress budgets (Fixes #236)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T01:04:37Z",
+      "updated_at": "2026-07-15T02:59:24Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/237"
     },
     {
@@ -80,7 +80,7 @@
       "title": "fix(strategy): reject --rank-m > --n at CLI boundary",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T01:04:43Z",
+      "updated_at": "2026-07-15T02:59:30Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/238"
     },
     {
@@ -95,7 +95,7 @@
       "title": "fix(storage): make --fill iota seed-dependent so eval couples are independent (#104)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T01:04:48Z",
+      "updated_at": "2026-07-15T02:59:36Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/241"
     },
     {
@@ -110,7 +110,7 @@
       "title": "fix(matmul,strategy): reject config.dtype that disagrees with A/B arrays",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T01:04:54Z",
+      "updated_at": "2026-07-15T02:59:41Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/243"
     },
     {
@@ -125,7 +125,7 @@
       "title": "fix(strategy): make --verify exit 1 on reconstruction mismatch",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T01:04:59Z",
+      "updated_at": "2026-07-15T02:59:46Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/244"
     },
     {
@@ -140,22 +140,21 @@
       "title": "feat(strategy): subspace_iter transform \u2014 power iteration for decaying spectra (#184)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T01:05:14Z",
+      "updated_at": "2026-07-15T02:59:54Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/245"
     },
     {
       "author": "RenzoMXD",
-      "detail": "gate chain passed; GPU eval runner is not wired up yet in this repo (Phase 2)",
-      "gpu_required": true,
+      "detail": "",
+      "gpu_required": false,
       "head_sha": "a7dd9ddd62a342e211e99e517eaa5cfdaf63aa09",
-      "kind": "feat",
-      "label": "status:queued-gpu",
+      "kind": null,
       "pr": 226,
-      "state": "eval_pending",
-      "title": "feat(strategy): nystrom captures 3 subspaces, not 4 (drop redundant col(B) landmark block)",
+      "state": "skip_draft",
+      "title": "feat(strategy): nystrom-iter -- landmark-seeded power iteration for decaying-spectrum data",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T02:56:28Z",
+      "updated_at": "2026-07-15T03:00:01Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/226"
     }
   ],
@@ -173,25 +172,9 @@
       "title": "feat(strategy): subspace_iter transform \u2014 power iteration for decaying spectra (#184)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-15T01:05:14Z",
+      "updated_at": "2026-07-15T02:59:54Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/245"
-    },
-    {
-      "author": "RenzoMXD",
-      "detail": "gate chain passed; GPU eval runner is not wired up yet in this repo (Phase 2)",
-      "gpu_required": true,
-      "head_sha": "a7dd9ddd62a342e211e99e517eaa5cfdaf63aa09",
-      "kind": "feat",
-      "label": "status:queued-gpu",
-      "position": 2,
-      "pr": 226,
-      "state": "eval_pending",
-      "title": "feat(strategy): nystrom captures 3 subspaces, not 4 (drop redundant col(B) landmark block)",
-      "track": null,
-      "transform": null,
-      "updated_at": "2026-07-15T02:56:28Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/226"
     }
   ],
-  "updated": "2026-07-15T03:00:01+00:00"
+  "updated": "2026-07-15T03:03:27+00:00"
 }
