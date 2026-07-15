@@ -4,9 +4,10 @@ A transform supplies an orthonormal N x M basis Q whose columns define the
 subspace we compress into. The quality of the approximation is entirely
 determined by how well Q captures the column/row spaces of A and B.
 
-Built-in transforms: ``rsvd`` (data-dependent randomized range finder) and
-``nystrom`` (landmark column sampling for low-rank data). Everything else is a
-contribution: subclass ``Transform`` and register it.
+Built-in transforms: ``rsvd`` (data-dependent randomized range finder),
+``nystrom`` (landmark column sampling for low-rank data), and ``power-rsvd``
+(``rsvd`` plus q subspace-iteration steps for decaying spectra). Everything else
+is a contribution: subclass ``Transform`` and register it.
 
 Add your own (this is the updatable hook):
 
@@ -173,6 +174,103 @@ class NystromTransform(Transform):
         return 2.0 * n * m * m
 
 
+class PowerIterationTransform(Transform):
+    """``rsvd`` range finder + ``q`` steps of randomized subspace iteration.
+
+    ``rsvd`` takes a single sketch of each space (``AΩ``, ``AᵀΩ``, ``BᵀΩ``) and
+    orthonormalizes. When the spectrum only *decays* (``σ_k ~ k^-α``) instead of
+    being exactly low-rank, that single sketch leaks tail energy into ``Q`` and the
+    approximation ``Ĉ = P A P B P`` struggles to clear the accuracy floor. This
+    transform sharpens each sketch with ``q`` re-orthonormalized subspace-iteration
+    steps (Halko–Martinsson–Tropp 2011, Alg. 4.4):
+
+        col(A):  Y = A Ω;   repeat q× :  Y = orth( A (Aᵀ Y) )   → (A Aᵀ)^q A Ω
+        row(A):  Y = Aᵀ Ω;  repeat q× :  Y = orth( Aᵀ (A Y) )   → (Aᵀ A)^q Aᵀ Ω
+        row(B):  Y = Bᵀ Ω;  repeat q× :  Y = orth( Bᵀ (B Y) )   → (Bᵀ B)^q Bᵀ Ω
+
+    Each step multiplies the captured spectrum by another factor of the singular
+    values, so the subspace aligns with the dominant directions far better —
+    strictly lower Frobenius error at the same ``M``. ``q=0`` reduces exactly to
+    ``rsvd``. The re-orthonormalization between steps keeps the iteration numerically
+    stable (round-off would otherwise collapse ``Y`` onto the top singular vector).
+
+    The extra cost is ``q`` more streamed passes over A/B (``~4 q N² M`` FLOPs,
+    reported honestly in :meth:`basis_flops`) — still ``O(N² M) ≪ O(N³)``, so the
+    strategy can still dominate exact while gaining accuracy. The sketches stream
+    (``stream_gemm_*``), so A/B may be disk-backed memmaps and the basis stage
+    honours the same ``--vram-fraction`` budget as compress/reconstruct.
+    """
+
+    name = "power-rsvd"
+
+    def __init__(self, seed: int = 0, q: int = 2):
+        super().__init__(seed=seed)
+        if isinstance(q, bool) or not isinstance(q, (int, np.integer)) or q < 0:
+            raise ValueError(f"q (power-iteration steps) must be a non-negative integer, got {q!r}")
+        self.q = int(q)
+
+    def basis(self, n, m, backend, dtype, A=None, B=None, frac=None):
+        if A is None or B is None:
+            raise ValueError("power-rsvd transform needs A and B")
+        from .subspace import (
+            _DEFAULT_ROW_BLOCK_FRACTION,
+            stream_gemm_left_t,
+            stream_gemm_right,
+        )
+
+        # Honour the strategy's VRAM budget for the sketch row-blocks, exactly as
+        # rsvd/compress/reconstruct do -- otherwise the basis stage silently uses
+        # the 0.3 default and can OOM at a low --vram-fraction.
+        if frac is None:
+            frac = _DEFAULT_ROW_BLOCK_FRACTION
+
+        xp = backend.xp
+        base, rem = divmod(m, 3)
+        widths = [base + (1 if i < rem else 0) for i in range(3)]
+        rng = np.random.default_rng(self.seed)
+
+        def omega(w):
+            return backend.to_device(
+                rng.standard_normal((n, w)).astype(dtype, copy=False)
+            )
+
+        def power(Y, X, *, transpose_first):
+            # Sharpen Y toward the dominant singular subspace of X (transpose_first
+            # False -> range of X; True -> range of Xᵀ) with q re-orthonormalized
+            # subspace-iteration steps. Both products stream, so X may be a memmap.
+            for _ in range(self.q):
+                if transpose_first:                                   # Y <- Xᵀ (X Y)
+                    Z = stream_gemm_right(X, Y, backend, dtype, frac)     # X Y
+                    Y = stream_gemm_left_t(X, Z, backend, dtype, frac)    # Xᵀ Z
+                else:                                                 # Y <- X (Xᵀ Y)
+                    Z = stream_gemm_left_t(X, Y, backend, dtype, frac)    # Xᵀ Y
+                    Y = stream_gemm_right(X, Z, backend, dtype, frac)     # X Z
+                Y = self._orthonormalize(Y, backend)                  # stabilize
+            return Y
+
+        parts = []
+        if widths[0]:
+            Y = stream_gemm_right(A, omega(widths[0]), backend, dtype, frac)   # col(A): A Ω
+            parts.append(power(Y, A, transpose_first=False))
+        if widths[1]:
+            Y = stream_gemm_left_t(A, omega(widths[1]), backend, dtype, frac)  # row(A): Aᵀ Ω
+            parts.append(power(Y, A, transpose_first=True))
+        if widths[2]:
+            Y = stream_gemm_left_t(B, omega(widths[2]), backend, dtype, frac)  # row(B): Bᵀ Ω
+            parts.append(power(Y, B, transpose_first=True))
+
+        Y = xp.concatenate(parts, axis=1)      # (n, m)
+        return self._orthonormalize(Y, backend)  # (n, m) orthonormal columns
+
+    def basis_flops(self, n, m):
+        # rsvd's sketch + final QR (2 n² m + 2 n m²), PLUS q subspace-iteration
+        # steps. Each step is two n×n · n×w products (Xᵀ Y then X Z) over widths
+        # summing to m -> 4 n² m, plus a re-orthonormalizing thin QR bounded by
+        # 2 n m². Recomputed every call (depends on A, B), so not amortizable.
+        rsvd_cost = 2.0 * n * n * m + 2.0 * n * m * m
+        return rsvd_cost + self.q * (4.0 * n * n * m + 2.0 * n * m * m)
+
+
 _REGISTRY: dict[str, type[Transform]] = {}
 
 
@@ -194,5 +292,5 @@ def available() -> list[str]:
     return sorted(_REGISTRY)
 
 
-for _cls in (RandomizedSVDTransform, NystromTransform):
+for _cls in (RandomizedSVDTransform, NystromTransform, PowerIterationTransform):
     register_transform(_cls.name, _cls)
