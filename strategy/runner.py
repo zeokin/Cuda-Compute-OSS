@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import os
 import time
+from numbers import Integral
+
 import numpy as np
 
 from .backend import Backend
@@ -51,6 +53,12 @@ def run(n: int, cfg: Config, fill: str = "lowrank", verify: bool = False,
     Default fill is 'lowrank' because that is the regime the strategy targets;
     verify (small n) reports the reconstruction error vs a float64 reference.
     """
+    # Reject a degenerate n before touching the GPU, mirroring matmul.runner.run:
+    # storage's block-size math divides by n, so n=0 raised ZeroDivisionError and
+    # n<0 a numpy "negative dimensions" error -- both only after a Backend (and a
+    # real GPU) had already been demanded.
+    if isinstance(n, bool) or not isinstance(n, Integral) or n < 1:
+        raise ValueError(f"n must be a positive integer, got {n!r}")
     backend = Backend(cfg.device, cfg.verbose)
     dt = cfg.np_dtype
     on_disk = storage.should_use_disk(
@@ -139,6 +147,8 @@ def compare(n: int, cfg: Config, fill: str = "lowrank",
             spectral_alpha: float = 1.0) -> dict:
     """Run the exact baseline and the subspace strategy on the SAME inputs and
     report time, throughput and the smart strategy's reconstruction error."""
+    if isinstance(n, bool) or not isinstance(n, Integral) or n < 1:
+        raise ValueError(f"n must be a positive integer, got {n!r}")
     backend = Backend(cfg.device, cfg.verbose)
     dt = cfg.np_dtype
     on_disk = storage.should_use_disk(
