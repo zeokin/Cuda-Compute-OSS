@@ -1,0 +1,120 @@
+name: Windows GPU batch evaluation (device-specific)
+
+# Manual only. This is deliberately artifact-only: the official frontier and
+# ledger currently compare scores without partitioning by GPU model, so RTX
+# 5070 Ti measurements must not alter RTX 5090 reference labels or results.
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Number of queued PRs to evaluate; 0 means all"
+        required: true
+        default: "1"
+      n:
+        description: "Matrix edge N"
+        required: true
+        default: "8192"
+      pairs:
+        description: "Random couples per PR"
+        required: true
+        default: "3"
+      python_executable:
+        description: "CUDA-enabled Python command or absolute path on the runner"
+        required: true
+        default: "python"
+      transforms:
+        description: "Optional comma-separated transform names"
+        required: false
+        default: ""
+      seed:
+        description: "Optional reproduction seed; leave empty for unseen inputs"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: windows-gpu-evaluation
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    # Register the GPU machine with all four labels. Do not label a 5070 Ti as
+    # rtx-5090: the official workflow intentionally reserves that label.
+    runs-on: [self-hosted, windows, gpu, rtx-5070-ti]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Verify supplied CUDA Python
+        shell: pwsh
+        env:
+          PYTHON_EXECUTABLE: ${{ inputs.python_executable }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          & $env:PYTHON_EXECUTABLE -c "import sys, torch; assert torch.cuda.is_available(), 'CUDA is unavailable'; print('GPU OK:', torch.__version__, torch.cuda.get_device_name(0), '| Python:', sys.executable)"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          # Do not request the project's gpu extra here: on Windows it can
+          # replace the CUDA wheel above with the CPU-only PyPI Torch wheel.
+          & $env:PYTHON_EXECUTABLE -m pip install --disable-pip-version-check -e ".[test]"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          & $env:PYTHON_EXECUTABLE -c "import torch; assert torch.cuda.is_available(), 'CUDA disappeared after dependency install'; print('CUDA remains available')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Restore queued PR data as UTF-8
+        shell: pwsh
+        env:
+          PYTHON_EXECUTABLE: ${{ inputs.python_executable }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          git fetch --depth=1 origin bot/dashboard-state
+          & $env:PYTHON_EXECUTABLE -c 'from pathlib import Path; import subprocess; Path("dashboard/data.json").write_bytes(subprocess.check_output(["git", "show", "origin/bot/dashboard-state:dashboard/data.json"]))'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run queued PRs with the CUDA interpreter
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PYTHON_EXECUTABLE: ${{ inputs.python_executable }}
+          LIMIT: ${{ inputs.limit }}
+          N: ${{ inputs.n }}
+          PAIRS: ${{ inputs.pairs }}
+          TRANSFORMS: ${{ inputs.transforms }}
+          SEED: ${{ inputs.seed }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $args = @(
+            "--repo", "${{ github.repository }}",
+            "--queue", "dashboard/data.json",
+            "--limit", $env:LIMIT,
+            "--n", $env:N,
+            "--pairs", $env:PAIRS,
+            "--runs", "5",
+            "--sweep", "2048,4096,8192",
+            "--run",
+            "--clean",
+            "--active-python"
+          )
+          if ($env:TRANSFORMS) { $args += @("--transforms", $env:TRANSFORMS) }
+          if ($env:SEED) { $args += @("--seed", $env:SEED) }
+          & $env:PYTHON_EXECUTABLE -m eval.gpu_batch @args
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload device-specific GPU results
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-rtx-5070-ti-gpu-results
+          path: gpu-results/*.json
+          if-no-files-found: error
+
+      - name: Explain result scope
+        shell: pwsh
+        run: |
+          "## Device-specific GPU results" >> $env:GITHUB_STEP_SUMMARY
+          "These RTX 5070 Ti artifacts are not applied to PR labels, the ledger, or the RTX 5090 frontier." >> $env:GITHUB_STEP_SUMMARY
