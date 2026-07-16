@@ -49,6 +49,24 @@ def _require_positive_n(n) -> None:
         raise ValueError(f"n must be a positive integer, got {n!r}")
 
 
+# compare() keeps A, B, Ce, and Cs alive together. run() only keeps A, B, C, so
+# storage.should_use_disk's hardcoded 3-matrix auto budget is correct for run()
+# and under-counts compare() by a full matrix (issue #287).
+_COMPARE_RESIDENT_MATRICES = 4
+
+
+def _compare_should_use_disk(n: int, item_bytes: int, storage_mode: str,
+                             host_free: int) -> bool:
+    """RAM-vs-disk for compare(): same half-free-RAM policy as should_use_disk,
+    but charged against the four-matrix resident set."""
+    if storage_mode == "ram":
+        return False
+    if storage_mode == "disk":
+        return True
+    need = _COMPARE_RESIDENT_MATRICES * n * n * item_bytes
+    return need > 0.5 * host_free
+
+
 def run(n: int, cfg: Config, fill: str = "lowrank", verify: bool = False,
         keep: bool = False, data_rank: int | None = None,
         spectral_alpha: float = 1.0) -> dict:
@@ -149,7 +167,7 @@ def compare(n: int, cfg: Config, fill: str = "lowrank",
     _require_positive_n(n)
     backend = Backend(cfg.device, cfg.verbose)
     dt = cfg.np_dtype
-    on_disk = storage.should_use_disk(
+    on_disk = _compare_should_use_disk(
         n, cfg.item_bytes, cfg.storage, backend.host_available_bytes()
     )
     pa, pb, pe, ps = (*_paths(cfg.workdir)[:2],
