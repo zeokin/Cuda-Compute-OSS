@@ -379,7 +379,8 @@ def process_pr(
     action values: skip_draft, close_blocked, close_excess_open_pr,
     needs_merge_conflict_resolution, close_stale_merge_conflict,
     close_coding_agent_coauthor, close_protected_path, close_missing_pr_kind,
-    close_missing_scorecard, maintainer_changes_requested,
+    close_missing_scorecard, close_missing_evaluation_declaration,
+    maintainer_changes_requested,
     close_stale_maintainer_changes, copycat_block, copycat_warn,
     already_evaluated, non_gpu_review, eval_pending, evaluated.
     """
@@ -516,12 +517,11 @@ def process_pr(
     if not declared_track(pr.body) or not declared_transform(pr.body):
         return GateOutcome(
             pr.number,
-            "needs_evaluation_declaration",
+            "close_missing_evaluation_declaration",
             detail=(
-                "This feat/strategy PR must declare exactly one checked target track "
-                "and a named **Transform:** candidate before GPU queueing."
+                "Closing this feat/strategy PR because it must declare exactly one checked "
+                "target track and a named **Transform:** candidate before GPU queueing."
             ),
-            label=CHANGES_REQUESTED_LABEL,
             kind=kind,
         )
 
@@ -567,6 +567,8 @@ def _apply(client: GitHubClient, pr: PRInfo, outcome: GateOutcome, comments: lis
         client.close_pr(pr.number, outcome.detail)
     elif outcome.action == "close_missing_scorecard":
         client.close_pr(pr.number, outcome.detail)
+    elif outcome.action == "close_missing_evaluation_declaration":
+        client.close_pr(pr.number, outcome.detail)
     elif outcome.action == "close_stale_maintainer_changes":
         client.close_pr(pr.number, outcome.detail)
     elif outcome.action == "maintainer_changes_requested":
@@ -575,19 +577,6 @@ def _apply(client: GitHubClient, pr: PRInfo, outcome: GateOutcome, comments: lis
         client.remove_label(pr.number, READY_NON_GPU_LABEL)
         client.remove_label(pr.number, NEEDS_PR_KIND_LABEL)
         client.remove_label(pr.number, "status:needs-scorecard")
-    elif outcome.action == "needs_evaluation_declaration":
-        client.add_label(pr.number, CHANGES_REQUESTED_LABEL)
-        client.remove_label(pr.number, GPU_QUEUE_LABEL)
-        client.remove_label(pr.number, READY_NON_GPU_LABEL)
-        client.remove_label(pr.number, NEEDS_PR_KIND_LABEL)
-        client.remove_label(pr.number, "status:needs-scorecard")
-        marker = f"<!-- cco-missing-evaluation-declaration:{pr.head_sha} -->"
-        if not any(marker in body for body in comments):
-            client.post_comment(
-                pr.number,
-                marker + "\nGPU scoring is blocked. Declare exactly one checked target track "
-                "and a named **Transform:** candidate, then push a new commit.",
-            )
     elif outcome.action == "copycat_block":
         client.add_label(pr.number, "copycat")
         client.post_comment(pr.number, f"Closed as a copycat submission: {outcome.detail}")

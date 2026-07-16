@@ -70,6 +70,11 @@ jobs:
               /accuracy\s*\|?\s*[0-9]/i.test(body) ||
               /latency\s*\|?\s*[0-9]/i.test(body) ||
               /RESULT_JSON/.test(body);
+            const declaredTracks = [
+              ...body.matchAll(/^\s*-\s*\[[xX]\]\s*(full-rank|low-rank|decaying-spectrum)\b/gim)
+            ];
+            const transformMatch = /\*\*Transform:\*\*\s*`?\s*([A-Za-z0-9_.-]+)\s*`?/i.exec(body);
+            const hasTransform = Boolean(transformMatch && !/^_+$/.test(transformMatch[1]));
 
             const strategyLike = /register_transform|class\s+\w+\(Transform\)|\[strategy\]/i.test(
               `${title}\n${body}`
@@ -88,6 +93,12 @@ jobs:
                 errors.push("Feat/strategy PRs must include a filled GPU scorecard in the PR body.");
               } else {
                 remove.add("status:needs-scorecard");
+              }
+              if (declaredTracks.length !== 1) {
+                errors.push("Feat/strategy PRs must declare exactly one checked target track.");
+              }
+              if (!hasTransform) {
+                errors.push("Feat/strategy PRs must declare a named **Transform:** candidate.");
               }
             } else if (explicitFix) {
               add.add("type:bug");
@@ -118,6 +129,9 @@ jobs:
             }
 
             if (errors.length) {
+              await github.rest.pulls.update({
+                owner, repo, pull_number: pr.number, state: "closed",
+              });
               core.setFailed(errors.join(" "));
             }
 

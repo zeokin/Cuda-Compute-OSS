@@ -241,8 +241,7 @@ def test_missing_scorecard_is_flagged():
 def test_feature_without_track_and_transform_is_not_queued():
     body = "| accuracy | 0.991 |\n| latency | 0.42s |"
     out = process_pr(_pr(body=body), SOME_DIFF, [], frozenset(), [])
-    assert out.action == "needs_evaluation_declaration"
-    assert out.label == CHANGES_REQUESTED_LABEL
+    assert out.action == "close_missing_evaluation_declaration"
 
 
 def test_clean_pr_with_no_runner_is_eval_pending():
@@ -474,6 +473,14 @@ def test_run_once_live_mode_applies_actions():
     pr1.body = NO_SCORECARD_BODY
     outcomes = run_once(client, dry_run=False)
     assert outcomes[0].action == "close_missing_scorecard"
+    assert ("close_pr", 1, outcomes[0].detail) in client.actions
+
+
+def test_run_once_live_mode_closes_missing_evaluation_declaration():
+    pr1 = _pr(number=1, body="| accuracy | 0.991 |\n| latency | 0.42s |")
+    client = FakeClient(prs={"all": [pr1], "open": [pr1]}, diffs={1: SOME_DIFF})
+    outcomes = run_once(client, dry_run=False)
+    assert outcomes[0].action == "close_missing_evaluation_declaration"
     assert ("close_pr", 1, outcomes[0].detail) in client.actions
 
 
