@@ -51,9 +51,11 @@ from strategy import Transform, register_transform, subspace_matmul, Config
 
 class MyTransform(Transform):
     name = "mine"
-    def basis(self, n, m, backend, dtype, A=None, B=None):
+    def basis(self, n, m, backend, dtype, A=None, B=None, frac=None):
         Q = ...                     # (n, m), ORTHONORMAL columns, on backend.xp
-        return Q
+        return Q                    # forward frac to any stream_gemm_* helpers:
+                                    # multiply_subspace only passes the run's
+                                    # vram_fraction to a basis() that declares it
 
 register_transform("mine", MyTransform)
 C = subspace_matmul(A, B, config=Config(transform="mine", rank_m=256))
