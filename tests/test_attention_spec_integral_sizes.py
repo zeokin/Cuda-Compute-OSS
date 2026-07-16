@@ -79,3 +79,15 @@ if __name__ == "__main__":
             print(f"FAIL  {fn.__name__}: {e}")
     print(f"\n{len(fns) - failed}/{len(fns)} passed")
     sys.exit(1 if failed else 0)
+
+
+def test_generate_qkv_accepts_numpy_int_seed():
+    import numpy as np
+    from attention.spec import AttentionSpec
+    from attention.data import generate_qkv
+
+    spec = AttentionSpec(
+        batch=1, heads=1, seq=8, dim=4, seed=np.int64(0), device="cpu", dtype="fp32"
+    )
+    q, k, v = generate_qkv(spec)
+    assert q.shape == (1, 1, 8, 4)

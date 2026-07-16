@@ -44,7 +44,8 @@ def generate_qkv(spec: AttentionSpec, device=None):
     # generator on "cuda" (= cuda:0) and torch.randn(generator=..., device=cuda:1)
     # then raised a device mismatch. MPS has no device-side generator -> use CPU.
     gen_device = "cpu" if dev.type == "mps" else dev
-    gen = torch.Generator(device=gen_device).manual_seed(spec.seed)
+    # AttentionSpec accepts numbers.Integral (incl. np.int64); torch needs a builtin int.
+    gen = torch.Generator(device=gen_device).manual_seed(int(spec.seed))
     dtype = torch_dtype(spec.dtype)
     shape = (spec.batch, spec.heads, spec.seq, spec.dim)
     q = torch.randn(shape, generator=gen, device=dev, dtype=dtype)

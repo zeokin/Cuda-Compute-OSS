@@ -309,7 +309,7 @@ def main(argv=None) -> int:
             seed=args.seed,
             device=args.device,
         )
-    except (ValueError, RuntimeError, MemoryError) as e:
+    except (ValueError, RuntimeError, MemoryError, TypeError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
 
