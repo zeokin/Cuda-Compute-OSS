@@ -239,10 +239,8 @@ def correlation_spectral_global_mix(
     kf = torch.fft.fft(k_work, dim=-2)
     corr = torch.fft.ifft(qf * torch.conj(kf), dim=-2).real.mean(dim=-1).abs()
 
-    if causal:
-        lag_idx = torch.arange(seq, device=v.device)
-        corr = corr.masked_fill(lag_idx.view(1, 1, -1) > seq // 2, float("-inf"))
-
+    # Causal is fully handled by the early spectral_global_mix fallback above;
+    # the body below is non-causal only (wraparound is intentional).
     kernel = torch.softmax(corr / temperature, dim=-1)
     delta = torch.zeros_like(kernel)
     delta[..., 0] = 1.0
@@ -253,25 +251,9 @@ def correlation_spectral_global_mix(
         kernel = kernel * decay.view(1, 1, -1)
         kernel = kernel / kernel.sum(dim=-1, keepdim=True).clamp_min(1e-12)
 
-    if causal:
-        # A circular convolution computes out[t] = sum_l kernel[l] * v[(t-l) % seq],
-        # so every lag l > t wraps onto v[seq + t - l] -- a FUTURE token. Masking
-        # far lags above does not prevent that. Zero-pad to 2*seq so the FFT
-        # computes a LINEAR convolution and only lags l <= t contribute.
-        length = 2 * seq
-        vf = torch.fft.fft(v_work, n=length, dim=-2)
-        kernel_f = torch.fft.fft(kernel, n=length, dim=-1)[..., None]
-        out = torch.fft.ifft(vf * kernel_f, dim=-2).real[..., :seq, :]
-        # Only the first t+1 taps land on real tokens, so renormalize by the
-        # kernel mass actually applied at t -- keeping each output a convex
-        # combination of the visible past (cf. _pooled_landmarks' denom).
-        mass = torch.cumsum(kernel, dim=-1).clamp_min(1e-12)[..., None]
-        out = out / mass
-    else:
-        # Non-causal: wraparound is intentional (a global circular mixer).
-        vf = torch.fft.fft(v_work, dim=-2)
-        kernel_f = torch.fft.fft(kernel, dim=-1)[..., None]
-        out = torch.fft.ifft(vf * kernel_f, dim=-2).real
+    vf = torch.fft.fft(v_work, dim=-2)
+    kernel_f = torch.fft.fft(kernel, dim=-1)[..., None]
+    out = torch.fft.ifft(vf * kernel_f, dim=-2).real
     return out.to(v.dtype)
 
 
