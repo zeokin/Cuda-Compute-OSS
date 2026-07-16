@@ -228,6 +228,11 @@ def multiply_subspace(A, B, C, backend: Backend, cfg: Config) -> dict:
     Atil = compress(A, Q, backend, cdt, frac)             # (m, m)
     Btil = compress(B, Q, backend, cdt, frac)             # (m, m)
     Ctil = backend.matmul(Atil, Btil)                     # (m, m)  -- cheap core
+    # Drop the (m, m) compress leftovers before streaming reconstruct. They are
+    # unused after the core product, but if kept alive reconstruct's budget
+    # (Q + Ctil only) under-counts by 2*m*m -- on MPS free_compute_bytes() is a
+    # static ceiling so the row-block can OOM (~2.85x at M=N).
+    del Atil, Btil
     reconstruct(Ctil, Q, C, backend, cfg.np_dtype, frac, cdt)
 
     return {
