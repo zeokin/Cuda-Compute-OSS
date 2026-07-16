@@ -76,7 +76,7 @@
       "title": "fix(strategy): nystrom uses 3 landmark spaces, not 4 (drop redundant col(B))",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T15:46:35Z",
+      "updated_at": "2026-07-16T16:02:52Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/270"
     },
     {
@@ -91,7 +91,7 @@
       "title": "fix(docs): landing page counts accuracy as a fourth never-traded cost axis (Fixes #271)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T15:46:40Z",
+      "updated_at": "2026-07-16T16:02:58Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/272"
     },
     {
@@ -106,7 +106,7 @@
       "title": "fix(strategy): reject non-finite spectral_alpha in storage.generate",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T15:46:45Z",
+      "updated_at": "2026-07-16T16:03:04Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/273"
     },
     {
@@ -121,7 +121,7 @@
       "title": "fix(strategy): validate rank_m's range in subspace_matmul before building a Backend",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T15:46:50Z",
+      "updated_at": "2026-07-16T16:03:12Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/277"
     },
     {
@@ -136,25 +136,25 @@
       "title": "fix(strategy): charge prior rsvd sketch parts in stream budgets",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T15:46:55Z",
+      "updated_at": "2026-07-16T16:03:18Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/265"
     },
     {
       "author": "philluiz2323",
       "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
       "gpu_required": false,
-      "head_sha": "ee9389a8398d5a885b8d48bcae6e21c773092ffe",
+      "head_sha": "a2a8c1c2c862639573ed1bc220034ba0884ff903",
       "kind": "fix",
       "label": "status:ready-non-gpu",
       "pr": 261,
       "state": "non_gpu_review",
-      "title": "fix(attention): accept numpy integer sizes in AttentionSpec",
+      "title": "fix(attention): coerce the Integral seed for torch.Generator in generate_qkv (#281)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T15:59:27Z",
+      "updated_at": "2026-07-16T16:03:24Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/261"
     }
   ],
   "queue": [],
-  "updated": "2026-07-16T16:03:28+00:00"
+  "updated": "2026-07-16T16:07:12+00:00"
 }
