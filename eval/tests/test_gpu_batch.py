@@ -123,7 +123,8 @@ def test_active_python_plan_is_portable_and_does_not_create_uv_environment():
 
 
 def test_active_python_run_uses_supplied_interpreter_for_every_pr_command(monkeypatch, tmp_path):
-    item = QueueItem(pr=4, title="mine", author="alice", head_sha="a" * 40)
+    item = QueueItem(pr=4, title="mine", author="alice", head_sha="a" * 40,
+                     track="full-rank", transform="mine")
     calls = []
 
     def fake_run(cmd, *, cwd=None, capture=False):
@@ -140,6 +141,7 @@ def test_active_python_run_uses_supplied_interpreter_for_every_pr_command(monkey
 
     monkeypatch.setattr("eval.gpu_batch._run", fake_run)
     monkeypatch.setattr("eval.gpu_batch._rebase_onto_main", lambda checkout: True)
+    monkeypatch.setattr("eval.gpu_batch._transform_touched", lambda checkout, name: True)
     out = run_item(
         item,
         repo="owner/repo",
@@ -229,6 +231,20 @@ def test_run_item_mock_writes_result_without_checkout():
             assert not (Path(d) / "work").exists()
     finally:
         tmp.cleanup()
+
+
+def test_run_item_skips_undeclared_feature_without_checkout(tmp_path):
+    item = QueueItem(pr=10, title="undeclared", author="alice", head_sha="a" * 40)
+    out = run_item(
+        item,
+        repo="owner/repo",
+        workdir=tmp_path / "work",
+        results_dir=tmp_path / "results",
+        spec=EvalSpec(),
+    )
+    data = json.loads(out.read_text())
+    assert data["state"] == "missing_evaluation_declaration"
+    assert not (tmp_path / "work").exists()
 
 
 def test_load_queue_reads_track():

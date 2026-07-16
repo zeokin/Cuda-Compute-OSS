@@ -28,6 +28,8 @@ from .pr_bot import GPU_QUEUE_LABEL, CHANGES_REQUESTED_LABEL
 BLOCKED_STATES = {
     "needs_rebase": "conflicts with `main`; rebase to be scored against the current frontier",
     "unverified_transform": "the declared transform is not added or modified by this PR's diff",
+    "missing_evaluation_declaration": "must declare one target track and candidate transform "
+                                    "before GPU scoring",
 }
 
 DEFAULT_LEDGER = "eval/ledger.jsonl"
@@ -58,13 +60,12 @@ def best_transform(payload: dict) -> tuple[str, dict]:
 def candidate_transform(payload: dict) -> tuple[str, dict]:
     """The transform this PR is scored on: the DECLARED candidate (verified by
     gpu_batch), not merely the best-scoring transform in the run -- otherwise a
-    PR could be credited for rsvd's (or another existing transform's) result.
-    Falls back to the best transform only when nothing was declared."""
+    PR could be credited for rsvd's (or another existing transform's) result."""
     name = payload.get("transform")
     ev = payload["eval"]
     if name and name in ev.get("transforms", {}):
         return name, ev["transforms"][name]
-    return best_transform(payload)
+    raise ValueError("result has no verified declared candidate transform")
 
 
 def entry_key(entry: dict) -> tuple:

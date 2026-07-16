@@ -5,6 +5,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from eval.gpu_batch import EvalSpec, QueueItem, mock_result
@@ -25,10 +27,13 @@ def _write_payload(path: Path, payload: dict) -> Path:
 
 
 def _mock_payload(pr=11, fill="random"):
-    return mock_result(
+    payload = mock_result(
         QueueItem(pr=pr, title=f"PR {pr}", author="alice", head_sha=f"sha{pr}", url=f"https://x/{pr}"),
         EvalSpec(transforms="mine", fill=fill),
     )
+    payload["track"] = track_from_config(payload["eval"]["config"])
+    payload["transform"] = "mine"
+    return payload
 
 
 def test_track_from_config():
@@ -97,9 +102,10 @@ def test_candidate_transform_scores_declared_not_best():
         "rsvd": {"score": 13.0}, "nystrom": {"score": 17.0}}}}
     name, res = candidate_transform(payload)
     assert name == "nystrom" and res["score"] == 17.0
-    # nothing declared -> fall back to the best transform
+    # A missing declaration must never be credited to the best built-in.
     p2 = {"eval": {"best": "rsvd", "transforms": {"rsvd": {"score": 13.0}}}}
-    assert candidate_transform(p2)[0] == "rsvd"
+    with pytest.raises(ValueError, match="verified declared candidate"):
+        candidate_transform(p2)
 
 
 def test_result_entry_uses_declared_track_and_transform():

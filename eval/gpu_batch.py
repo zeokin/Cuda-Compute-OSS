@@ -427,6 +427,21 @@ def run_item(
                           encoding="utf-8")
         return result
 
+    if not item.track or not item.transform:
+        missing = []
+        if not item.track:
+            missing.append("target track")
+        if not item.transform:
+            missing.append("candidate transform")
+        result.write_text(json.dumps({
+            "pr": item.pr, "title": item.title, "author": item.author,
+            "head_sha": item.head_sha, "url": item.url, "mock": False,
+            "state": "missing_evaluation_declaration",
+            "detail": "PR queue entry is missing " + " and ".join(missing)
+                      + "; declare both before GPU scoring",
+        }, indent=2) + "\n", encoding="utf-8")
+        return result
+
     if checkout.exists():
         if not clean:
             raise FileExistsError(f"{checkout} already exists; pass --clean to replace it")

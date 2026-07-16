@@ -47,6 +47,13 @@ Adds a new transform.
 |---|---|
 | accuracy | 0.991 |
 | latency | 0.42s |
+
+## Target track
+- [x] full-rank
+- [ ] low-rank
+- [ ] decaying-spectrum
+
+**Transform:** `foo`
 """
 
 NO_SCORECARD_BODY = "Adds a new transform. No testing done yet."
@@ -229,6 +236,13 @@ def test_queue_marker_keeps_pr_in_eval_pending_state():
 def test_missing_scorecard_is_flagged():
     out = process_pr(_pr(body=NO_SCORECARD_BODY), SOME_DIFF, [], frozenset(), [])
     assert out.action == "close_missing_scorecard"
+
+
+def test_feature_without_track_and_transform_is_not_queued():
+    body = "| accuracy | 0.991 |\n| latency | 0.42s |"
+    out = process_pr(_pr(body=body), SOME_DIFF, [], frozenset(), [])
+    assert out.action == "needs_evaluation_declaration"
+    assert out.label == CHANGES_REQUESTED_LABEL
 
 
 def test_clean_pr_with_no_runner_is_eval_pending():
@@ -778,8 +792,8 @@ def test_queue_record_carries_declared_track():
     pr = _pr(number=7, body="- [x] low-rank\n" + SCORECARD_BODY)
     rec = _queue_record(pr, GateOutcome(7, "eval_pending", kind="feat"))
     assert rec["track"] == "low-rank"
-    # unspecified track -> None (gpu bot falls back to the full-rank reference)
-    pr2 = _pr(number=8, body=SCORECARD_BODY)
+    # The queue records an unspecified track as None; process_pr blocks it.
+    pr2 = _pr(number=8, body="| accuracy | 0.991 |\n| latency | 0.42s |")
     assert _queue_record(pr2, GateOutcome(8, "eval_pending", kind="feat"))["track"] is None
 
 

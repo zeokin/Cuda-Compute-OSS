@@ -218,8 +218,8 @@ def has_scorecard(body: str) -> bool:
 def declared_track(body: str) -> str | None:
     """The track a feat PR declares in its template, or None if unspecified.
 
-    The GPU bot scores at this track's pinned regime (eval.tracks); an
-    unspecified track means the bot falls back to the full-rank reference.
+    The GPU bot scores at this track's pinned regime (eval.tracks). A feature
+    PR without one cannot be scored safely and must not enter the GPU queue.
     """
     m = TRACK_BODY_RE.search(body or "")
     return m.group(1).lower() if m else None
@@ -229,8 +229,8 @@ def declared_transform(body: str) -> str | None:
     """The transform name a feat PR declares in its template, or None.
 
     The GPU bot scores THIS transform (and verifies, post-rebase, that the PR's
-    diff actually adds/modifies it). None / the unfilled placeholder means the
-    bot falls back to the best-scoring transform in the run.
+    diff actually adds/modifies it). None / the unfilled placeholder blocks
+    GPU scoring; the bot must never fall back to another transform's result.
     """
     m = TRANSFORM_DECL_RE.search(body or "")
     name = m.group(1) if m else None
@@ -513,6 +513,18 @@ def process_pr(
             kind=kind,
         )
 
+    if not declared_track(pr.body) or not declared_transform(pr.body):
+        return GateOutcome(
+            pr.number,
+            "needs_evaluation_declaration",
+            detail=(
+                "This feat/strategy PR must declare exactly one checked target track "
+                "and a named **Transform:** candidate before GPU queueing."
+            ),
+            label=CHANGES_REQUESTED_LABEL,
+            kind=kind,
+        )
+
     if run_eval is None:
         return GateOutcome(pr.number, "eval_pending",
                            detail="gate chain passed; GPU eval runner is not "
@@ -563,6 +575,19 @@ def _apply(client: GitHubClient, pr: PRInfo, outcome: GateOutcome, comments: lis
         client.remove_label(pr.number, READY_NON_GPU_LABEL)
         client.remove_label(pr.number, NEEDS_PR_KIND_LABEL)
         client.remove_label(pr.number, "status:needs-scorecard")
+    elif outcome.action == "needs_evaluation_declaration":
+        client.add_label(pr.number, CHANGES_REQUESTED_LABEL)
+        client.remove_label(pr.number, GPU_QUEUE_LABEL)
+        client.remove_label(pr.number, READY_NON_GPU_LABEL)
+        client.remove_label(pr.number, NEEDS_PR_KIND_LABEL)
+        client.remove_label(pr.number, "status:needs-scorecard")
+        marker = f"<!-- cco-missing-evaluation-declaration:{pr.head_sha} -->"
+        if not any(marker in body for body in comments):
+            client.post_comment(
+                pr.number,
+                marker + "\nGPU scoring is blocked. Declare exactly one checked target track "
+                "and a named **Transform:** candidate, then push a new commit.",
+            )
     elif outcome.action == "copycat_block":
         client.add_label(pr.number, "copycat")
         client.post_comment(pr.number, f"Closed as a copycat submission: {outcome.detail}")
