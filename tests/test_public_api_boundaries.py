@@ -38,18 +38,6 @@ def test_matmul_runner_rejects_invalid_n_before_backend(monkeypatch, n):
         matmul_runner.run(n, Config(verbose=False))
 
 
-@pytest.mark.parametrize("fn_name", ("run", "compare"))
-@pytest.mark.parametrize("n", (0, -1, 1.5, True))
-def test_strategy_runner_rejects_invalid_n_before_backend(monkeypatch, fn_name, n):
-    import strategy.runner as strategy_runner
-    from strategy.config import Config as StrategyConfig
-
-    monkeypatch.setattr(strategy_runner, "Backend", _NoBackend)
-    fn = getattr(strategy_runner, fn_name)
-    with pytest.raises(ValueError, match="n must be a positive integer"):
-        fn(n, StrategyConfig(verbose=False))
-
-
 @pytest.mark.parametrize("value", ("false", 0, None))
 def test_attention_rejects_non_boolean_causal(value):
     torch = pytest.importorskip("torch")

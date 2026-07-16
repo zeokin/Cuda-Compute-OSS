@@ -38,10 +38,6 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--data-rank", type=int, default=None,
                    help="rank of generated matrices for --fill lowrank / "
                         "decaying-spectrum (default max(1, n//32))")
-    p.add_argument("--spectral-alpha", type=float, default=1.0,
-                   help="singular-value decay exponent k^-alpha for "
-                        "--fill decaying-spectrum (default 1.0; larger = faster "
-                        "decay). Ignored by other fills.")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--verify", action="store_true",
                    help="check reconstruction error vs a float64 reference "
@@ -62,8 +58,6 @@ def main(argv=None) -> int:
             raise ValueError(f"--rank-m must be a positive integer, got {args.rank_m}")
         if args.rank_m is not None and args.rank_m > args.n:
             raise ValueError(f"--rank-m must be <= --n ({args.n}), got {args.rank_m}")
-        if args.spectral_alpha < 0:
-            raise ValueError(f"--spectral-alpha must be >= 0, got {args.spectral_alpha}")
         cfg = Config(
             device=args.device,
             dtype=args.dtype,
@@ -79,7 +73,7 @@ def main(argv=None) -> int:
         get_transform(cfg.transform, cfg.transform_seed)
         if args.compare:
             out = runner.compare(args.n, cfg, fill=args.fill, data_rank=args.data_rank,
-                                 keep=args.keep, spectral_alpha=args.spectral_alpha)
+                                 keep=args.keep)
             if args.quiet:
                 # compare() only prints when verbose (i.e. not --quiet), so
                 # without this a --compare --quiet run produced NO output at all.
@@ -88,8 +82,7 @@ def main(argv=None) -> int:
                       f"speedup {out['speedup']:.2f}x  rel_err {out['rel_err']:.2e}")
             return 0
         info = runner.run(args.n, cfg, fill=args.fill, verify=args.verify,
-                          keep=args.keep, data_rank=args.data_rank,
-                          spectral_alpha=args.spectral_alpha)
+                          keep=args.keep, data_rank=args.data_rank)
     except (ValueError, RuntimeError, MemoryError, KeyError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2

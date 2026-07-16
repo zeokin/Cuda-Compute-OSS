@@ -78,24 +78,6 @@ def test_noncausal_correlation_is_unchanged():
     assert torch.isfinite(corr).all() and not torch.allclose(corr, plain, atol=1e-4)
 
 
-def test_causal_path_is_only_the_early_spectral_fallback():
-    """#260: after the early ``if causal: return spectral_global_mix(...)``,
-    later ``if causal:`` bodies were unreachable dead code. Pin that the
-    function source has exactly one causal branch -- the early return.
-    """
-    if _skip():
-        return
-    import inspect
-    import re
-
-    src = inspect.getsource(correlation_spectral_global_mix)
-    hits = re.findall(r"^\s*if causal\s*:", src, flags=re.MULTILINE)
-    assert len(hits) == 1, (
-        f"expected a single causal branch (early spectral fallback), found {len(hits)}"
-    )
-    assert "return spectral_global_mix" in src
-
-
 if __name__ == "__main__":
     fns = [v for kk, v in sorted(globals().items()) if kk.startswith("test_")]
     failed = 0

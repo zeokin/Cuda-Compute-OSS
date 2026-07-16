@@ -70,11 +70,8 @@ from strategy.transforms import Transform, register_transform
 
 class MyTransform(Transform):
     name = "mine"
-    def basis(self, n, m, backend, dtype, A=None, B=None, frac=None):
-        # return an (n, m) array on backend.xp with ORTHONORMAL columns.
-        # frac = the run's vram_fraction; forward it to any stream_gemm_*
-        # helpers you call so your basis honours --vram-fraction (a basis()
-        # that omits frac is called without it and silently uses the default).
+    def basis(self, n, m, backend, dtype, A=None, B=None):
+        # return an (n, m) array on backend.xp with ORTHONORMAL columns
         Q = ...
         return Q
 

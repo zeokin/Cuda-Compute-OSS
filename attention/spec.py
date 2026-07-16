@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import math
-import numbers
 import re
 from dataclasses import asdict, dataclass
 from numbers import Real
@@ -35,15 +34,9 @@ class AttentionSpec:
         # combinations -- confusing and data-shape-dependent. bool is excluded
         # even though isinstance(True, int) is True: a bool value here is
         # never meaningful.
-        #
-        # Test against numbers.Integral, not the bare `int`: a size derived from
-        # NumPy (an array's .shape entry, an np.arange element, n // 8 on an
-        # np.int64) is an np.integer, which is NOT an `int` but IS Integral. A
-        # bare isinstance(value, int) rejects those with "seq must be an int,
-        # got int64" even though they are exactly the integers callers compute.
         for name in ("batch", "heads", "seq", "dim", "window", "seed"):
             value = getattr(self, name)
-            if isinstance(value, bool) or not isinstance(value, numbers.Integral):
+            if isinstance(value, bool) or not isinstance(value, int):
                 raise ValueError(f"{name} must be an int, got {type(value).__name__}")
         for name in ("batch", "heads", "seq", "dim"):
             if getattr(self, name) <= 0:
