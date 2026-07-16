@@ -124,24 +124,30 @@ class RandomizedSVDTransform(Transform):
 class NystromTransform(Transform):
     """Landmark / Nyström column sampling over A and B.
 
-    Splits the M-column budget across col(A), row(A), col(B), and row(B) —
-    the same four spaces ``rsvd`` sketches — but forms each block by gathering
-    random landmark columns (or rows-as-columns) instead of random projections.
-    On genuine low-rank couples the landmarks span those spaces once enough
-    columns are drawn, so the thin QR that follows is enough; basis cost is
-    essentially the QR (``~2 N M²``), not ``rsvd``'s ``~2 N² M`` sketches.
+    Splits the M-column budget across the THREE spaces that determine the product
+    — col(A), row(A), row(B) — forming each block by gathering random landmark
+    columns (or rows-as-columns) instead of random projections. col(B) is
+    **redundant**, exactly as for ``rsvd``: with the projector ``P = Q Qᵀ``,
+    ``Ĉ = P A P B P = A B`` once range(Q) ⊇ col(A), row(A), row(B) (see
+    ``RandomizedSVDTransform``). On genuine low-rank couples the landmarks span
+    those spaces once enough columns are drawn, so the thin QR that follows is
+    enough; basis cost is essentially the QR (``~2 N M²``), not ``rsvd``'s
+    ``~2 N² M`` sketches. Using three spaces gives each ``~M/3`` columns rather
+    than ``M/4``, so exact recovery of a rank-``r`` product needs only ``M ≳ 3r``
+    instead of ``4r`` (a full landmark block was previously spent on col(B), which
+    contributes nothing to ``P A P B P``).
     """
 
     name = "nystrom"
 
-    def basis(self, n, m, backend, dtype, A=None, B=None):
+    def basis(self, n, m, backend, dtype, A=None, B=None, frac=None):
         if A is None or B is None:
             raise ValueError("nystrom transform needs A and B")
         if m < 1 or m > n:
             raise ValueError(f"nystrom requires 1 <= m <= n; got m={m}, n={n}")
 
-        base, rem = divmod(m, 4)
-        widths = [base + (1 if i < rem else 0) for i in range(4)]
+        base, rem = divmod(m, 3)
+        widths = [base + (1 if i < rem else 0) for i in range(3)]
         rng = np.random.default_rng(self.seed)
 
         def landmark_cols(X, w):
@@ -156,13 +162,11 @@ class NystromTransform(Transform):
 
         parts = []
         if widths[0]:
-            parts.append(backend.to_device(landmark_cols(A, widths[0])))
+            parts.append(backend.to_device(landmark_cols(A, widths[0])))          # col(A)
         if widths[1]:
-            parts.append(backend.to_device(landmark_rows_as_cols(A, widths[1])))
+            parts.append(backend.to_device(landmark_rows_as_cols(A, widths[1])))  # row(A)
         if widths[2]:
-            parts.append(backend.to_device(landmark_cols(B, widths[2])))
-        if widths[3]:
-            parts.append(backend.to_device(landmark_rows_as_cols(B, widths[3])))
+            parts.append(backend.to_device(landmark_rows_as_cols(B, widths[2])))  # row(B)
 
         Y = backend.xp.concatenate(parts, axis=1)  # (n, m)
         return self._orthonormalize(Y, backend)
