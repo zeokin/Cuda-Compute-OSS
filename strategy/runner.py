@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import os
 import time
-from numbers import Integral
 import numpy as np
 
 from .backend import Backend
@@ -44,11 +43,6 @@ def _flop_ratio_line(ratio: float) -> str:
     return f"{1.0 / ratio:.1f}x MORE FLOPs than exact (M too large to save)"
 
 
-def _require_positive_n(n) -> None:
-    if isinstance(n, bool) or not isinstance(n, Integral) or n < 1:
-        raise ValueError(f"n must be a positive integer, got {n!r}")
-
-
 def run(n: int, cfg: Config, fill: str = "lowrank", verify: bool = False,
         keep: bool = False, data_rank: int | None = None) -> dict:
     """Generate A, B, compute C = A @ B with the subspace strategy, report.
@@ -56,7 +50,6 @@ def run(n: int, cfg: Config, fill: str = "lowrank", verify: bool = False,
     Default fill is 'lowrank' because that is the regime the strategy targets;
     verify (small n) reports the reconstruction error vs a float64 reference.
     """
-    _require_positive_n(n)
     backend = Backend(cfg.device, cfg.verbose)
     dt = cfg.np_dtype
     on_disk = storage.should_use_disk(
@@ -144,7 +137,6 @@ def compare(n: int, cfg: Config, fill: str = "lowrank",
             data_rank: int | None = None, keep: bool = False) -> dict:
     """Run the exact baseline and the subspace strategy on the SAME inputs and
     report time, throughput and the smart strategy's reconstruction error."""
-    _require_positive_n(n)
     backend = Backend(cfg.device, cfg.verbose)
     dt = cfg.np_dtype
     on_disk = storage.should_use_disk(
