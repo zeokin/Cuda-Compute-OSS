@@ -34,7 +34,7 @@
       "title": "fix(strategy): validate n before Backend construction in runner",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:54:12Z",
+      "updated_at": "2026-07-16T01:12:57Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/268"
     },
     {
@@ -49,7 +49,7 @@
       "title": "fix(strategy): expose --spectral-alpha for the decaying-spectrum fill",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:54:16Z",
+      "updated_at": "2026-07-16T01:13:04Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/232"
     },
     {
@@ -64,23 +64,8 @@
       "title": "fix(attention): accept NumPy integer sizes in AttentionSpec (Fixes #254)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:54:21Z",
+      "updated_at": "2026-07-16T01:13:12Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/255"
-    },
-    {
-      "author": "philluiz2323",
-      "detail": "gate chain passed; GPU eval runner is not wired up yet in this repo (Phase 2)",
-      "gpu_required": true,
-      "head_sha": "c181aac7f50e69325b1a737a2010ac29e6c31173",
-      "kind": "feat",
-      "label": "status:queued-gpu",
-      "pr": 245,
-      "state": "eval_pending",
-      "title": "feat(strategy): subspace_iter transform \u2014 power iteration for decaying spectra (#184)",
-      "track": null,
-      "transform": null,
-      "updated_at": "2026-07-16T00:54:29Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/245"
     },
     {
       "author": "joaovictor91123",
@@ -94,7 +79,7 @@
       "title": "fix(strategy): budget the reassigned-tile transient in the streaming primitives (Fixes #234)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:54:31Z",
+      "updated_at": "2026-07-16T01:13:25Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/235"
     },
     {
@@ -109,7 +94,7 @@
       "title": "fix(strategy): charge the resident Q operand in stream_gemm_*/compress budgets (Fixes #236)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:54:35Z",
+      "updated_at": "2026-07-16T01:13:32Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/237"
     },
     {
@@ -124,23 +109,8 @@
       "title": "fix(strategy): finish the frac basis() signature across contributor-facing snippets (Fixes #252)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:54:39Z",
+      "updated_at": "2026-07-16T01:13:39Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/253"
-    },
-    {
-      "author": "galuis116",
-      "detail": "gate chain passed; GPU eval runner is not wired up yet in this repo (Phase 2)",
-      "gpu_required": true,
-      "head_sha": "048fe1414570bae785c6e29e9ab6f95a23bbb71b",
-      "kind": "feat",
-      "label": "status:queued-gpu",
-      "pr": 257,
-      "state": "eval_pending",
-      "title": "feat(strategy): add sparse-sign (OSNAP) sketch transform",
-      "track": null,
-      "transform": null,
-      "updated_at": "2026-07-16T00:54:46Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/257"
     },
     {
       "author": "philluiz2323",
@@ -154,22 +124,21 @@
       "title": "fix(attention): accept numpy integer sizes in AttentionSpec",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:54:48Z",
+      "updated_at": "2026-07-16T01:13:53Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/261"
     },
     {
       "author": "real-venus",
-      "detail": "gate chain passed; GPU eval runner is not wired up yet in this repo (Phase 2)",
+      "detail": "Closing this feat/strategy PR because it is missing a filled-in scorecard. Open a fresh PR with reproducible eval results.",
       "gpu_required": true,
       "head_sha": "4319be107d5f6a3953fca1e36d4d6d4bfbe8c3cb",
       "kind": "feat",
-      "label": "status:queued-gpu",
       "pr": 264,
-      "state": "eval_pending",
+      "state": "close_missing_scorecard",
       "title": "feat(strategy): add power-rsvd subspace-iteration transform",
       "track": "decaying-spectrum",
       "transform": "power-rsvd",
-      "updated_at": "2026-07-16T00:54:55Z",
+      "updated_at": "2026-07-16T01:14:05Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/264"
     },
     {
@@ -184,7 +153,7 @@
       "title": "fix(strategy): charge prior rsvd sketch parts in stream budgets",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:54:57Z",
+      "updated_at": "2026-07-16T01:14:08Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/265"
     },
     {
@@ -199,7 +168,7 @@
       "title": "fix(strategy): drop Atil/Btil before reconstruct to avoid OOM",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:55:02Z",
+      "updated_at": "2026-07-16T01:14:14Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/266"
     },
     {
@@ -214,8 +183,38 @@
       "title": "fix(attention): remove unreachable causal branches in correlation mixer (Fixes #260)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:55:07Z",
+      "updated_at": "2026-07-16T01:14:21Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/267"
+    },
+    {
+      "author": "philluiz2323",
+      "detail": "gate chain passed; GPU eval runner is not wired up yet in this repo (Phase 2)",
+      "gpu_required": true,
+      "head_sha": "c181aac7f50e69325b1a737a2010ac29e6c31173",
+      "kind": "feat",
+      "label": "status:queued-gpu",
+      "pr": 245,
+      "state": "eval_pending",
+      "title": "feat(strategy): subspace_iter transform \u2014 power iteration for decaying spectra (#184)",
+      "track": "decaying-spectrum",
+      "transform": "subspace_iter",
+      "updated_at": "2026-07-16T03:00:24Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/245"
+    },
+    {
+      "author": "galuis116",
+      "detail": "gate chain passed; GPU eval runner is not wired up yet in this repo (Phase 2)",
+      "gpu_required": true,
+      "head_sha": "048fe1414570bae785c6e29e9ab6f95a23bbb71b",
+      "kind": "feat",
+      "label": "status:queued-gpu",
+      "pr": 257,
+      "state": "eval_pending",
+      "title": "feat(strategy): add sparse-sign (OSNAP) sketch transform",
+      "track": "decaying-spectrum",
+      "transform": "sparsesign",
+      "updated_at": "2026-07-16T03:00:26Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/257"
     }
   ],
   "queue": [
@@ -230,9 +229,9 @@
       "pr": 245,
       "state": "eval_pending",
       "title": "feat(strategy): subspace_iter transform \u2014 power iteration for decaying spectra (#184)",
-      "track": null,
-      "transform": null,
-      "updated_at": "2026-07-16T00:54:29Z",
+      "track": "decaying-spectrum",
+      "transform": "subspace_iter",
+      "updated_at": "2026-07-16T03:00:24Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/245"
     },
     {
@@ -246,27 +245,11 @@
       "pr": 257,
       "state": "eval_pending",
       "title": "feat(strategy): add sparse-sign (OSNAP) sketch transform",
-      "track": null,
-      "transform": null,
-      "updated_at": "2026-07-16T00:54:46Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/257"
-    },
-    {
-      "author": "real-venus",
-      "detail": "gate chain passed; GPU eval runner is not wired up yet in this repo (Phase 2)",
-      "gpu_required": true,
-      "head_sha": "4319be107d5f6a3953fca1e36d4d6d4bfbe8c3cb",
-      "kind": "feat",
-      "label": "status:queued-gpu",
-      "position": 3,
-      "pr": 264,
-      "state": "eval_pending",
-      "title": "feat(strategy): add power-rsvd subspace-iteration transform",
       "track": "decaying-spectrum",
-      "transform": "power-rsvd",
-      "updated_at": "2026-07-16T00:54:55Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/264"
+      "transform": "sparsesign",
+      "updated_at": "2026-07-16T03:00:26Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/257"
     }
   ],
-  "updated": "2026-07-16T01:14:26+00:00"
+  "updated": "2026-07-16T03:05:16+00:00"
 }
