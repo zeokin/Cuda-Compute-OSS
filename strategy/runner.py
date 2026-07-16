@@ -117,6 +117,17 @@ def run(n: int, cfg: Config, fill: str = "lowrank", verify: bool = False,
     return info
 
 
+# Peak float64 row-blocks held together inside _rel_frobenius_streamed:
+# the two cast operands plus one reused difference scratch (issue #293).
+_REL_ERR_LIVE_F64_BLOCKS = 3
+
+
+def _rel_err_row_block(n: int, block_bytes: int) -> int:
+    """Rows per stream step so live float64 buffers stay within ``block_bytes``."""
+    row_bytes = max(1, n * 8)
+    return max(1, min(n, block_bytes // (row_bytes * _REL_ERR_LIVE_F64_BLOCKS)))
+
+
 def _rel_frobenius_streamed(Ce, Cs, block_bytes: int = 256 * 1024**2) -> float:
     """Relative Frobenius error ||Cs - Ce||_F / ||Ce||_F, one row-block at a time.
 
@@ -124,19 +135,28 @@ def _rel_frobenius_streamed(Ce, Cs, block_bytes: int = 256 * 1024**2) -> float:
     point of the streaming engine), so we must never cast the full (n, n) product to
     float64 at once -- doing so force-loads both matrices plus a diff temporary into
     host RAM (~3*n^2*8 bytes) and OOMs the host. The Frobenius norm is separable over
-    rows, so accumulating squared sums block-by-block is numerically identical while
-    keeping only one float64 row-block of each operand resident."""
+    rows, so accumulating squared sums block-by-block is numerically identical.
+
+    Each step keeps three float64 row-blocks live (``ce``, ``cs``, and a reused
+    ``diff`` scratch). ``block_bytes`` budgets that whole set — charging only one
+    block under-budgeted the stream by ~3–4x and could still host-OOM at the
+    out-of-core sizes --compare targets (#293)."""
     n = Ce.shape[0]
-    row_bytes = max(1, n * 8)                       # one float64 row
-    blk = max(1, min(n, block_bytes // row_bytes))
+    blk = _rel_err_row_block(n, block_bytes)
     num_sq = 0.0
     den_sq = 0.0
+    diff = None
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
+        rows = r1 - r0
         ce = np.asarray(Ce[r0:r1], dtype=np.float64)
         cs = np.asarray(Cs[r0:r1], dtype=np.float64)
-        num_sq += float(np.sum((cs - ce) ** 2))
-        den_sq += float(np.sum(ce ** 2))
+        if diff is None or diff.shape[0] != rows:
+            diff = np.empty((rows, n), dtype=np.float64)
+        np.subtract(cs, ce, out=diff)
+        # Dot products avoid extra (cs-ce)**2 / ce**2 array temporaries.
+        num_sq += float(np.dot(diff.ravel(), diff.ravel()))
+        den_sq += float(np.dot(ce.ravel(), ce.ravel()))
     den = np.sqrt(den_sq)
     return float(np.sqrt(num_sq) / (den or 1.0))
 
