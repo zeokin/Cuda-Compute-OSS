@@ -37,7 +37,8 @@ _DEFAULT_ROW_BLOCK_FRACTION = 0.3
 
 def _row_block(n: int, cols: int, backend: Backend, item_bytes: int,
                frac: float = _DEFAULT_ROW_BLOCK_FRACTION,
-               out_cols: int = 0, fixed_bytes: int = 0) -> int:
+               out_cols: int = 0, fixed_bytes: int = 0,
+               transient_cols: int = 0) -> int:
     """Choose how many rows of an (n x cols) stream to stage on the device.
 
     ``frac`` is the fraction of free device memory one row-block may use
@@ -51,9 +52,16 @@ def _row_block(n: int, cols: int, backend: Backend, item_bytes: int,
     the block (e.g. ``stream_gemm_left_t``'s full ``(n, m)`` product), and is taken
     off the budget up front. Counting only ``cols`` under-budgets the block by up
     to 2x at ``M = N`` (see #138, and #95 for the same fix in ``matmul/gemm.py``).
+
+    ``transient_cols`` is the width of a per-row tile the loop *reassigns* to a
+    named variable each iteration (``Xr = to_device(...)``, ``outr = matmul(...)``):
+    Python allocates the new tile before dropping the old one, and PyTorch's caching
+    allocator then keeps both blocks reserved, so the reassigned tile's momentary
+    duplicate must be budgeted too -- the streaming analog of the tiled engine's
+    transient-tile fix in ``matmul/gemm.py`` (#234).
     """
     budget = int(backend.free_compute_bytes() * frac) - int(fixed_bytes)
-    per_row = max(1, (cols + out_cols) * item_bytes)
+    per_row = max(1, (cols + out_cols + transient_cols) * item_bytes)
     return int(min(n, max(1, budget // per_row)))
 
 
@@ -86,9 +94,11 @@ def stream_gemm_right(X, Q, backend: Backend, dtype,
     # as stream_gemm_left_t does for its (n, m) accumulator. Omitting it sizes the
     # block against the whole budget and under-counts device use by n*m (up to the
     # entire budget at M = N), risking OOM. Each block also allocates
-    # matmul(Xr, Q) -> (blk, m): m output cols per staged row.
+    # matmul(Xr, Q) -> (blk, m): m output cols per staged row. Xr is reassigned
+    # each iteration, so its (blk, cols) tile has a transient duplicate (#234).
     blk = _row_block(n, X.shape[1], backend, item, frac,
-                     out_cols=m, fixed_bytes=n * m * item)
+                     out_cols=m, fixed_bytes=n * m * item,
+                     transient_cols=X.shape[1])
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
         Xr = backend.to_device(np.asarray(X[r0:r1, :]).astype(dtype, copy=False))
@@ -109,9 +119,11 @@ def stream_gemm_left_t(X, Q, backend: Backend, dtype,
     # Charge both up front (2*n*m) -- counting only the product (n*m) leaves the
     # accumulator unbudgeted and sizes the block against the whole budget, risking
     # OOM (cf. #138 and stream_gemm_right's resident output).
+    # Xr is reassigned each iteration -> its (blk, cols) tile has a transient
+    # duplicate (#234).
     item = np.dtype(dtype).itemsize
     blk = _row_block(n, X.shape[1], backend, item, frac,
-                     fixed_bytes=2 * n * m * item)
+                     fixed_bytes=2 * n * m * item, transient_cols=X.shape[1])
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
         Xr = backend.to_device(np.asarray(X[r0:r1, :]).astype(dtype, copy=False))
@@ -133,9 +145,11 @@ def compress(X, Q, backend: Backend, dtype,
     # unbudgeted (invisible on MPS, where free_compute_bytes() is a static
     # ceiling), exactly as stream_gemm_left_t does for its (n, m) accumulator.
     # Each block also stages Xr and its matmul(Xr, Q) -> (blk, m) intermediate.
+    # Xr is reassigned each iteration -> a transient (blk, cols) duplicate (#234).
     item = np.dtype(dtype).itemsize
     blk = _row_block(n, X.shape[1], backend, item, frac,
-                     out_cols=m, fixed_bytes=2 * m * m * item)
+                     out_cols=m, fixed_bytes=2 * m * m * item,
+                     transient_cols=X.shape[1])
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
         Xr = backend.to_device(np.asarray(X[r0:r1, :]).astype(dtype, copy=False))
@@ -166,8 +180,11 @@ def reconstruct(Ctil, Q, C_out, backend: Backend, out_dtype,
     # up front (cf. stream_gemm_right's resident output, stream_gemm_left_t's
     # resident accumulator) rather than left to a live free-memory reading
     # that, on MPS, is a static ceiling and never reflects it at all.
+    # ``outr`` (rb, n) is reassigned each iteration -> a transient (rb, n)
+    # duplicate (#234).
     blk = _row_block(n, n, backend, item, frac,
-                     out_cols=m, fixed_bytes=(n * m + m * m) * item)
+                     out_cols=m, fixed_bytes=(n * m + m * m) * item,
+                     transient_cols=n)
     QT = Q.T
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)

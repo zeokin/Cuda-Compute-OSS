@@ -33,11 +33,12 @@ def _compress_fixed_bytes(n, m, dtype):
     seen = {}
     real = subspace._row_block
 
-    def spy(bn, cols, backend, item_bytes, frac=FRAC, out_cols=0, fixed_bytes=0):
+    def spy(bn, cols, backend, item_bytes, frac=FRAC, out_cols=0, fixed_bytes=0,
+            **kw):
         seen["fixed_bytes"] = fixed_bytes
         seen["item_bytes"] = item_bytes
         return real(bn, cols, backend, item_bytes, frac,
-                    out_cols=out_cols, fixed_bytes=fixed_bytes)
+                    out_cols=out_cols, fixed_bytes=fixed_bytes, **kw)
 
     subspace._row_block = spy
     try:
