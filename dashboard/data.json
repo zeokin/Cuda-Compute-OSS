@@ -34,7 +34,7 @@
       "title": "fix(strategy): validate n before Backend construction in runner",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:47:18Z",
+      "updated_at": "2026-07-16T00:54:12Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/268"
     },
     {
@@ -49,7 +49,7 @@
       "title": "fix(strategy): expose --spectral-alpha for the decaying-spectrum fill",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:50:16Z",
+      "updated_at": "2026-07-16T00:54:16Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/232"
     },
     {
@@ -64,7 +64,7 @@
       "title": "fix(attention): accept NumPy integer sizes in AttentionSpec (Fixes #254)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:50:22Z",
+      "updated_at": "2026-07-16T00:54:21Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/255"
     },
     {
@@ -79,7 +79,7 @@
       "title": "feat(strategy): subspace_iter transform \u2014 power iteration for decaying spectra (#184)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:50:34Z",
+      "updated_at": "2026-07-16T00:54:29Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/245"
     },
     {
@@ -94,7 +94,7 @@
       "title": "fix(strategy): budget the reassigned-tile transient in the streaming primitives (Fixes #234)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:50:36Z",
+      "updated_at": "2026-07-16T00:54:31Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/235"
     },
     {
@@ -109,7 +109,7 @@
       "title": "fix(strategy): charge the resident Q operand in stream_gemm_*/compress budgets (Fixes #236)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:50:43Z",
+      "updated_at": "2026-07-16T00:54:35Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/237"
     },
     {
@@ -124,7 +124,7 @@
       "title": "fix(strategy): finish the frac basis() signature across contributor-facing snippets (Fixes #252)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:50:50Z",
+      "updated_at": "2026-07-16T00:54:39Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/253"
     },
     {
@@ -139,7 +139,7 @@
       "title": "feat(strategy): add sparse-sign (OSNAP) sketch transform",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:51:01Z",
+      "updated_at": "2026-07-16T00:54:46Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/257"
     },
     {
@@ -154,7 +154,7 @@
       "title": "fix(attention): accept numpy integer sizes in AttentionSpec",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:51:04Z",
+      "updated_at": "2026-07-16T00:54:48Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/261"
     },
     {
@@ -169,7 +169,7 @@
       "title": "feat(strategy): add power-rsvd subspace-iteration transform",
       "track": "decaying-spectrum",
       "transform": "power-rsvd",
-      "updated_at": "2026-07-16T00:51:16Z",
+      "updated_at": "2026-07-16T00:54:55Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/264"
     },
     {
@@ -184,7 +184,7 @@
       "title": "fix(strategy): charge prior rsvd sketch parts in stream budgets",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:51:18Z",
+      "updated_at": "2026-07-16T00:54:57Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/265"
     },
     {
@@ -199,7 +199,7 @@
       "title": "fix(strategy): drop Atil/Btil before reconstruct to avoid OOM",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:51:25Z",
+      "updated_at": "2026-07-16T00:55:02Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/266"
     },
     {
@@ -214,7 +214,7 @@
       "title": "fix(attention): remove unreachable causal branches in correlation mixer (Fixes #260)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:51:32Z",
+      "updated_at": "2026-07-16T00:55:07Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/267"
     }
   ],
@@ -232,7 +232,7 @@
       "title": "feat(strategy): subspace_iter transform \u2014 power iteration for decaying spectra (#184)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:50:34Z",
+      "updated_at": "2026-07-16T00:54:29Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/245"
     },
     {
@@ -248,7 +248,7 @@
       "title": "feat(strategy): add sparse-sign (OSNAP) sketch transform",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T00:51:01Z",
+      "updated_at": "2026-07-16T00:54:46Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/257"
     },
     {
@@ -264,9 +264,9 @@
       "title": "feat(strategy): add power-rsvd subspace-iteration transform",
       "track": "decaying-spectrum",
       "transform": "power-rsvd",
-      "updated_at": "2026-07-16T00:51:16Z",
+      "updated_at": "2026-07-16T00:54:55Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/264"
     }
   ],
-  "updated": "2026-07-16T00:55:10+00:00"
+  "updated": "2026-07-16T01:14:26+00:00"
 }
