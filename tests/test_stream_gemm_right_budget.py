@@ -68,11 +68,13 @@ def test_row_block_charges_the_resident_output_up_front():
 
     fixed = n * m * ITEM
     blk = subspace._row_block(n, n, bk, ITEM, FRAC, out_cols=m, fixed_bytes=fixed)
-    peak = fixed + blk * (n + m) * ITEM     # resident out + staged(blk,n) + temp(blk,m)
+    # resident out (fixed) + the two transiently-live staged (blk, n) tiles (2n;
+    # the (blk, m) output is not live during the input reallocation).
+    peak = fixed + blk * (n + max(n, m)) * ITEM
     assert peak <= budget
 
     old_blk = subspace._row_block(n, n, bk, ITEM, FRAC, out_cols=m)  # no fixed_bytes
-    old_peak = fixed + old_blk * (n + m) * ITEM
+    old_peak = fixed + old_blk * (n + max(n, m)) * ITEM
     assert old_peak > budget                # the resident output was unbudgeted
 
 
@@ -92,7 +94,7 @@ def test_stream_gemm_right_block_leaves_room_for_the_resident_output():
 
     blk = bk.max_block
     assert 1 <= blk < n                     # actually blocked
-    peak = (n * m + blk * (n + m)) * ITEM   # resident out + staged + per-row temp
+    peak = (n * m + blk * (n + max(n, m))) * ITEM   # resident out + 2 staged (realloc)
     assert peak <= budget
 
 

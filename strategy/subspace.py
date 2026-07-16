@@ -43,17 +43,34 @@ def _row_block(n: int, cols: int, backend: Backend, item_bytes: int,
     ``frac`` is the fraction of free device memory one row-block may use
     (``Config.vram_fraction`` when driven by the strategy).
 
-    A block costs more than the rows it stages: each iteration also allocates the
-    GEMM output, which cannot alias its operands and is live alongside the staged
-    block. ``out_cols`` is the number of output columns produced *per staged row*
-    (so the real per-row cost is ``(cols + out_cols) * item_bytes``);
+    A block costs more than the rows it stages. Two block-sized tiles are live at
+    the per-row peak, but NOT the same two throughout the iteration:
+
+      * during the multiply, the staged ``(blk, cols)`` input and the ``(blk,
+        out_cols)`` GEMM output (which cannot alias the input) coexist -->
+        ``cols + out_cols``;
+      * at the top of the *next* iteration, ``Xr = backend.to_device(...)``
+        allocates the new staged tile before the name rebinds and the previous
+        one is dropped, so two ``(blk, cols)`` staged tiles briefly coexist -->
+        ``2 * cols``. The GEMM output is not live yet at that moment.
+
+    The true per-row peak is therefore ``cols + max(cols, out_cols)``, not
+    ``cols + out_cols``: for ``out_cols < cols`` (the usual case, output width
+    ``m`` <= staged width ``n``) the transient reallocated input tile is the
+    binding constraint and the output term is subsumed by it. Budgeting only
+    ``cols + out_cols`` under-counts the peak by ``cols - out_cols`` per row and
+    can OOM at a tight ``vram_fraction`` -- worst on MPS, where free memory is a
+    static ceiling that never reflects the transient at all. ``out_cols`` was
+    added in #138 (the resident GEMM output, mirroring #95); this restores the
+    transient-reallocation term that ``matmul/gemm.py`` adopted in #4afca0e (its
+    "transient fifth tile"), keeping the two engines' accounting in parity.
+
     ``fixed_bytes`` is any per-iteration allocation whose size does not scale with
-    the block (e.g. ``stream_gemm_left_t``'s full ``(n, m)`` product), and is taken
-    off the budget up front. Counting only ``cols`` under-budgets the block by up
-    to 2x at ``M = N`` (see #138, and #95 for the same fix in ``matmul/gemm.py``).
+    the block (e.g. ``stream_gemm_left_t``'s full ``(n, m)`` product), taken off
+    the budget up front.
     """
     budget = int(backend.free_compute_bytes() * frac) - int(fixed_bytes)
-    per_row = max(1, (cols + out_cols) * item_bytes)
+    per_row = max(1, (cols + max(cols, out_cols)) * item_bytes)
     return int(min(n, max(1, budget // per_row)))
 
 

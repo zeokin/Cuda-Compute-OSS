@@ -128,7 +128,8 @@ def test_reconstruct_old_model_would_have_overshot():
     # Pre-fix: _row_block sees none of Q/Ctil's cost, so it hands back a block
     # sized as if the whole budget were free for streaming alone.
     old_blk = subspace._row_block(n, n, _FakeBackend(free), item, frac, out_cols=m)
-    old_actual = old_blk * (n + m) * item + resident
+    # true per-row peak is staged + transient input (2n for m < n), not n + m.
+    old_actual = old_blk * (n + max(n, m)) * item + resident
     assert old_actual > budget
 
     # Post-fix: the resident cost is taken off the top first, so the smaller
@@ -136,7 +137,7 @@ def test_reconstruct_old_model_would_have_overshot():
     new_blk = subspace._row_block(n, n, _FakeBackend(free), item, frac,
                                   out_cols=m, fixed_bytes=resident)
     assert new_blk < old_blk
-    new_actual = new_blk * (n + m) * item + resident
+    new_actual = new_blk * (n + max(n, m)) * item + resident
     assert new_actual <= budget
 
 

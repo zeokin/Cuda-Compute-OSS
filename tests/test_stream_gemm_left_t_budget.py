@@ -62,11 +62,13 @@ def test_row_block_charges_both_resident_nm_buffers():
     bk = _FakeBackend(free)
 
     blk = subspace._row_block(n, n, bk, ITEM, FRAC, fixed_bytes=2 * n * m * ITEM)
-    peak = 2 * n * m * ITEM + blk * n * ITEM        # acc + product + staged (blk, n)
+    # acc + product (both (n,m), fixed) + the two transiently-live staged (blk, n)
+    # tiles at reallocation (2 * n; see _row_block / #4afca0e).
+    peak = 2 * n * m * ITEM + blk * 2 * n * ITEM
     assert peak <= budget
 
     old_blk = subspace._row_block(n, n, bk, ITEM, FRAC, fixed_bytes=n * m * ITEM)
-    old_peak = 2 * n * m * ITEM + old_blk * n * ITEM  # true peak still has BOTH (n,m)
+    old_peak = 2 * n * m * ITEM + old_blk * 2 * n * ITEM  # true peak still has BOTH (n,m)
     assert old_peak > budget                         # accumulator was unbudgeted
 
 

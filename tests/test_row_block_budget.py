@@ -11,8 +11,6 @@ Run:  python tests/test_row_block_budget.py
 import os
 import sys
 
-import numpy as np
-
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from strategy import subspace
@@ -35,13 +33,24 @@ def _budget(free=FREE, frac=FRAC):
     return int(free * frac)
 
 
-def test_out_cols_shrinks_the_block():
-    """Counting the output columns must never pick a larger block."""
-    n, m = 4096, 4096
+def test_transient_reallocated_input_tile_is_budgeted():
+    """The staged (blk, cols) input is reallocated every iteration
+    (``Xr = backend.to_device(...)``): the new tile is built before the name
+    rebinds and the old one is dropped, so two are briefly live at once.
+    ``_row_block`` must budget ``2 * cols`` per row even with no GEMM output --
+    mirroring matmul/gemm.py's transient-fifth-tile term (#4afca0e)."""
+    n = 4096
     bk = _FakeBackend(FREE)
-    without = subspace._row_block(n, n, bk, ITEM, FRAC)
-    with_out = subspace._row_block(n, n, bk, ITEM, FRAC, out_cols=m)
-    assert with_out < without
+    blk = subspace._row_block(n, n, bk, ITEM, FRAC)          # out_cols=0
+    assert 2 * blk * n * ITEM <= _budget()                    # both staged tiles fit
+    # Charging only one staged tile (the pre-fix model) would have doubled it.
+    naive = min(n, max(1, _budget() // (n * ITEM)))
+    assert blk < naive
+    # For out_cols <= cols the transient dominates, so naming an output no wider
+    # than the staged input does not shrink the block further; only a WIDER
+    # output does.
+    assert subspace._row_block(n, n, bk, ITEM, FRAC, out_cols=n) == blk
+    assert subspace._row_block(n, n, bk, ITEM, FRAC, out_cols=2 * n) < blk
 
 
 def test_block_stays_within_budget_at_m_equals_n():
@@ -55,18 +64,20 @@ def test_block_stays_within_budget_at_m_equals_n():
 def test_block_stays_within_budget_at_default_m():
     n, m = 4096, 4096 // 8
     blk = subspace._row_block(n, n, _FakeBackend(FREE), ITEM, FRAC, out_cols=m)
-    actual = blk * (n + m) * ITEM
+    actual = blk * (n + max(n, m)) * ITEM     # staged + transient input (m < n)
     assert actual <= _budget()
 
 
-def test_old_model_would_have_overshot():
-    """Regression witness: the pre-fix block (input rows only) exceeded budget
-    once the (blk, m) GEMM output is counted -- 2x at M = N."""
-    n, m = 4096, 4096
-    old_blk = subspace._row_block(n, n, _FakeBackend(FREE), ITEM, FRAC)  # no out_cols
-    old_actual = old_blk * (n + m) * ITEM
-    assert old_actual > _budget()
-    assert old_actual / _budget() > 1.9      # ~2x at M = N
+def test_pre_transient_model_would_have_overshot():
+    """Regression witness for the transient term: for M < N the reallocated
+    input tile (2n) is a bigger peak than staged+output (n+m), so a block sized
+    by the old ``n + m`` model overshoots the true peak at the reallocation."""
+    n, m = 4096, 512
+    budget = _budget()
+    old_blk = min(n, max(1, budget // ((n + m) * ITEM)))   # pre-fix: staged + output
+    true_peak = old_blk * (n + max(n, m)) * ITEM           # staged + transient input
+    assert true_peak > budget
+    assert true_peak / budget > 1.5                        # n = 8m -> ~1.8x
 
 
 def test_fixed_bytes_is_taken_off_the_budget():
