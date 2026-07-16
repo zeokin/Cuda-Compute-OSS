@@ -42,10 +42,7 @@ print("2) rsvd(M=64) on FULL-rank data, rel err:", rel(Cf, Af @ Bf), "(expected:
 # 3) Plug in your own transform (the updatable core tech).
 class FirstAxes(Transform):
     name = "firstaxes"
-    def basis(self, n, m, backend, dtype, A=None, B=None, frac=None):
-        # frac (the run's vram_fraction) is unused here -- this basis is fixed
-        # and streams nothing -- but keep it in the signature: multiply_subspace
-        # only forwards the budget to a basis() that declares it.
+    def basis(self, n, m, backend, dtype, A=None, B=None):
         Q = np.zeros((n, m), dtype=dtype)
         Q[np.arange(m), np.arange(m)] = 1.0
         return backend.to_device(Q)
