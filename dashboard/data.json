@@ -76,7 +76,7 @@
       "title": "fix(strategy): nystrom uses 3 landmark spaces, not 4 (drop redundant col(B))",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T16:02:52Z",
+      "updated_at": "2026-07-16T16:06:43Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/270"
     },
     {
@@ -91,7 +91,7 @@
       "title": "fix(docs): landing page counts accuracy as a fourth never-traded cost axis (Fixes #271)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T16:02:58Z",
+      "updated_at": "2026-07-16T16:06:49Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/272"
     },
     {
@@ -106,7 +106,7 @@
       "title": "fix(strategy): reject non-finite spectral_alpha in storage.generate",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T16:03:04Z",
+      "updated_at": "2026-07-16T16:06:54Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/273"
     },
     {
@@ -121,7 +121,7 @@
       "title": "fix(strategy): validate rank_m's range in subspace_matmul before building a Backend",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T16:03:12Z",
+      "updated_at": "2026-07-16T16:06:59Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/277"
     },
     {
@@ -136,7 +136,7 @@
       "title": "fix(strategy): charge prior rsvd sketch parts in stream budgets",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T16:03:18Z",
+      "updated_at": "2026-07-16T16:07:04Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/265"
     },
     {
@@ -151,10 +151,10 @@
       "title": "fix(attention): coerce the Integral seed for torch.Generator in generate_qkv (#281)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T16:03:24Z",
+      "updated_at": "2026-07-16T16:07:09Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/261"
     }
   ],
   "queue": [],
-  "updated": "2026-07-16T16:07:12+00:00"
+  "updated": "2026-07-16T16:18:32+00:00"
 }
