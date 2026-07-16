@@ -34,7 +34,7 @@
       "title": "fix(strategy): charge the resident Q operand in stream_gemm_*/compress budgets (Fixes #236)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T11:24:39Z",
+      "updated_at": "2026-07-16T13:04:57Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/237"
     },
     {
@@ -49,7 +49,7 @@
       "title": "fix(strategy): nystrom uses 3 landmark spaces, not 4 (drop redundant col(B))",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T11:24:44Z",
+      "updated_at": "2026-07-16T13:05:04Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/270"
     },
     {
@@ -64,7 +64,7 @@
       "title": "fix(docs): landing page counts accuracy as a fourth never-traded cost axis (Fixes #271)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T11:24:49Z",
+      "updated_at": "2026-07-16T13:05:12Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/272"
     },
     {
@@ -79,7 +79,7 @@
       "title": "fix(attention): accept numpy integer sizes in AttentionSpec",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T11:24:53Z",
+      "updated_at": "2026-07-16T13:05:20Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/261"
     },
     {
@@ -94,7 +94,7 @@
       "title": "fix(strategy): charge prior rsvd sketch parts in stream budgets",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T11:24:58Z",
+      "updated_at": "2026-07-16T13:05:28Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/265"
     },
     {
@@ -109,7 +109,7 @@
       "title": "fix(strategy): declare frac in every contributor-facing basis() snippet (Fixes #274)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T11:25:03Z",
+      "updated_at": "2026-07-16T13:05:36Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/275"
     },
     {
@@ -124,7 +124,7 @@
       "title": "fix(strategy): reject non-finite spectral_alpha in storage.generate",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T11:25:08Z",
+      "updated_at": "2026-07-16T13:05:43Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/273"
     },
     {
@@ -139,7 +139,7 @@
       "title": "fix(strategy): reject a degenerate n in runner before building a Backend",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T11:25:12Z",
+      "updated_at": "2026-07-16T13:05:52Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/276"
     },
     {
@@ -154,10 +154,25 @@
       "title": "fix(strategy): validate rank_m's range in subspace_matmul before building a Backend",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-16T11:25:17Z",
+      "updated_at": "2026-07-16T13:06:00Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/277"
+    },
+    {
+      "author": "andriypolanski",
+      "detail": "matches an earlier PR by milosde111: 99% of added lines already appear in an earlier PR",
+      "gpu_required": false,
+      "head_sha": "acdb618dfad0a45f9bcd60f37d3b3948456778e8",
+      "kind": "fix",
+      "label": "copycat",
+      "pr": 280,
+      "state": "copycat_block",
+      "title": "fix(strategy): budget compare() for four matrices in RAM-vs-disk",
+      "track": null,
+      "transform": null,
+      "updated_at": "2026-07-16T13:27:47Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/280"
     }
   ],
   "queue": [],
-  "updated": "2026-07-16T13:06:05+00:00"
+  "updated": "2026-07-16T13:32:44+00:00"
 }
