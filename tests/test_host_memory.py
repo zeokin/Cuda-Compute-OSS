@@ -1,5 +1,10 @@
 """CPU-only tests for cross-platform host RAM detection.
 
+_host_available_bytes() consults Linux MemAvailable first, so every test below
+that exercises a *fallback* (sysconf / win32 / last-resort) stubs
+_linux_mem_available -> None; otherwise the real /proc/meminfo on the CI box
+would answer first and the fallback under test would never run.
+
 Run:  python tests/test_host_memory.py
 """
 import ctypes
@@ -14,11 +19,21 @@ from strategy.backend import _host_available_bytes as strategy_host_bytes
 from strategy.cpu_backend import CPUBackend
 
 
+def _no_meminfo():
+    """Patch both copies' MemAvailable probe to 'unreadable' so the sysconf /
+    win32 / last-resort fallbacks are the code path actually under test."""
+    return (
+        patch("matmul.backend._linux_mem_available", lambda: None),
+        patch("strategy.backend._linux_mem_available", lambda: None),
+    )
+
+
 def test_sysconf_path_used_when_available():
     def fake_sysconf(name):
         return 1024 if name == "SC_AVPHYS_PAGES" else 4096
 
-    with patch("matmul.backend.os.sysconf", fake_sysconf, create=True), patch(
+    mm, st = _no_meminfo()
+    with mm, st, patch("matmul.backend.os.sysconf", fake_sysconf, create=True), patch(
         "strategy.backend.os.sysconf", fake_sysconf, create=True
     ):
         assert matmul_host_bytes() == 1024 * 4096
@@ -50,7 +65,8 @@ def test_windows_global_memory_status_ex():
     fake_windll = MagicMock()
     fake_windll.kernel32.GlobalMemoryStatusEx = fake_gms
 
-    with patch("matmul.backend.sys.platform", "win32"), patch(
+    mm, st = _no_meminfo()
+    with mm, st, patch("matmul.backend.sys.platform", "win32"), patch(
         "strategy.backend.sys.platform", "win32"
     ), patch("matmul.backend.os.sysconf", side_effect=OSError("no sysconf"), create=True), patch(
         "strategy.backend.os.sysconf", side_effect=OSError("no sysconf"), create=True
@@ -65,7 +81,8 @@ def test_cpu_backend_uses_shared_sysconf_path():
     def fake_sysconf(name):
         return 2048 if name == "SC_AVPHYS_PAGES" else 4096
 
-    with patch("strategy.backend.os.sysconf", fake_sysconf, create=True):
+    mm, st = _no_meminfo()
+    with mm, st, patch("strategy.backend.os.sysconf", fake_sysconf, create=True):
         backend = CPUBackend(verbose=False)
         assert backend.host_available_bytes() == 2048 * 4096
         assert backend.free_compute_bytes() == 2048 * 4096
@@ -93,7 +110,8 @@ def test_cpu_backend_uses_windows_global_memory_status_ex():
     fake_windll = MagicMock()
     fake_windll.kernel32.GlobalMemoryStatusEx = fake_gms
 
-    with patch("strategy.backend.sys.platform", "win32"), patch(
+    mm, st = _no_meminfo()
+    with mm, st, patch("strategy.backend.sys.platform", "win32"), patch(
         "strategy.backend.os.sysconf", side_effect=OSError("no sysconf"), create=True
     ), patch("ctypes.windll", fake_windll, create=True):
         backend = CPUBackend(verbose=False)
@@ -102,7 +120,8 @@ def test_cpu_backend_uses_windows_global_memory_status_ex():
 
 
 def test_last_resort_fallback():
-    with patch("matmul.backend.sys.platform", "linux"), patch(
+    mm, st = _no_meminfo()
+    with mm, st, patch("matmul.backend.sys.platform", "linux"), patch(
         "strategy.backend.sys.platform", "linux"
     ), patch("matmul.backend.os.sysconf", side_effect=OSError("no sysconf"), create=True), patch(
         "strategy.backend.os.sysconf", side_effect=OSError("no sysconf"), create=True
@@ -110,6 +129,70 @@ def test_last_resort_fallback():
         fallback = 8 * 1024**3
         assert matmul_host_bytes() == fallback
         assert strategy_host_bytes() == fallback
+
+
+def test_mem_available_preferred_over_sysconf_free():
+    # The whole point: SC_AVPHYS_PAGES is MemFree (excludes reclaimable page
+    # cache) and under-reports. MemAvailable must win when both are readable.
+    def fake_sysconf(name):
+        return 1 if name == "SC_AVPHYS_PAGES" else 4096       # 4 KiB "free"
+
+    with patch("matmul.backend._linux_mem_available", lambda: 32 * 1024**3), patch(
+        "strategy.backend._linux_mem_available", lambda: 32 * 1024**3
+    ), patch("matmul.backend.os.sysconf", fake_sysconf, create=True), patch(
+        "strategy.backend.os.sysconf", fake_sysconf, create=True
+    ):
+        assert matmul_host_bytes() == 32 * 1024**3
+        assert strategy_host_bytes() == 32 * 1024**3
+
+
+def test_falls_back_to_sysconf_when_meminfo_unreadable():
+    # Non-Linux (or a container without /proc): the probe returns None and the
+    # existing sysconf path must still be used, not the last-resort constant.
+    def fake_sysconf(name):
+        return 1024 if name == "SC_AVPHYS_PAGES" else 4096
+
+    mm, st = _no_meminfo()
+    with mm, st, patch("matmul.backend.os.sysconf", fake_sysconf, create=True), patch(
+        "strategy.backend.os.sysconf", fake_sysconf, create=True
+    ):
+        assert matmul_host_bytes() == 1024 * 4096
+        assert strategy_host_bytes() == 1024 * 4096
+
+
+def test_mem_available_parses_real_proc_meminfo():
+    # On this Linux box the probe must return a sane, positive value that
+    # matches /proc/meminfo's own MemAvailable line.
+    import re as _re
+
+    from matmul.backend import _linux_mem_available as mm_probe
+    from strategy.backend import _linux_mem_available as st_probe
+
+    try:
+        text = open("/proc/meminfo").read()
+    except OSError:
+        return                                   # not Linux: nothing to check
+    match = _re.search(r"^MemAvailable:\s+(\d+) kB", text, _re.M)
+    if match is None:
+        return                                   # kernel too old for MemAvailable
+    expected = int(match.group(1)) * 1024
+    for probe in (mm_probe, st_probe):
+        got = probe()
+        assert got is not None and got > 0
+        # Memory moves between reads; allow a wide band but pin the unit/scale.
+        assert 0.5 * expected <= got <= 2.0 * expected
+
+
+def test_mem_available_probe_survives_a_broken_proc(tmp_path):
+    # A garbage/absent /proc/meminfo must yield None (-> fall through), never raise.
+    import builtins
+
+    def boom(*a, **k):
+        raise OSError("no /proc")
+
+    with patch.object(builtins, "open", boom):
+        from matmul.backend import _linux_mem_available as probe
+        assert probe() is None
 
 
 if __name__ == "__main__":

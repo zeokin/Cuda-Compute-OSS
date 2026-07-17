@@ -74,8 +74,32 @@ class _TorchXP:
         return self.t.cat(list(tensors), dim=axis)
 
 
+def _linux_mem_available() -> int | None:
+    """Linux MemAvailable in bytes, or None when it cannot be read.
+
+    ``SC_AVPHYS_PAGES`` is MemFree on Linux: it counts only *unused* pages and
+    excludes the reclaimable page cache, so it under-reports what a big
+    allocation can actually get -- badly, once this process has itself written
+    a disk-backed matrix (that data stays in cache and is charged against
+    MemFree, though the kernel would evict it on demand). The kernel publishes
+    MemAvailable for exactly this question, and it is the same quantity the
+    win32 branch below already returns via ``ullAvailPhys``.
+    """
+    try:
+        with open("/proc/meminfo", "rb") as fh:
+            for line in fh:
+                if line.startswith(b"MemAvailable:"):
+                    return int(line.split()[1]) * 1024   # reported in kB
+    except (OSError, ValueError, IndexError):
+        pass
+    return None
+
+
 def _host_available_bytes() -> int:
     """Best-effort available physical RAM in bytes (cross-platform)."""
+    avail = _linux_mem_available()
+    if avail is not None and avail > 0:
+        return avail
     try:
         avail = int(os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE"))
         if avail > 0:
