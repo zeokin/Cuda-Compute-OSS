@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import math
 import os
-import math
 from numbers import Integral, Real
+
 import numpy as np
 
 
@@ -135,7 +135,11 @@ def generate(
         isinstance(spectral_alpha, bool) or not isinstance(spectral_alpha, Real)
         or not math.isfinite(float(spectral_alpha)) or spectral_alpha < 0
     ):
-        raise ValueError("spectral_alpha must be a finite number >= 0")
+        # A non-finite alpha makes the k**-alpha weights all-NaN (all-NaN matrix)
+        # or, for Inf, collapses them to a silent rank 1 -- corrupting the
+        # benchmark input, so reject it at this public boundary.
+        raise ValueError(
+            f"spectral_alpha must be a finite number >= 0, got {spectral_alpha!r}")
     mat = allocate(n, dtype, on_disk, path)
     if fill == "random":
         _fill_random(mat, seed, scale)
@@ -147,12 +151,8 @@ def generate(
         r = data_rank if data_rank is not None else max(1, n // 32)
         _fill_lowrank(mat, seed, min(r, n))
     elif fill == "decaying-spectrum":
-        # Guard at this public boundary (like data_rank above): a non-finite
-        # alpha makes the k**-alpha weights all-NaN (all-NaN matrix) or, for Inf,
-        # collapses them to a silent rank 1 -- corrupting the benchmark input.
-        if not math.isfinite(spectral_alpha) or spectral_alpha < 0:
-            raise ValueError(
-                f"spectral_alpha must be a finite number >= 0, got {spectral_alpha}")
+        # spectral_alpha was already validated at the top of generate() (the
+        # stronger check that also rejects non-Real / bool), so no re-check here.
         r = data_rank if data_rank is not None else max(1, n // 32)
         _fill_decaying_spectrum(mat, seed, min(r, n), spectral_alpha)
     else:
