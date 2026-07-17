@@ -102,9 +102,15 @@ def stream_gemm_right(X, Q, backend: Backend, dtype,
     # entire budget at M = N), risking OOM. Each block also allocates
     # matmul(Xr, Q) -> (blk, m): m output cols per staged row. Xr is reassigned
     # each iteration, so its (blk, cols) tile has a transient duplicate (#234).
+    # ``Q`` is a second resident (n, m): the caller uploads it once and it is
+    # never staged per block, so like ``out`` it is a fixed cost (see #236, and
+    # reconstruct(), which already charges its resident Q). Leaving it out sizes
+    # the block against memory Q is already holding -- and on MPS
+    # free_compute_bytes() is a static ceiling that never reflects it at all,
+    # under-budgeting by n*m.
     blk = _row_block(n, X.shape[1], backend, item, frac,
                      out_cols=m,
-                     fixed_bytes=n * m * item + int(extra_fixed_bytes),
+                     fixed_bytes=2 * n * m * item + int(extra_fixed_bytes),  # out + Q
                      transient_cols=X.shape[1])
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
@@ -134,9 +140,12 @@ def stream_gemm_left_t(X, Q, backend: Backend, dtype,
     # OOM (cf. #138 and stream_gemm_right's resident output).
     # Xr is reassigned each iteration -> its (blk, cols) tile has a transient
     # duplicate (#234).
+    # ``Q`` is a third resident (n, m) -- uploaded by the caller, never staged per
+    # block -- so it is a fixed cost like ``acc`` and the product (#236; cf.
+    # reconstruct(), which already charges its resident Q).
     item = np.dtype(dtype).itemsize
     blk = _row_block(n, X.shape[1], backend, item, frac,
-                     fixed_bytes=2 * n * m * item + int(extra_fixed_bytes),
+                     fixed_bytes=3 * n * m * item + int(extra_fixed_bytes),  # acc + product + Q
                      transient_cols=X.shape[1])
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
@@ -160,9 +169,14 @@ def compress(X, Q, backend: Backend, dtype,
     # ceiling), exactly as stream_gemm_left_t does for its (n, m) accumulator.
     # Each block also stages Xr and its matmul(Xr, Q) -> (blk, m) intermediate.
     # Xr is reassigned each iteration -> a transient (blk, cols) duplicate (#234).
+    # ``Q`` (n, m) is resident too -- uploaded by the caller, never staged per
+    # block -- so it joins the two (m, m) buffers as a fixed cost (#236; cf.
+    # reconstruct()'s (n*m + m*m) charge). It dominates them whenever n > m,
+    # which is the regime the whole strategy targets.
     item = np.dtype(dtype).itemsize
     blk = _row_block(n, X.shape[1], backend, item, frac,
-                     out_cols=m, fixed_bytes=2 * m * m * item,
+                     out_cols=m,
+                     fixed_bytes=(n * m + 2 * m * m) * item,  # Q + acc + product
                      transient_cols=X.shape[1])
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
