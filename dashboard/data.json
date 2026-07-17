@@ -34,7 +34,7 @@
       "title": "fix(strategy): budget compare() for four resident matrices on auto storage (Fixes #287)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T04:30:48Z",
+      "updated_at": "2026-07-17T06:45:26Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/295"
     },
     {
@@ -49,7 +49,7 @@
       "title": "fix(strategy): keep streamed compare rel_err within its host-memory budget (Fixes #293)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T04:30:53Z",
+      "updated_at": "2026-07-17T06:45:33Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/296"
     },
     {
@@ -64,7 +64,7 @@
       "title": "fix(strategy): nystrom uses 3 landmark spaces, not 4 (drop redundant col(B))",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T04:30:59Z",
+      "updated_at": "2026-07-17T06:45:40Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/270"
     },
     {
@@ -79,7 +79,7 @@
       "title": "fix(docs): landing page counts accuracy as a fourth never-traded cost axis (Fixes #271)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T04:31:04Z",
+      "updated_at": "2026-07-17T06:45:47Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/272"
     },
     {
@@ -94,7 +94,7 @@
       "title": "fix(strategy): reject non-finite spectral_alpha in storage.generate",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T04:31:09Z",
+      "updated_at": "2026-07-17T06:45:54Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/273"
     },
     {
@@ -109,7 +109,7 @@
       "title": "fix(strategy): validate rank_m's range in subspace_matmul before building a Backend",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T04:31:14Z",
+      "updated_at": "2026-07-17T06:46:01Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/277"
     },
     {
@@ -124,7 +124,7 @@
       "title": "fix(strategy): charge prior rsvd sketch parts in stream budgets",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T04:31:19Z",
+      "updated_at": "2026-07-17T06:46:08Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/265"
     },
     {
@@ -139,10 +139,10 @@
       "title": "fix(attention): coerce the Integral seed for torch.Generator in generate_qkv (#281)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T04:31:24Z",
+      "updated_at": "2026-07-17T06:46:15Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/261"
     }
   ],
   "queue": [],
-  "updated": "2026-07-17T06:46:20+00:00"
+  "updated": "2026-07-17T09:04:47+00:00"
 }
