@@ -1,9 +1,9 @@
-"""CPU-only tests: rsvd charges prior sketch parts into later stream budgets.
+"""CPU-only tests: rsvd charges the resident assembly buffer into stream budgets.
 
-rsvd.basis keeps each (n, w_i) sketch result in ``parts`` while running the next
-stream_gemm_*. On MPS, free_compute_bytes() is a static ceiling, so those prior
-buffers must be passed as ``extra_fixed_bytes`` or sketches 2/3 under-budget and
-can OOM. Pure stub/arithmetic; no GPU needed.
+rsvd.basis preallocates the (n, m) output ``Y`` and streams each sketch into a
+column slice (#307). ``Y`` is charged as ``extra_fixed_bytes`` on every sketch
+so MPS-static free-memory accounting cannot ignore it. Pure stub/arithmetic;
+no GPU needed.
 
 Run:  python strategy/tests/test_rsvd_prior_parts_budget.py
 """
@@ -21,7 +21,7 @@ from strategy.transforms import RandomizedSVDTransform
 
 
 class _XP:
-    concatenate = staticmethod(np.concatenate)
+    empty = staticmethod(np.empty)
 
     class linalg:
         qr = staticmethod(np.linalg.qr)
@@ -58,42 +58,33 @@ def _capture_extra_fixed(n=96, m=30, dtype=np.float32):
     return captured
 
 
-def test_rsvd_charges_cumulative_prior_parts():
-    # Three equal-ish widths for m=30: [10, 10, 10]. After sketch i, prior grows
-    # by n * w_i * itemsize.
+def test_rsvd_charges_assembly_y_on_every_sketch():
+    # Y is (n, m) and resident for the whole basis stage — every sketch sees it.
     n, m = 96, 30
     item = np.dtype(np.float32).itemsize
-    base, rem = divmod(m, 3)
-    widths = [base + (1 if i < rem else 0) for i in range(3)]
-    assert widths == [10, 10, 10]
-
+    y_bytes = n * m * item
     seen = _capture_extra_fixed(n=n, m=m)
-    assert seen == [
-        0,
-        n * widths[0] * item,
-        n * (widths[0] + widths[1]) * item,
-    ], seen
+    assert seen == [y_bytes, y_bytes, y_bytes], seen
 
 
-def test_rsvd_prior_parts_keeps_peak_within_budget():
-    """Arithmetic: with prior parts charged, sketch-3 peak fits; without it overshoots."""
+def test_rsvd_assembly_charge_keeps_sketch_peak_within_budget():
+    """Arithmetic: with Y charged, sketch-3 peak fits; old parts+Y spike does not."""
     n, m, item, frac = 8192, 1024, 4, 0.3
-    free = 300 * 1024**2
+    free = 180 * 1024**2  # tight enough that 2*n*m exceeds frac*free
     budget = int(free * frac)
     base, rem = divmod(m, 3)
     w = [base + (1 if i < rem else 0) for i in range(3)]
-    prior = n * (w[0] + w[1]) * item
-    # left_t steady-state: acc + product = 2*n*w; caller prior charged as extra.
-    fixed = 2 * n * w[2] * item + prior
+    y_bytes = n * m * item
+    # left_t steady-state core 2*n*w + Y as extra.
+    fixed = 2 * n * w[2] * item + y_bytes
+    assert fixed < budget
     blk = max(1, (budget - fixed) // (n * item))
     peak = fixed + blk * n * item
     assert peak <= budget
 
-    # Old model: same left_t fixed cost, prior parts omitted -> overshoots.
-    old_fixed = 2 * n * w[2] * item
-    old_blk = max(1, (budget - old_fixed) // (n * item))
-    old_peak = old_fixed + old_blk * n * item + prior
-    assert old_peak > budget
+    # Old model after sketches: parts + concatenate Y = 2*n*m, never charged.
+    old_assembly_peak = 2 * n * m * item
+    assert old_assembly_peak > budget
 
 
 if __name__ == "__main__":

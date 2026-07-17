@@ -19,7 +19,7 @@ from strategy.transforms import RandomizedSVDTransform, Transform
 
 
 class _XP:
-    concatenate = staticmethod(np.concatenate)
+    empty = staticmethod(np.empty)
 
     class linalg:
         qr = staticmethod(np.linalg.qr)

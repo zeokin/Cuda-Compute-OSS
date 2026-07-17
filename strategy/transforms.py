@@ -102,33 +102,45 @@ class RandomizedSVDTransform(Transform):
                 rng.standard_normal((n, w)).astype(dtype, copy=False)
             )
 
-        # Each sketch result stays in ``parts`` while later sketches run. On MPS
-        # free_compute_bytes() is a static ceiling, so those prior (n, w_i)
-        # buffers are invisible unless charged as extra_fixed_bytes -- otherwise
-        # sketches 2/3 size their row-blocks as if the budget were empty and can
-        # OOM (~1.24x overshoot at n=8192, m=1024, fp32, frac=0.3).
+        # Preallocate the (n, m) assembly buffer and stream each sketch into a
+        # column slice, releasing the temporary immediately. The previous
+        # approach kept all parts alive then ``concatenate``'d them into another
+        # (n, m) buffer -- a ~2x (n, m) spike that was never charged against
+        # ``frac`` and could OOM on MPS right after the sketches succeeded (#307).
+        # Charging Y as extra_fixed_bytes on every sketch keeps the stream
+        # budgets honest for the buffer that will hold the final range.
         item = np.dtype(dtype).itemsize
-        parts = []
-        prior_bytes = 0
+        Y = xp.empty((n, m), dtype=dtype)
+        y_bytes = n * m * item
+        col = 0
         if widths[0]:
-            parts.append(stream_gemm_right(
-                A, omega(widths[0]), backend, dtype, frac,
-                extra_fixed_bytes=prior_bytes,
-            ))   # col(A): A Ω
-            prior_bytes += n * widths[0] * item
+            w = widths[0]
+            part = stream_gemm_right(
+                A, omega(w), backend, dtype, frac,
+                extra_fixed_bytes=y_bytes,
+            )   # col(A): A Ω
+            Y[:, col:col + w] = part
+            del part
+            col += w
         if widths[1]:
-            parts.append(stream_gemm_left_t(
-                A, omega(widths[1]), backend, dtype, frac,
-                extra_fixed_bytes=prior_bytes,
-            ))   # row(A): Aᵀ Ω
-            prior_bytes += n * widths[1] * item
+            w = widths[1]
+            part = stream_gemm_left_t(
+                A, omega(w), backend, dtype, frac,
+                extra_fixed_bytes=y_bytes,
+            )   # row(A): Aᵀ Ω
+            Y[:, col:col + w] = part
+            del part
+            col += w
         if widths[2]:
-            parts.append(stream_gemm_left_t(
-                B, omega(widths[2]), backend, dtype, frac,
-                extra_fixed_bytes=prior_bytes,
-            ))   # row(B): Bᵀ Ω
+            w = widths[2]
+            part = stream_gemm_left_t(
+                B, omega(w), backend, dtype, frac,
+                extra_fixed_bytes=y_bytes,
+            )   # row(B): Bᵀ Ω
+            Y[:, col:col + w] = part
+            del part
+            col += w
 
-        Y = xp.concatenate(parts, axis=1)      # (n, m)
         return self._orthonormalize(Y, backend)  # (n, m) orthonormal columns
 
     def basis_flops(self, n, m):
