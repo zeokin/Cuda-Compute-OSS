@@ -34,7 +34,7 @@
       "title": "fix(strategy): nystrom uses 3 landmark spaces, not 4 (drop redundant col(B))",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T17:32:17Z",
+      "updated_at": "2026-07-17T17:37:23Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/270"
     },
     {
@@ -49,7 +49,7 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-17T17:32:28Z",
+      "updated_at": "2026-07-17T17:37:34Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
     },
     {
@@ -64,7 +64,7 @@
       "title": "fix(strategy): budget live Atil while compressing B (Fixes #304)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T17:32:30Z",
+      "updated_at": "2026-07-17T17:37:37Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/305"
     },
     {
@@ -79,7 +79,7 @@
       "title": "fix(strategy): remove rsvd basis concatenate VRAM spike (Fixes #307)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T17:32:36Z",
+      "updated_at": "2026-07-17T17:37:44Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/308"
     },
     {
@@ -94,7 +94,7 @@
       "title": "fix(strategy): drop two storage.py redundancies left by the #273 merge",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T17:32:43Z",
+      "updated_at": "2026-07-17T17:37:51Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/306"
     },
     {
@@ -109,7 +109,7 @@
       "title": "fix(docs): correct three stale details in the strategy README",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T17:32:50Z",
+      "updated_at": "2026-07-17T17:37:58Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/309"
     }
   ],
@@ -127,9 +127,9 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-17T17:32:28Z",
+      "updated_at": "2026-07-17T17:37:34Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
     }
   ],
-  "updated": "2026-07-17T17:38:03+00:00"
+  "updated": "2026-07-17T18:12:20+00:00"
 }
