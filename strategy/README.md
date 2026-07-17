@@ -73,6 +73,9 @@ python -m strategy --n 8192 --transform rsvd --fill random --verify
 # smart multiply on compressible data (where it works), report error:
 python -m strategy --n 8192 --transform rsvd --fill lowrank --data-rank 16 --verify
 
+# decaying-spectrum data: --data-rank sets the rank, --spectral-alpha the k^-alpha decay:
+python -m strategy --n 8192 --transform rsvd --fill decaying-spectrum --data-rank 32 --spectral-alpha 1.5 --verify
+
 # normal (exact) vs smart, side by side on the same inputs:
 python -m strategy --n 8192 --compare --transform rsvd --fill lowrank --data-rank 16
 ```
@@ -82,8 +85,8 @@ floored at 64 for small `n` (so `n = 256` gives `M = 64`, not 32); set it with
 `--rank-m`.)
 
 Key flags: `--n`, `--dtype {fp16,fp32,fp64}`, `--rank-m M`, `--transform`,
-`--compare`, `--fill {lowrank,random,decaying-spectrum,iota,zeros}`, `--data-rank`, `--storage`,
-`--device`, `--verify`.
+`--compare`, `--fill {lowrank,random,decaying-spectrum,iota,zeros}`, `--data-rank`,
+`--spectral-alpha`, `--storage`, `--device`, `--verify`.
 
 Compute is **GPU-only** — PyTorch on **CUDA → Apple MPS**. Every product in this
 **smart engine** goes through **`torch.matmul`** (the normal `matmul/` engine
@@ -106,8 +109,8 @@ C = subspace_matmul(A, B, config=Config(transform="rsvd", rank_m=256))
 strategy/
   config.py     Config — dtype, rank_m (M), transform, device, storage, ...
   backend.py    PyTorch GPU backend (CUDA/MPS)   (self-contained copy)
-  storage.py    memmap/RAM alloc; random/lowrank/iota fill (self-contained copy)
-  transforms.py pluggable bases Q (rsvd built-in) + registry
+  storage.py    memmap/RAM alloc; random/lowrank/decaying/iota/zeros fill (self-contained copy)
+  transforms.py pluggable bases Q (rsvd + nystrom built-in) + registry
   subspace.py   streaming compress/reconstruct, subspace multiply, exact baseline
   runner.py     generate A,B, run, verify, compare
   cli.py        python -m strategy
