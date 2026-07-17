@@ -4,9 +4,10 @@ A transform supplies an orthonormal N x M basis Q whose columns define the
 subspace we compress into. The quality of the approximation is entirely
 determined by how well Q captures the column/row spaces of A and B.
 
-Built-in transforms: ``rsvd`` (data-dependent randomized range finder) and
-``nystrom`` (landmark column sampling for low-rank data). Everything else is a
-contribution: subclass ``Transform`` and register it.
+Built-in transforms: ``rsvd`` (data-dependent randomized range finder),
+``nystrom`` (landmark column sampling for low-rank data), and ``sparse_sign``
+(OSNAP-style blended-column sketch -- see its class docstring). Everything else
+is a contribution: subclass ``Transform`` and register it.
 
 Add your own (this is the updatable hook):
 
@@ -203,6 +204,92 @@ class NystromTransform(Transform):
         return 2.0 * n * m * m
 
 
+class SparseSignTransform(Transform):
+    """Sparse-sign (OSNAP-style) blended-column sketch over A and B.
+
+    Each output direction blends ``_SIGN_MIX`` randomly-drawn columns (or
+    rows-as-columns), each with an independent random +/-1 sign, instead of
+    ``rsvd``'s dense Gaussian projection (every column contributes to every
+    direction) or ``nystrom``'s single raw column per direction. Gathering and
+    summing a small constant number of columns is O(n * _SIGN_MIX) per
+    direction -- host-side memory traffic, like ``nystrom``'s gather, not a
+    GEMM -- so construction stays cheap at any n, unlike ``rsvd``'s O(n^2 * w)
+    dense sketch. Same 3-way split as ``rsvd`` (#91/#156): col(A), row(A),
+    row(B) -- col(B) is redundant for Ĉ = P A P B P. (``nystrom`` still splits
+    four ways as of this writing, pending #270's equivalent reduction there;
+    the comparison in this docstring and in
+    ``strategy/tests/test_sparse_sign.py`` is against nystrom's current,
+    4-way form.)
+
+    Checked numerically before implementing (this project's own
+    decaying-spectrum construction, multiple regimes and seeds -- see
+    ``strategy/tests/test_sparse_sign.py`` for the reproducible check):
+    ``_SIGN_MIX = 2`` tracks close to ``rsvd``'s (dense-Gaussian) accuracy
+    while costing a small fraction of its FLOPs, and edges out plain
+    ``nystrom``'s single-column draw by a modest, consistent margin across the
+    regimes tested. Honesty about the negative result too: ``_SIGN_MIX`` = 3 or
+    6 did NOT do better than 2 in that same check -- more blending is not
+    automatically better once the operands' column space is already spread
+    fairly evenly (as this project's synthetic fills are), so this does not
+    default to a larger mix. This has been checked on CPU with NumPy only; it
+    has NOT yet been measured on a real GPU -- see the PR for that scorecard
+    (or its absence, if opened before one exists).
+    """
+
+    name = "sparse_sign"
+    _SIGN_MIX = 2  # columns blended per output direction; see docstring above
+
+    def basis(self, n, m, backend, dtype, A=None, B=None):
+        if A is None or B is None:
+            raise ValueError("sparse_sign transform needs A and B")
+        if m < 1 or m > n:
+            raise ValueError(f"sparse_sign requires 1 <= m <= n; got m={m}, n={n}")
+
+        s = self._SIGN_MIX
+        base, rem = divmod(m, 3)
+        widths = [base + (1 if i < rem else 0) for i in range(3)]
+        rng = np.random.default_rng(self.seed)
+
+        def mixed_cols(X, w):
+            # Blend s random columns of X (independent random +/-1 signs) per
+            # output direction: a host-side gather + weighted sum, never a
+            # matmul. Sampling WITH replacement (rng.integers, not
+            # rng.choice(replace=False)) keeps this O(w*s) regardless of n;
+            # an occasional within-bucket repeat is a well-understood,
+            # negligible-probability property of this construction (the same
+            # collision tolerance ordinary hash-based sketches have), not a
+            # correctness issue -- the QR below still returns a valid
+            # orthonormal Q regardless of how informative each blended column is.
+            idx = rng.integers(0, X.shape[1], size=(w, s))
+            signs = rng.choice((-1.0, 1.0), size=(w, s))
+            gathered = np.asarray(X[:, idx]) * signs[None, :, :]   # (n, w, s)
+            return (gathered.sum(axis=2) / np.sqrt(s)).astype(dtype, copy=False)
+
+        def mixed_rows_as_cols(X, w):
+            return mixed_cols(X.T, w)   # rows of X == columns of X.T
+
+        parts = []
+        if widths[0]:
+            parts.append(backend.to_device(mixed_cols(A, widths[0])))       # col(A)
+        if widths[1]:
+            parts.append(backend.to_device(mixed_rows_as_cols(A, widths[1])))  # row(A)
+        if widths[2]:
+            parts.append(backend.to_device(mixed_rows_as_cols(B, widths[2])))  # row(B)
+
+        Y = backend.xp.concatenate(parts, axis=1)  # (n, m)
+        return self._orthonormalize(Y, backend)
+
+    def basis_flops(self, n, m):
+        # Gathering + weighted-summing _SIGN_MIX columns per direction is
+        # host-side memory traffic like nystrom's single-column gather, not a
+        # GEMM (mixed_cols above never calls backend.matmul) -- but summing
+        # _SIGN_MIX terms (unlike nystrom's copy of exactly one) is
+        # (_SIGN_MIX - 1) real additions per output element, honestly counted
+        # here rather than rounded to zero. The mandatory FLOP cost is still
+        # dominated by the thin QR (~2*n*m^2), same as nystrom/rsvd.
+        return 2.0 * n * m * m + (self._SIGN_MIX - 1) * n * m
+
+
 _REGISTRY: dict[str, type[Transform]] = {}
 
 
@@ -224,5 +311,5 @@ def available() -> list[str]:
     return sorted(_REGISTRY)
 
 
-for _cls in (RandomizedSVDTransform, NystromTransform):
+for _cls in (RandomizedSVDTransform, NystromTransform, SparseSignTransform):
     register_transform(_cls.name, _cls)
