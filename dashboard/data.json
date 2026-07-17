@@ -23,21 +23,6 @@
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/226"
     },
     {
-      "author": "statxc",
-      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
-      "gpu_required": false,
-      "head_sha": "b14c2e729b23851a0468a4320d075080f0080cb1",
-      "kind": "fix",
-      "label": "status:ready-non-gpu",
-      "pr": 300,
-      "state": "non_gpu_review",
-      "title": "fix(docs): declare frac in strategy README's 'Register your own' basis() hook (Fixes #274)",
-      "track": null,
-      "transform": null,
-      "updated_at": "2026-07-17T14:09:54Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/300"
-    },
-    {
       "author": "galuis116",
       "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
       "gpu_required": false,
@@ -49,25 +34,10 @@
       "title": "fix(strategy): nystrom uses 3 landmark spaces, not 4 (drop redundant col(B))",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T14:09:59Z",
+      "updated_at": "2026-07-17T14:52:32Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/270"
-    },
-    {
-      "author": "statxc",
-      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
-      "gpu_required": false,
-      "head_sha": "e1159987d0bde13353ab57be7063d8ff1d03e6e2",
-      "kind": "fix",
-      "label": "status:ready-non-gpu",
-      "pr": 299,
-      "state": "non_gpu_review",
-      "title": "fix(strategy): charge the resident Q operand in stream_gemm_*/compress budgets (Fixes #236)",
-      "track": null,
-      "transform": null,
-      "updated_at": "2026-07-17T14:10:05Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/299"
     }
   ],
   "queue": [],
-  "updated": "2026-07-17T14:52:44+00:00"
+  "updated": "2026-07-17T15:00:00+00:00"
 }
