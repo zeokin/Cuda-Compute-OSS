@@ -34,7 +34,7 @@
       "title": "fix(strategy): nystrom uses 3 landmark spaces, not 4 (drop redundant col(B))",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T15:03:43Z",
+      "updated_at": "2026-07-17T15:45:32Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/270"
     },
     {
@@ -49,8 +49,23 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-17T15:03:52Z",
+      "updated_at": "2026-07-17T15:45:45Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
+    },
+    {
+      "author": "RealDiligent",
+      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
+      "gpu_required": false,
+      "head_sha": "1d4e63ae0bc720f8e7db83537af34cae363fa98e",
+      "kind": "fix",
+      "label": "status:ready-non-gpu",
+      "pr": 305,
+      "state": "non_gpu_review",
+      "title": "fix(strategy): budget live Atil while compressing B (Fixes #304)",
+      "track": null,
+      "transform": null,
+      "updated_at": "2026-07-17T15:55:24Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/305"
     }
   ],
   "queue": [
@@ -67,9 +82,9 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-17T15:03:52Z",
+      "updated_at": "2026-07-17T15:45:45Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
     }
   ],
-  "updated": "2026-07-17T15:45:45+00:00"
+  "updated": "2026-07-17T15:58:31+00:00"
 }
