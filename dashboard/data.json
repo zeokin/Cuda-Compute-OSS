@@ -34,7 +34,7 @@
       "title": "fix(strategy): nystrom uses 3 landmark spaces, not 4 (drop redundant col(B))",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T15:45:32Z",
+      "updated_at": "2026-07-17T15:58:17Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/270"
     },
     {
@@ -49,7 +49,7 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-17T15:45:45Z",
+      "updated_at": "2026-07-17T15:58:25Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
     },
     {
@@ -64,8 +64,23 @@
       "title": "fix(strategy): budget live Atil while compressing B (Fixes #304)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T15:55:24Z",
+      "updated_at": "2026-07-17T15:58:27Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/305"
+    },
+    {
+      "author": "statxc",
+      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
+      "gpu_required": false,
+      "head_sha": "a6b7105a4be3652100f5555f6a8cb7aa4b6da790",
+      "kind": "fix",
+      "label": "status:ready-non-gpu",
+      "pr": 306,
+      "state": "non_gpu_review",
+      "title": "fix(strategy): remove duplicate import math in storage.py",
+      "track": null,
+      "transform": null,
+      "updated_at": "2026-07-17T16:13:58Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/306"
     }
   ],
   "queue": [
@@ -82,9 +97,9 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-17T15:45:45Z",
+      "updated_at": "2026-07-17T15:58:25Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
     }
   ],
-  "updated": "2026-07-17T15:58:31+00:00"
+  "updated": "2026-07-17T16:18:39+00:00"
 }
