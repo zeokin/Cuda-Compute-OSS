@@ -44,7 +44,14 @@ def generate_qkv(spec: AttentionSpec, device=None):
     # generator on "cuda" (= cuda:0) and torch.randn(generator=..., device=cuda:1)
     # then raised a device mismatch. MPS has no device-side generator -> use CPU.
     gen_device = "cpu" if dev.type == "mps" else dev
-    gen = torch.Generator(device=gen_device).manual_seed(spec.seed)
+    # int(): AttentionSpec validates seed against numbers.Integral, so a NumPy
+    # integer (rng.integers(...), np.arange(n)[i]) is a *valid* seed -- but
+    # torch.Generator.manual_seed takes a real int and raises
+    # "TypeError: an integer is required" on np.integer. TypeError is not in
+    # benchmark.main's except clause, so a spec-valid seed escaped as an uncaught
+    # traceback instead of a clean error. Coerce at the boundary; int() of an
+    # np.integer is exact, so the RNG stream is unchanged for plain-int seeds.
+    gen = torch.Generator(device=gen_device).manual_seed(int(spec.seed))
     dtype = torch_dtype(spec.dtype)
     shape = (spec.batch, spec.heads, spec.seq, spec.dim)
     q = torch.randn(shape, generator=gen, device=dev, dtype=dtype)
