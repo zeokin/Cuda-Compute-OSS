@@ -34,7 +34,7 @@
       "title": "fix(docs): declare frac in strategy README's 'Register your own' basis() hook (Fixes #274)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T13:45:12Z",
+      "updated_at": "2026-07-17T14:09:54Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/300"
     },
     {
@@ -49,7 +49,7 @@
       "title": "fix(strategy): nystrom uses 3 landmark spaces, not 4 (drop redundant col(B))",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T13:45:18Z",
+      "updated_at": "2026-07-17T14:09:59Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/270"
     },
     {
@@ -64,10 +64,10 @@
       "title": "fix(strategy): charge the resident Q operand in stream_gemm_*/compress budgets (Fixes #236)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T13:45:24Z",
+      "updated_at": "2026-07-17T14:10:05Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/299"
     }
   ],
   "queue": [],
-  "updated": "2026-07-17T14:10:09+00:00"
+  "updated": "2026-07-17T14:52:44+00:00"
 }
