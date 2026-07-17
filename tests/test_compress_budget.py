@@ -2,11 +2,11 @@
 
 compress accumulates Q^T X Q into a resident (m, m) buffer, and at the peak of
 ``acc += matmul(...)`` holds TWO (m, m) buffers -- acc and the product that
-cannot alias it -- neither scaling with the block. The row-block budget must
-therefore charge 2*m*m up front; charging only the product (m*m) leaves the
-accumulator unbudgeted (and invisible on MPS, where free_compute_bytes() is a
-static ceiling), so the block overshoots and can OOM. compress was the one
-streaming primitive still missing this after #203/#205/#216.
+cannot alias it -- neither scaling with the block. It also holds the caller's
+resident ``Q`` (n, m), which it never stages per block (#236). All three are
+fixed costs the row-block budget must charge up front; omitting any of them
+leaves it unbudgeted (and invisible on MPS, where free_compute_bytes() is a
+static ceiling), so the block overshoots and can OOM.
 
 These tests assert compress hands _row_block the full 2*m*m charge, that the
 old m*m charge overshoots the real peak, and that the change leaves the math of
@@ -50,13 +50,15 @@ def _compress_fixed_bytes(n, m, dtype):
     return seen
 
 
-def test_compress_charges_accumulator_and_product():
-    # Both the resident acc and the per-step product are (m, m): 2*m*m, not m*m.
+def test_compress_charges_accumulator_product_and_resident_q():
+    # Resident acc (m, m) + per-step product (m, m) + the resident Q operand
+    # (n, m) the caller uploaded and compress never stages (#236).
     for n, m, dtype in [(64, 16, np.float32), (128, 32, np.float64), (256, 256, np.float32)]:
         seen = _compress_fixed_bytes(n, m, dtype)
         item = np.dtype(dtype).itemsize
-        assert seen["fixed_bytes"] == 2 * m * m * item, (n, m, dtype, seen)
-        assert seen["fixed_bytes"] != m * m * item      # explicitly not the old model
+        assert seen["fixed_bytes"] == (n * m + 2 * m * m) * item, (n, m, dtype, seen)
+        assert seen["fixed_bytes"] != 2 * m * m * item  # Q must not be dropped
+        assert seen["fixed_bytes"] != m * m * item      # nor the accumulator
 
 
 def test_old_single_mm_charge_overshoots_budget():
