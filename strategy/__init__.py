@@ -75,6 +75,11 @@ def subspace_matmul(A: np.ndarray, B: np.ndarray, out: np.ndarray | None = None,
             )
         if not out.flags.writeable:
             raise ValueError("out must be writable")
+    # rank_m's range depends on n, which Config cannot know, so multiply_subspace
+    # owns the bound -- but it only gets there once a Backend (a real GPU) exists.
+    # A/B give us n right here, so enforce the same rule up front, via the same
+    # validator, like every other argument this function checks.
+    subspace.validate_rank_m(cfg.rank_m, A.shape[0])
     backend = Backend(cfg.device, cfg.verbose)
     C = out if out is not None else np.empty_like(A, dtype=cfg.np_dtype)
     subspace.multiply_subspace(A, B, C, backend, cfg)

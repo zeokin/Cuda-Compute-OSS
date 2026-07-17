@@ -221,6 +221,24 @@ def default_rank_m(n: int) -> int:
     return int(min(n, max(64, n // 8)))
 
 
+def validate_rank_m(rank_m, n: int) -> None:
+    """Raise ValueError unless ``rank_m`` is a usable subspace dimension for ``n``.
+
+    The single source of truth for the ``1 <= M <= n`` bound. ``None`` means
+    "use ``default_rank_m(n)``" and is always valid, so callers can pass an
+    unresolved ``cfg.rank_m`` straight through.
+
+    ``multiply_subspace`` enforces this on the resolved M, but only once a
+    Backend (and a real GPU) exists. ``subspace_matmul`` knows n from A/B, so it
+    calls this up front and reports an out-of-range M without demanding a GPU.
+    Both go through here so the bound cannot drift between the two paths.
+    """
+    if rank_m is None:
+        return
+    if not (1 <= rank_m <= n):
+        raise ValueError(f"rank_m must be in [1, n]; got {rank_m} for n={n}")
+
+
 def _flop_actual(n: int, m: int) -> float:
     """FLOPs for the CORE stages of one multiply_subspace call (basis excluded --
     ``multiply_subspace`` adds ``transform.basis_flops(n, m)`` on top, since basis
@@ -241,8 +259,7 @@ def multiply_subspace(A, B, C, backend: Backend, cfg: Config) -> dict:
     if A.shape != (n, n) or B.shape != (n, n) or C.shape != (n, n):
         raise ValueError("A, B, C must all be square n x n with matching n")
     m = cfg.rank_m if cfg.rank_m is not None else default_rank_m(n)
-    if not (1 <= m <= n):
-        raise ValueError(f"rank_m must be in [1, n]; got {m} for n={n}")
+    validate_rank_m(m, n)
     cdt = cfg.compute_dtype
 
     frac = cfg.vram_fraction
