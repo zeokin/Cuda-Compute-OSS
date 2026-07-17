@@ -23,34 +23,6 @@
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/226"
     },
     {
-      "author": "luciferlive112116",
-      "detail": "Closing this PR because the reported merge conflict was not resolved within 12 hours of the bot reminder.",
-      "gpu_required": false,
-      "head_sha": "aa67c900bb81fbb2d8c5d94b9518744366a09c62",
-      "kind": null,
-      "pr": 275,
-      "state": "close_stale_merge_conflict",
-      "title": "fix(strategy): declare frac in every contributor-facing basis() snippet (Fixes #274)",
-      "track": null,
-      "transform": null,
-      "updated_at": "2026-07-16T15:07:52Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/275"
-    },
-    {
-      "author": "statxc",
-      "detail": "Closing this PR because the reported merge conflict was not resolved within 12 hours of the bot reminder.",
-      "gpu_required": false,
-      "head_sha": "9f90a253ebed9b4032c6a8fa969ff9e1ca51c43c",
-      "kind": null,
-      "pr": 276,
-      "state": "close_stale_merge_conflict",
-      "title": "fix(strategy): reject a degenerate n in runner before building a Backend",
-      "track": null,
-      "transform": null,
-      "updated_at": "2026-07-16T15:08:08Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/276"
-    },
-    {
       "author": "RealDiligent",
       "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
       "gpu_required": false,
@@ -62,7 +34,7 @@
       "title": "fix(strategy): budget compare() for four resident matrices on auto storage (Fixes #287)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T01:16:34Z",
+      "updated_at": "2026-07-17T04:30:48Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/295"
     },
     {
@@ -77,7 +49,7 @@
       "title": "fix(strategy): keep streamed compare rel_err within its host-memory budget (Fixes #293)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T01:16:40Z",
+      "updated_at": "2026-07-17T04:30:53Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/296"
     },
     {
@@ -92,7 +64,7 @@
       "title": "fix(strategy): nystrom uses 3 landmark spaces, not 4 (drop redundant col(B))",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T01:16:46Z",
+      "updated_at": "2026-07-17T04:30:59Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/270"
     },
     {
@@ -107,7 +79,7 @@
       "title": "fix(docs): landing page counts accuracy as a fourth never-traded cost axis (Fixes #271)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T01:16:53Z",
+      "updated_at": "2026-07-17T04:31:04Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/272"
     },
     {
@@ -122,7 +94,7 @@
       "title": "fix(strategy): reject non-finite spectral_alpha in storage.generate",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T01:16:59Z",
+      "updated_at": "2026-07-17T04:31:09Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/273"
     },
     {
@@ -137,7 +109,7 @@
       "title": "fix(strategy): validate rank_m's range in subspace_matmul before building a Backend",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T01:17:06Z",
+      "updated_at": "2026-07-17T04:31:14Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/277"
     },
     {
@@ -152,7 +124,7 @@
       "title": "fix(strategy): charge prior rsvd sketch parts in stream budgets",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T01:17:12Z",
+      "updated_at": "2026-07-17T04:31:19Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/265"
     },
     {
@@ -167,10 +139,10 @@
       "title": "fix(attention): coerce the Integral seed for torch.Generator in generate_qkv (#281)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T01:17:18Z",
+      "updated_at": "2026-07-17T04:31:24Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/261"
     }
   ],
   "queue": [],
-  "updated": "2026-07-17T04:31:28+00:00"
+  "updated": "2026-07-17T06:46:20+00:00"
 }
