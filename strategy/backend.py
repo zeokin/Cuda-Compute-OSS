@@ -136,6 +136,19 @@ def _host_available_bytes() -> int:
     return 8 * 1024**3  # last-resort fallback when OS queries are unavailable
 
 
+# Device->host copies out of pageable memory run at roughly a seventh of the
+# pinned bandwidth (measured on an RTX 3090: 268 MB in 159 ms pageable vs 21.5 ms
+# pinned). Every result this engine produces -- reconstruct's (rb, n) rows and
+# multiply_exact's accumulator -- leaves the device through ``to_host``, so the
+# whole strategy is bounded by that copy, not by its math. Bounce large reads
+# through one small, reused pinned buffer instead: a 16 MiB buffer costs ~6 ms to
+# pin once and then streams at full pinned bandwidth, while pinning the entire
+# result up front (268 MB -> ~94 ms) would give most of the win back.
+_PINNED_CHUNK_BYTES = 16 * 1024 ** 2
+# Below this the copy is too small for the bounce to pay for itself.
+_PINNED_MIN_BYTES = 4 * 1024 ** 2
+
+
 class Backend:
     """PyTorch GPU backend. Raises if no CUDA/MPS device is available."""
 
@@ -144,6 +157,7 @@ class Backend:
         self.verbose = verbose
         self.kind = "torch"
         self.gpu = True
+        self._pin_buf = None            # lazily allocated pinned bounce buffer
 
         try:
             import torch  # type: ignore
@@ -197,10 +211,37 @@ class Backend:
             return host_array.to(self.dev)
         return self.torch.from_numpy(np.ascontiguousarray(host_array)).to(self.dev)
 
+    def _pinned_staging(self, dtype, elems):
+        """One reused pinned bounce buffer (grown on demand, never shrunk).
+
+        Reused across calls and across row-blocks so the one-off pinning cost is
+        paid once per run, not once per transfer."""
+        buf = self._pin_buf
+        if buf is None or buf.dtype != dtype or buf.numel() < elems:
+            self._pin_buf = self.torch.empty(elems, dtype=dtype, pin_memory=True)
+        return self._pin_buf[:elems]
+
     def to_host(self, dev_array) -> np.ndarray:
-        if self.torch.is_tensor(dev_array):
-            return dev_array.detach().to("cpu").numpy()
-        return np.asarray(dev_array)
+        if not self.torch.is_tensor(dev_array):
+            return np.asarray(dev_array)
+        t = dev_array.detach()
+        if t.device.type == "cpu":
+            return t.numpy()
+        if t.numel() * t.element_size() < _PINNED_MIN_BYTES:
+            return t.to("cpu").numpy()
+        # Large read: stream it through the pinned buffer (see _PINNED_CHUNK_BYTES).
+        t = t.contiguous()
+        flat = t.reshape(-1)
+        total = flat.numel()
+        chunk = min(total, max(1, _PINNED_CHUNK_BYTES // t.element_size()))
+        buf = self._pinned_staging(t.dtype, chunk)
+        out = np.empty(tuple(t.shape), dtype=buf.numpy().dtype)
+        out_flat = out.reshape(-1)
+        for i in range(0, total, chunk):
+            j = min(total, i + chunk)
+            buf[: j - i].copy_(flat[i:j])
+            out_flat[i:j] = buf[: j - i].numpy()
+        return out
 
     def zeros(self, shape, dtype):
         return self.xp.zeros(shape, dtype=dtype)
