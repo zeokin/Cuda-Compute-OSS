@@ -155,9 +155,15 @@ def stream_gemm_left_t(X, Q, backend: Backend, dtype,
 
 
 def compress(X, Q, backend: Backend, dtype,
-             frac: float = _DEFAULT_ROW_BLOCK_FRACTION):
+             frac: float = _DEFAULT_ROW_BLOCK_FRACTION,
+             extra_fixed_bytes: int = 0):
     """Return Q^T X Q  (m x m), streaming the rows of X:
-    Q^T X Q = sum over row-blocks  Q[rb,:]^T @ (X[rb,:] @ Q)."""
+    Q^T X Q = sum over row-blocks  Q[rb,:]^T @ (X[rb,:] @ Q).
+
+    ``extra_fixed_bytes`` is caller-resident device memory that stays live for
+    the whole call (e.g. ``Atil`` while compressing B) and is invisible to
+    ``free_compute_bytes()`` on MPS, so it must be charged like ``acc``.
+    """
     xp = backend.xp
     n, m = X.shape[0], Q.shape[1]
     acc = xp.zeros((m, m), dtype=dtype)
@@ -176,7 +182,7 @@ def compress(X, Q, backend: Backend, dtype,
     item = np.dtype(dtype).itemsize
     blk = _row_block(n, X.shape[1], backend, item, frac,
                      out_cols=m,
-                     fixed_bytes=(n * m + 2 * m * m) * item,  # Q + acc + product
+                     fixed_bytes=(n * m + 2 * m * m) * item + int(extra_fixed_bytes),
                      transient_cols=X.shape[1])
     for r0 in range(0, n, blk):
         r1 = min(n, r0 + blk)
@@ -288,7 +294,11 @@ def multiply_subspace(A, B, C, backend: Backend, cfg: Config) -> dict:
     if Q.shape != (n, m):
         raise ValueError(f"transform returned basis {Q.shape}, expected {(n, m)}")
     Atil = compress(A, Q, backend, cdt, frac)             # (m, m)
-    Btil = compress(B, Q, backend, cdt, frac)             # (m, m)
+    # Atil stays device-resident through the second compress. Charge it as
+    # extra_fixed_bytes so B's row-block cannot overshoot vram_fraction on
+    # backends whose free_compute_bytes() is a static ceiling (#304).
+    Btil = compress(B, Q, backend, cdt, frac,
+                    extra_fixed_bytes=m * m * np.dtype(cdt).itemsize)
     Ctil = backend.matmul(Atil, Btil)                     # (m, m)  -- cheap core
     # Drop the (m, m) compress leftovers before streaming reconstruct. They are
     # unused after the core product, but if kept alive reconstruct's budget
