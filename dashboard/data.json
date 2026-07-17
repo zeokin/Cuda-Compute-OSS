@@ -34,7 +34,7 @@
       "title": "fix(strategy): nystrom uses 3 landmark spaces, not 4 (drop redundant col(B))",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-17T14:59:56Z",
+      "updated_at": "2026-07-17T15:03:43Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/270"
     },
     {
@@ -49,7 +49,7 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-17T15:00:49Z",
+      "updated_at": "2026-07-17T15:03:52Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
     }
   ],
@@ -67,9 +67,9 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-17T15:00:49Z",
+      "updated_at": "2026-07-17T15:03:52Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
     }
   ],
-  "updated": "2026-07-17T15:03:53+00:00"
+  "updated": "2026-07-17T15:45:45+00:00"
 }
