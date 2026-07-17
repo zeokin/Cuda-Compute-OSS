@@ -5,6 +5,7 @@ holding it fully in RAM; slicing a tile pulls only that tile off disk.
 """
 from __future__ import annotations
 
+import math
 import os
 import math
 from numbers import Integral, Real
@@ -134,6 +135,12 @@ def generate(
         r = data_rank if data_rank is not None else max(1, n // 32)
         _fill_lowrank(mat, seed, min(r, n))
     elif fill == "decaying-spectrum":
+        # Guard at this public boundary (like data_rank above): a non-finite
+        # alpha makes the k**-alpha weights all-NaN (all-NaN matrix) or, for Inf,
+        # collapses them to a silent rank 1 -- corrupting the benchmark input.
+        if not math.isfinite(spectral_alpha) or spectral_alpha < 0:
+            raise ValueError(
+                f"spectral_alpha must be a finite number >= 0, got {spectral_alpha}")
         r = data_rank if data_rank is not None else max(1, n // 32)
         _fill_decaying_spectrum(mat, seed, min(r, n), spectral_alpha)
     else:
