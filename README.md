@@ -242,7 +242,7 @@ CCO/
 ├── uv.lock            reproducible uv resolution for maintainers and miners
 ├── dashboard/         bot-owned queue/result JSON feeds published on `bot/dashboard-state`
 └── .github/
-    ├── CODEOWNERS                 maintainer-owned paths (eval/, docs/, .github/)
+    ├── CODEOWNERS                 maintainer-owned paths (eval/, docs/, .github/, dashboard/)
     └── PULL_REQUEST_TEMPLATE.md   the scorecard your PR must fill in
 ```
 
