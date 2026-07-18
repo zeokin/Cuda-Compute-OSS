@@ -34,7 +34,7 @@
       "title": "fix(strategy): nystrom uses 3 landmark spaces, not 4 (drop redundant col(B))",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-18T10:50:40Z",
+      "updated_at": "2026-07-18T11:14:57Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/270"
     },
     {
@@ -49,7 +49,7 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-18T10:50:47Z",
+      "updated_at": "2026-07-18T11:15:04Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
     },
     {
@@ -64,7 +64,7 @@
       "title": "fix(docs): list dashboard/ among README's maintainer-owned paths",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-18T10:50:49Z",
+      "updated_at": "2026-07-18T11:15:05Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/311"
     },
     {
@@ -79,7 +79,7 @@
       "title": "fix(strategy): correct Config.transform docstring \u2014 nystrom is also a built-in",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-18T10:50:53Z",
+      "updated_at": "2026-07-18T11:15:09Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/313"
     }
   ],
@@ -97,9 +97,9 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-18T10:50:47Z",
+      "updated_at": "2026-07-18T11:15:04Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
     }
   ],
-  "updated": "2026-07-18T11:15:13+00:00"
+  "updated": "2026-07-18T12:10:23+00:00"
 }
