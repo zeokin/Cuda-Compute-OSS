@@ -34,7 +34,7 @@
       "title": "fix(strategy): nystrom uses 3 landmark spaces, not 4 (drop redundant col(B))",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-20T11:17:16Z",
+      "updated_at": "2026-07-20T13:22:53Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/270"
     },
     {
@@ -49,7 +49,7 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-20T11:17:24Z",
+      "updated_at": "2026-07-20T13:23:02Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
     },
     {
@@ -64,7 +64,7 @@
       "title": "fix(docs): list dashboard/ among README's maintainer-owned paths",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-20T11:17:26Z",
+      "updated_at": "2026-07-20T13:23:04Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/311"
     },
     {
@@ -79,7 +79,7 @@
       "title": "fix(strategy): correct Config.transform docstring \u2014 nystrom is also a built-in",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-20T11:17:31Z",
+      "updated_at": "2026-07-20T13:23:11Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/313"
     },
     {
@@ -94,7 +94,7 @@
       "title": "fix(landing): drop malformed stray path in the Tier-3 evaluation icon",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-20T11:17:35Z",
+      "updated_at": "2026-07-20T13:23:17Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/314"
     },
     {
@@ -109,7 +109,7 @@
       "title": "fix(strategy): remove nystrom basis concatenate VRAM spike (Fixes #315)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-20T11:17:41Z",
+      "updated_at": "2026-07-20T13:23:22Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/316"
     },
     {
@@ -124,7 +124,7 @@
       "title": "fix(attention): cap automatic local query blocks to prevent wide-window OOM (Fixes #317)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-20T11:17:45Z",
+      "updated_at": "2026-07-20T13:23:28Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/318"
     }
   ],
@@ -142,9 +142,9 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-20T11:17:24Z",
+      "updated_at": "2026-07-20T13:23:02Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
     }
   ],
-  "updated": "2026-07-20T13:23:31+00:00"
+  "updated": "2026-07-20T15:33:08+00:00"
 }
