@@ -32,11 +32,15 @@ def test_default_query_block_source_independent_of_window():
     """Default block must not track window (source contract for #317)."""
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     src = open(os.path.join(root, "attention", "hybrid.py"), encoding="utf-8").read()
-    assert "min(max(64, window" not in src
-    assert re.search(
-        r"block_size if block_size is not None else min\(64,\s*seq\)",
-        src,
-    )
+    # Assignment only — comments may mention the old formula when explaining the fix.
+    assign_lines = [
+        ln for ln in src.splitlines()
+        if ln.lstrip().startswith("block =") and "block_size" in ln
+    ]
+    assert assign_lines, "missing default block assignment"
+    assign = assign_lines[0]
+    assert "min(max(64, window" not in assign
+    assert re.search(r"min\(64,\s*seq\)", assign)
 
 
 def _skip_if_no_torch():
