@@ -1,5 +1,6 @@
 """CPU-safe tests for the local attention playground."""
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,6 +25,17 @@ if torch is not None:
         landmark_hybrid_attention,
         local_window_attention,
         spectral_global_mix,
+    )
+
+
+def test_default_query_block_source_independent_of_window():
+    """Default block must not track window (source contract for #317)."""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    src = open(os.path.join(root, "attention", "hybrid.py"), encoding="utf-8").read()
+    assert "min(max(64, window" not in src
+    assert re.search(
+        r"block_size if block_size is not None else min\(64,\s*seq\)",
+        src,
     )
 
 
@@ -174,6 +186,42 @@ def test_local_window_matches_exact_when_window_covers_sequence():
     exact = exact_attention(q, k, v)
     local = local_window_attention(q, k, v, window=12, block_size=5)
     assert torch.allclose(local, exact, atol=1e-5, rtol=1e-5)
+
+
+def test_default_query_block_does_not_grow_with_window():
+    """Default query block is min(64, seq), independent of window (#317).
+
+    Old default ``min(max(64, window), seq)`` made score tensors track the
+    window height and could OOM on wide windows. Spy on the first scores
+    matmul's query-block height.
+    """
+    if _skip_if_no_torch():
+        return
+    q, k, v = _sample(seq=100, dim=4)
+    q_block_heights = []
+    real_matmul = torch.matmul
+
+    def _spy(a, b):
+        # scores = q_blk @ k_blk^T -> a is (batch, heads, q_block, dim)
+        if a.dim() == 4 and b.dim() == 4 and a.shape[-1] == b.shape[-1]:
+            q_block_heights.append(int(a.shape[-2]))
+        return real_matmul(a, b)
+
+    torch.matmul = _spy  # type: ignore[assignment]
+    try:
+        local_window_attention(q, k, v, window=80)  # block_size default
+    finally:
+        torch.matmul = real_matmul  # type: ignore[assignment]
+    assert q_block_heights, "expected at least one scores matmul"
+    assert q_block_heights[0] == 64
+    # Explicit block_size still wins.
+    q_block_heights.clear()
+    torch.matmul = _spy  # type: ignore[assignment]
+    try:
+        local_window_attention(q, k, v, window=80, block_size=16)
+    finally:
+        torch.matmul = real_matmul  # type: ignore[assignment]
+    assert q_block_heights and q_block_heights[0] == 16
 
 
 def test_spectral_global_mix_preserves_shape_and_finiteness():

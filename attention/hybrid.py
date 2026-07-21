@@ -59,7 +59,11 @@ def local_window_attention(q, k, v, *, window: int, causal: bool = False, block_
         _require_integer("block_size", block_size, minimum=1)
 
     batch, heads, seq, dim = q.shape
-    block = block_size if block_size is not None else min(max(64, window or 1), seq)
+    # Cap the automatic query block independently of ``window``. Tracking the
+    # window (``min(max(64, window), seq)``) made scores ≈ (batch, heads, window,
+    # key_span) for wide windows and defeated the blockwise OOM guard (#317).
+    # Explicit ``block_size`` is preserved unchanged.
+    block = block_size if block_size is not None else min(64, seq)
     out = torch.empty_like(v)
 
     for q0 in range(0, seq, block):
