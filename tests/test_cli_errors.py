@@ -133,5 +133,39 @@ def test_strategy_unknown_transform_exits_cleanly(capsys):
     assert "unknown transform" in err
 
 
+# eval CLI previously caught RuntimeError only, so KeyError / ValueError from
+# unknown --transforms, bad --rank-m, or bad --sweep escaped as tracebacks (#258).
+@pytest.mark.parametrize(
+    "exc",
+    [
+        KeyError("unknown transform 'bogus'"),
+        ValueError("rank_m must be in [1, n]"),
+        MemoryError("oom"),
+    ],
+    ids=["KeyError", "ValueError", "MemoryError"],
+)
+def test_eval_cli_user_errors_exit_cleanly(monkeypatch, capsys, exc):
+    from eval import cli as eval_cli
+
+    def _boom(_ev):
+        raise exc
+
+    monkeypatch.setattr(eval_cli, "evaluate", _boom)
+    rc = eval_cli.main(["--n", "8", "--transforms", "bogus"])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "error:" in err
+    assert "Traceback" not in err
+
+
+def test_eval_cli_bad_sweep_exits_cleanly(monkeypatch, capsys):
+    from eval import cli as eval_cli
+
+    monkeypatch.setattr(eval_cli, "evaluate", lambda _ev: {})
+    rc = eval_cli.main(["--n", "8", "--sweep", "foo"])
+    assert rc == 2
+    assert "error:" in capsys.readouterr().err
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))
