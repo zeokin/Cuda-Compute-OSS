@@ -133,5 +133,36 @@ def test_strategy_unknown_transform_exits_cleanly(capsys):
     assert "unknown transform" in err
 
 
+
+def test_get_transform_unknown_raises_runtime_error():
+    """Unknown names must be RuntimeError so eval/cli's except RuntimeError
+    covers them without editing maintainer-owned eval/ (#258 / #199 gap)."""
+    from strategy.transforms import get_transform
+
+    with pytest.raises(RuntimeError, match="unknown transform"):
+        get_transform("bogus")
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        RuntimeError("unknown transform 'bogus'"),
+        RuntimeError("rank_m must be in [1, n]; got 0 for n=8"),
+    ],
+    ids=["unknown-transform", "bad-rank-m"],
+)
+def test_eval_cli_runtime_user_errors_exit_cleanly(monkeypatch, capsys, exc):
+    """eval/cli already catches RuntimeError; strategy now raises that family
+    for the #258 user-input cases miners can fix without touching eval/."""
+    from eval import cli as eval_cli
+
+    monkeypatch.setattr(eval_cli, "evaluate", lambda _ev: (_ for _ in ()).throw(exc))
+    rc = eval_cli.main(["--n", "8", "--transforms", "bogus"])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "error:" in err
+    assert "Traceback" not in err
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))

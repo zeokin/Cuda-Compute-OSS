@@ -256,7 +256,9 @@ def validate_rank_m(rank_m, n: int) -> None:
     if rank_m is None:
         return
     if not (1 <= rank_m <= n):
-        raise ValueError(f"rank_m must be in [1, n]; got {rank_m} for n={n}")
+        # RuntimeError so python -m eval (except RuntimeError only) exits 2
+        # cleanly; strategy/cli also catches RuntimeError. See #258.
+        raise RuntimeError(f"rank_m must be in [1, n]; got {rank_m} for n={n}")
 
 
 def _flop_actual(n: int, m: int) -> float:

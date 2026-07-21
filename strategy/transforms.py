@@ -214,7 +214,11 @@ def get_transform(name_or_instance, seed: int = 0) -> Transform:
     if isinstance(name_or_instance, Transform):
         return name_or_instance
     if name_or_instance not in _REGISTRY:
-        raise KeyError(
+        # RuntimeError (not KeyError): eval/cli catches RuntimeError only and is
+        # maintainer-owned, so miner fixes for the #258 gap must surface unknown
+        # transforms through the exception family eval already handles. strategy/cli
+        # already catches RuntimeError as well.
+        raise RuntimeError(
             f"unknown transform {name_or_instance!r}; available: {sorted(_REGISTRY)}"
         )
     return _REGISTRY[name_or_instance](seed=seed)

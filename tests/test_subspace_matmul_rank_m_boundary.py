@@ -44,7 +44,7 @@ def test_validator_accepts_valid_rank_m(rank_m):
 
 @pytest.mark.parametrize("rank_m", (0, -3, N + 1, 99), ids=repr)
 def test_validator_rejects_out_of_range_rank_m(rank_m):
-    with pytest.raises(ValueError, match=r"rank_m must be in \[1, n\]"):
+    with pytest.raises(RuntimeError, match=r"rank_m must be in \[1, n\]"):
         subspace.validate_rank_m(rank_m, N)
 
 
@@ -57,9 +57,9 @@ def test_both_entry_points_share_one_rule(monkeypatch):
     cfg = Config(rank_m=N + 1, verbose=False)
 
     monkeypatch.setattr(strategy, "Backend", _ExplodingBackend)
-    with pytest.raises(ValueError) as public_api:
+    with pytest.raises(RuntimeError) as public_api:
         strategy.subspace_matmul(A, B, config=cfg)
-    with pytest.raises(ValueError) as core:
+    with pytest.raises(RuntimeError) as core:
         subspace.multiply_subspace(A, B, C, _UnusedBackend(), cfg)
 
     assert str(public_api.value) == str(core.value)
@@ -82,7 +82,7 @@ def test_public_api_delegates_to_the_shared_validator(monkeypatch):
 def test_rejects_out_of_range_rank_m_before_backend(monkeypatch, rank_m):
     monkeypatch.setattr(strategy, "Backend", _ExplodingBackend)
     A, B = _operands()
-    with pytest.raises(ValueError, match=r"rank_m must be in \[1, n\]"):
+    with pytest.raises(RuntimeError, match=r"rank_m must be in \[1, n\]"):
         strategy.subspace_matmul(A, B, config=Config(rank_m=rank_m, verbose=False))
 
 
