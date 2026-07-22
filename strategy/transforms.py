@@ -164,12 +164,13 @@ class NystromTransform(Transform):
 
     name = "nystrom"
 
-    def basis(self, n, m, backend, dtype, A=None, B=None):
+    def basis(self, n, m, backend, dtype, A=None, B=None, frac=None):
         if A is None or B is None:
             raise ValueError("nystrom transform needs A and B")
         if m < 1 or m > n:
             raise ValueError(f"nystrom requires 1 <= m <= n; got m={m}, n={n}")
 
+        xp = backend.xp
         base, rem = divmod(m, 4)
         widths = [base + (1 if i < rem else 0) for i in range(4)]
         rng = np.random.default_rng(self.seed)
@@ -184,17 +185,26 @@ class NystromTransform(Transform):
             idx = rng.choice(n, size=w, replace=False)
             return np.asarray(X[idx, :]).T.astype(dtype, copy=False)
 
-        parts = []
-        if widths[0]:
-            parts.append(backend.to_device(landmark_cols(A, widths[0])))
-        if widths[1]:
-            parts.append(backend.to_device(landmark_rows_as_cols(A, widths[1])))
-        if widths[2]:
-            parts.append(backend.to_device(landmark_cols(B, widths[2])))
-        if widths[3]:
-            parts.append(backend.to_device(landmark_rows_as_cols(B, widths[3])))
+        # Preallocate Y and upload one landmark block at a time. Holding every
+        # part then concatenate()'ing them doubled the (n, m) footprint — the
+        # same unbudgeted spike #308 removed for rsvd (#315). ``frac`` is accepted
+        # for Transform.basis signature parity; gathers are not streamed.
+        Y = xp.empty((n, m), dtype=dtype)
+        col = 0
+        builders = (
+            (widths[0], lambda w: landmark_cols(A, w)),
+            (widths[1], lambda w: landmark_rows_as_cols(A, w)),
+            (widths[2], lambda w: landmark_cols(B, w)),
+            (widths[3], lambda w: landmark_rows_as_cols(B, w)),
+        )
+        for w, build in builders:
+            if not w:
+                continue
+            part = backend.to_device(build(w))
+            Y[:, col:col + w] = part
+            del part
+            col += w
 
-        Y = backend.xp.concatenate(parts, axis=1)  # (n, m)
         return self._orthonormalize(Y, backend)
 
     def basis_flops(self, n, m):
