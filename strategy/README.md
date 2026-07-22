@@ -40,9 +40,10 @@ and swappable/updatable via a registry:
 |---|---|---|
 | `rsvd`    | **data-dependent** range finder over A and B | general low-rank data (accurate) |
 | `nystrom` | **data-dependent** landmark columns of A/B + thin QR | low-rank data (cheaper basis than rsvd) |
+| `rrqr-nystrom` | **data-dependent** redundancy-avoiding (pivoted) landmark selection | decaying-spectrum data (spends a fixed landmark budget on less-redundant columns, no extra GEMMs) |
 
-`rsvd` and `nystrom` are the built-in transforms. New transforms are the contribution
-surface — subclass `Transform` and register your own below.
+`rsvd`, `nystrom`, and `rrqr-nystrom` are the built-in transforms. New transforms are
+the contribution surface — subclass `Transform` and register your own below.
 
 Register your own (the updatable hook):
 
