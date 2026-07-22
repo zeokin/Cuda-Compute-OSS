@@ -24,7 +24,7 @@ class Config:
     rank_m        : subspace dimension M. None => min(n, max(64, n // 8)). Smaller = faster,
                     less accurate. The approximation is exact only when M = n
                     or when A/B live in the captured subspace (low rank).
-    transform     : registry name ("rsvd", the only built-in) OR a Transform
+    transform     : registry name ("rsvd" or "nystrom", the built-ins) OR a Transform
                     instance (the pluggable "core tech").
     transform_seed: RNG seed for randomized transforms.
     vram_fraction : fraction of free device memory the streamed blocks may use.
