@@ -10,7 +10,7 @@ philosophy as the existing matmul track:
 
 - fast local smoke test
 - normal PR CI
-- maintainer-controlled RTX 5090 validation
+- maintainer-controlled RTX 5070 Ti validation
 - exact baseline on the same inputs
 - latency / VRAM / quality measured together
 
@@ -127,7 +127,7 @@ Expected future pieces:
 - tiny CPU-safe tests only
 - no large GPU dependency required for default CI
 
-### RTX 5090 validator
+### RTX 5070 Ti validator
 
 - exact attention baseline
 - candidate hybrid operator
@@ -145,7 +145,7 @@ Expected future pieces:
 ## Recommended next implementation steps
 
 1. Keep `attention/` as a prototype area while you test the operator locally.
-2. Decide the first pinned benchmark shapes for RTX 5090 runs.
+2. Decide the first pinned benchmark shapes for RTX 5070 Ti runs.
 3. Choose the first official attention quality metric.
 4. Add a track-aware result model in the dashboard / ledger path.
 5. Only then wire attention into the maintainer GPU validator.

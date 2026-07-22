@@ -225,7 +225,7 @@ so every merged PR is one comparable point on one public curve.*
 
 | Pin | Value |
 |---|---|
-| **GPU** | One fixed evaluation device (reference: NVIDIA RTX 5090), same physical class for every eval; clocks recorded per run |
+| **GPU** | One fixed evaluation device (reference: NVIDIA RTX 5070 Ti), same physical class for every eval; clocks recorded per run |
 | **Workload** | `N = 8192`, fp32, **full-rank** random couples, 3 pairs, per-eval logged seeds |
 | **Baseline** | Exact `torch.matmul` product, pinned PyTorch + CUDA versions, measured in the same run on the same box |
 | **Environment** | Pinned container image; any change to a pin starts a new, clearly-marked frontier era |

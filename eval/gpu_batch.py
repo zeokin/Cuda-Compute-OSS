@@ -28,7 +28,7 @@ from . import tracks
 DEFAULT_QUEUE = "dashboard/data.json"
 DEFAULT_WORKDIR = "_gpu_batch_work"
 DEFAULT_RESULTS_DIR = "gpu-results"
-MOCK_GPU_NAME = "RTX 5090 (mock)"
+MOCK_GPU_NAME = "RTX 5070 Ti (mock)"
 DEFAULT_RUNS = 5          # fresh unseen seeds per PR; verdict is worst-case over them
 SOURCE_ROOTS = ("matmul", "strategy", "eval", "tests", "examples")
 CUDA_PROBE = (
@@ -532,7 +532,7 @@ def main(argv=None) -> int:
                         help="run each PR with this process's Python instead of uv; "
                              "required for Windows CUDA environments")
     parser.add_argument("--mock", action="store_true",
-                        help="with --run, write mock RTX 5090 result JSON without gh/GPU")
+                        help="with --run, write mock RTX 5070 Ti result JSON without gh/GPU")
     parser.add_argument("--clean", action="store_true",
                         help="replace existing per-PR checkout directories")
     parser.add_argument("--n", type=int, default=8192)

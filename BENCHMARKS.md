@@ -1,7 +1,7 @@
 # Benchmarks
 
 Reference setup: **`8192 × 8192`** matrices, **full-rank** (random) data, `fp32`,
-on an **RTX 5090** GPU via PyTorch. This is the default the scorer
+on an **RTX 5070 Ti** GPU via PyTorch. This is the default the scorer
 runs, and the hardest, most honest case — there is no low-rank structure to
 exploit.
 

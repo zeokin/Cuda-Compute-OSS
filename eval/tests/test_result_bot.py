@@ -77,7 +77,7 @@ def test_process_results_is_idempotent_and_writes_dashboard():
         assert second[0]["verdict"] == "BASELINE"
         assert len(ledger.read_text().strip().splitlines()) == 1
         data = json.loads(dashboard.read_text())
-        assert data["status"]["gpu"] == "RTX 5090"
+        assert data["status"]["gpu"] == "RTX 5070 Ti"
         assert data["prs"][0]["label"] == "BASELINE"
 
 

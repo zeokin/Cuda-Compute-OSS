@@ -67,13 +67,13 @@ def test_dashboard_rebuild_is_pure_projection_of_ledger():
         _entry(2, "full-rank", "REJECT", 0.0),
     ]
     data = build_dashboard_data(
-        entries, gpu="RTX 5090",
+        entries, gpu="RTX 5070 Ti",
         accuracy_floors={"full-rank": 0.8, "low-rank": 0.95},
         roadmap=[{"phase": 0, "target": "matmul arena", "status": "live"}],
         updated="2026-07-06",
     )
     assert data["updated"] == "2026-07-06"
-    assert data["status"]["gpu"] == "RTX 5090"
+    assert data["status"]["gpu"] == "RTX 5070 Ti"
     assert data["status"]["tracks"]["full-rank"]["frontier_score"] == 1.0
     assert data["status"]["tracks"]["low-rank"]["accuracy_floor"] == 0.95
     assert len(data["tracks"]["full-rank"]["landed"]) == 1   # REJECT excluded

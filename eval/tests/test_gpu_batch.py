@@ -189,7 +189,7 @@ def test_mock_result_has_wrapped_eval_shape():
         payload = mock_result(load_queue(path)[0], EvalSpec(transforms="mine"))
         assert payload["mock"] is True
         assert payload["eval"]["best"] == "mine"
-        assert payload["eval"]["config"]["device"] == "RTX 5090 (mock)"
+        assert payload["eval"]["config"]["device"] == "RTX 5070 Ti (mock)"
         assert payload["eval"]["transforms"]["mine"]["improvement"] is True
     finally:
         tmp.cleanup()

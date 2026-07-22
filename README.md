@@ -31,7 +31,7 @@ If you want to get involved, start here in the repo:
 - **Landing page** — the project overview site: [zeokin.github.io/Cuda-Compute-OSS](https://zeokin.github.io/Cuda-Compute-OSS/index/index.html)
 
 Reference setup: **`8192 × 8192`** matrices, **full-rank** (random) data, on an
-**RTX 5090** GPU via PyTorch.
+**RTX 5070 Ti** GPU via PyTorch.
 
 ```bash
 python -m eval --n 8192 --pairs 3        # full-rank is the default
@@ -182,7 +182,7 @@ uv run --extra test python -m pytest tests/ strategy/tests/ eval/tests/ -v
 
 That is the full local path for a `fix` PR.
 
-For a `feat` PR and a real scorecard, use a GPU machine (reference: RTX 5090)
+For a `feat` PR and a real scorecard, use a GPU machine (reference: RTX 5070 Ti)
 and opt into the GPU extra:
 
 ```bash

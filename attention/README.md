@@ -68,7 +68,7 @@ At this stage, success is only:
 
 1. the operator runs correctly,
 2. the benchmark compares against an exact baseline,
-3. the RTX 5090 can measure quality, latency, and VRAM honestly.
+3. the RTX 5070 Ti can measure quality, latency, and VRAM honestly.
 
 This stage does **not** need to beat exact attention yet. It exists to create a
 clean baseline for future hybrid and track-integration work.

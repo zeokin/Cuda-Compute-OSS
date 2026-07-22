@@ -114,7 +114,7 @@ def result_entry(payload: dict, entries: list[dict]) -> dict:
         "peak_vram_mib": result.get("peak_vram_mib"),
         "flop_ratio": result.get("flop_ratio_vs_exact"),
         "seed": config.get("seed"),
-        "gpu": config.get("device", "RTX 5090"),
+        "gpu": config.get("device", "RTX 5070 Ti"),
         "n": config.get("n"),
         "pairs": config.get("pairs"),
         "dtype": config.get("dtype"),
@@ -129,7 +129,7 @@ def comment_body(entry: dict) -> str:
     reason = f"\nReason: {entry['verdict_reason']}" if entry.get("verdict_reason") else ""
     return (
         f"{marker}\n"
-        f"GPU evaluation complete on {entry.get('gpu', 'RTX 5090')}.\n\n"
+        f"GPU evaluation complete on {entry.get('gpu', 'RTX 5070 Ti')}.\n\n"
         f"- Verdict: `eval:{entry['verdict']}`{reason}\n"
         f"- Track: `{entry['track']}` / transform `{entry['transform']}`\n"
         f"- Accuracy: `{entry.get('accuracy')}`\n"
@@ -211,7 +211,7 @@ def process_results(
 
     data = build_dashboard_data(
         entries,
-        gpu="RTX 5090",
+        gpu="RTX 5070 Ti",
         accuracy_floors=tracks.accuracy_floors(),
         roadmap=[
             {"phase": 1, "target": "governance and CPU validation", "status": "done"},

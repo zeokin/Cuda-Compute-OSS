@@ -1,7 +1,7 @@
 # Testing Strategy — Local vs. Validator
 
 *Reference plan, July 2026. Companion to [sn74-emission-strategy.md](sn74-emission-strategy.md).
-Pins: **GPU = RTX 5090** · **reference model = Gemma 4 E4B**.*
+Pins: **GPU = RTX 5070 Ti** · **reference model = Gemma 4 E4B**.*
 
 ## Two tiers
 
@@ -13,7 +13,7 @@ pre-flight, not a measurement. Miners may also self-run the real
 these numbers are never binding.
 
 **Tier 2 — online/validator (authoritative, produces the score).**
-Runs only on the pinned RTX 5090, on pinned workload shapes, and is what
+Runs only on the pinned RTX 5070 Ti, on pinned workload shapes, and is what
 `eval/evaluator.py` already does structurally: compute the exact product
 **once**, then run every submitted strategy on that **identical input**,
 reporting accuracy, latency, peak VRAM, and FLOP ratio side by side, gated by
@@ -32,15 +32,14 @@ needs inventing at the algorithm level, only hardening:
   implemented; the dominance gate refuses to score anything that isn't better
   on accuracy, latency, VRAM, and FLOPs simultaneously.
 
-## Pinned hardware — RTX 5090
+## Pinned hardware — RTX 5070 Ti
 
-Chosen for consumer-tier accessibility (matches the "runs on every GPU"
-narrative and sparkinfer's own target hardware). Known risk: RTX 5090 cloud
-spot availability was inconsistent as of mid-2026 (limited providers, prices
-swinging $0.50-2.00/hr). Mitigation: don't rely on ad-hoc spot rental for the
-validator box -- either reserve a dedicated instance with a provider confirmed
-to stock 5090s, or run a self-hosted physical 5090 as the GitHub Actions runner
-so PR validation never blocks on spot inventory.
+Chosen for developer-tier accessibility and proven availability in cloud
+providers. Self-hosted on a Windows box for reliability and consistent CI/CD
+workflow. All official measurements and verdicts are pinned to RTX 5070 Ti;
+absolute latency and VRAM numbers are device-specific and should not be
+cross-compared with historical results from other devices (e.g., RTX PRO 500
+ledger entries are historical reference only).
 
 ## Reference model — Gemma 4 E4B
 
