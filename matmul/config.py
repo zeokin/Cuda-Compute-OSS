@@ -1,8 +1,9 @@
 """Configuration for the matrix-multiplication system."""
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
-from numbers import Integral
+from numbers import Integral, Real
 import numpy as np
 
 # Supported element types. NumPy has no native bf16, so we expose the three
@@ -56,8 +57,15 @@ class Config:
         for name in ("accumulate_fp32", "force_tiled"):
             if not isinstance(getattr(self, name), bool):
                 raise ValueError(f"{name} must be a bool")
-        if not (0.0 < self.vram_fraction <= 0.95):
-            raise ValueError("vram_fraction must be in (0, 0.95]")
+        # Type before range: None or a non-numeric string passes no comparison
+        # and would otherwise raise a raw ``TypeError`` deep in the ``<`` check,
+        # unlike every other knob here (device/seed/tile) which rejects bad input
+        # with a clean ValueError. bool is excluded even though it is Real.
+        if (isinstance(self.vram_fraction, bool)
+                or not isinstance(self.vram_fraction, Real)
+                or not math.isfinite(self.vram_fraction)
+                or not (0.0 < self.vram_fraction <= 0.95)):
+            raise ValueError("vram_fraction must be a number in (0, 0.95]")
         if self.tile is not None:
             # ``range`` requires an integer step. A float can pass a simple
             # positivity check here but then fails later in gemm._tiles, after
@@ -72,6 +80,11 @@ class Config:
                 raise ValueError("tile must be a positive integer or None")
         if self.storage not in ("ram", "disk", "auto"):
             raise ValueError("storage must be ram|disk|auto")
+        # workdir is joined into memmap paths on the disk-backed path; a non-str
+        # (e.g. None) passes construction and only fails later inside os.path,
+        # after the run has started. Reject it at the boundary like the knobs above.
+        if not isinstance(self.workdir, str):
+            raise ValueError("workdir must be a string")
 
     @property
     def np_dtype(self) -> np.dtype:

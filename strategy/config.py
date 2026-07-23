@@ -4,8 +4,9 @@ Standalone: this package does not import from the sibling `matmul` package.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
-from numbers import Integral
+from numbers import Integral, Real
 import numpy as np
 
 DTYPES = {
@@ -58,8 +59,15 @@ class Config:
             if (isinstance(value, bool) or not isinstance(value, Integral)
                     or value < 0):
                 raise ValueError(f"{name} must be a non-negative integer")
-        if not (0.0 < self.vram_fraction <= 0.95):
-            raise ValueError("vram_fraction must be in (0, 0.95]")
+        # Type before range: None or a non-numeric string passes no comparison
+        # and would otherwise raise a raw ``TypeError`` deep in the ``<`` check,
+        # unlike every other knob here (device/seed/rank_m) which rejects bad
+        # input with a clean ValueError. bool is excluded even though it is Real.
+        if (isinstance(self.vram_fraction, bool)
+                or not isinstance(self.vram_fraction, Real)
+                or not math.isfinite(self.vram_fraction)
+                or not (0.0 < self.vram_fraction <= 0.95)):
+            raise ValueError("vram_fraction must be a number in (0, 0.95]")
         if self.rank_m is not None and (
             isinstance(self.rank_m, bool) or not isinstance(self.rank_m, Integral)
         ):
@@ -69,6 +77,11 @@ class Config:
             raise ValueError("rank_m must be an integer or None")
         if self.storage not in ("ram", "disk", "auto"):
             raise ValueError("storage must be ram|disk|auto")
+        # workdir is joined into memmap paths on the disk-backed path; a non-str
+        # (e.g. None) passes construction and only fails later inside os.path,
+        # after the run has started. Reject it at the boundary like the knobs above.
+        if not isinstance(self.workdir, str):
+            raise ValueError("workdir must be a string")
 
     @property
     def np_dtype(self) -> np.dtype:
