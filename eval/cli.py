@@ -67,7 +67,7 @@ def main(argv=None) -> int:
         if a.sweep:
             ns = [int(x) for x in a.sweep.split(",")]
             out["scaling"] = estimate_scaling(ns, ev)
-    except RuntimeError as e:
+    except (ValueError, RuntimeError, MemoryError, KeyError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
 
