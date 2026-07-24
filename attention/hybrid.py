@@ -45,6 +45,11 @@ def _position_mask(q0: int, q1: int, k0: int, k1: int, *, window: int, causal: b
     return allowed
 
 
+# Automatic query-block height when block_size is omitted. Must not track
+# window — max(64, window) OOMed wide-window runs (#317).
+_DEFAULT_LOCAL_QUERY_BLOCK = 64
+
+
 def local_window_attention(q, k, v, *, window: int, causal: bool = False, block_size: int | None = None):
     """Exact local-window attention computed blockwise.
 
@@ -59,7 +64,10 @@ def local_window_attention(q, k, v, *, window: int, causal: bool = False, block_
         _require_integer("block_size", block_size, minimum=1)
 
     batch, heads, seq, dim = q.shape
-    block = block_size if block_size is not None else min(max(64, window or 1), seq)
+    # Auto query-block must NOT track window: max(64, window) made wide-window
+    # runs allocate near-full score tensors and OOM (#317). Explicit block_size
+    # is preserved.
+    block = block_size if block_size is not None else min(_DEFAULT_LOCAL_QUERY_BLOCK, seq)
     out = torch.empty_like(v)
 
     for q0 in range(0, seq, block):
