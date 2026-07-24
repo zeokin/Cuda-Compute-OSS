@@ -245,7 +245,12 @@ def evaluate(ev: EvalConfig) -> dict:
         },
         "transforms": results,
         "ranking": [name for name, _ in ranking],
-        "best": ranking[0][0] if ranking else None,
+        # Don't crown a score-0 "winner" when nothing beats exact (#82).
+        "best": (
+            ranking[0][0]
+            if ranking and ranking[0][1].get("score", 0.0) > 0.0
+            else None
+        ),
     }
     if ev.verbose:
         _print_report(out)
