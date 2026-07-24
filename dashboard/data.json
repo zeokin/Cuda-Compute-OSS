@@ -23,21 +23,6 @@
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/226"
     },
     {
-      "author": "marktech0813",
-      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
-      "gpu_required": false,
-      "head_sha": "0fc680619b1ddd93e560ebda2629f7c5a30173ef",
-      "kind": "fix",
-      "label": "status:ready-non-gpu",
-      "pr": 335,
-      "state": "non_gpu_review",
-      "title": "fix(attention): cap default local query block independent of window",
-      "track": null,
-      "transform": null,
-      "updated_at": "2026-07-24T09:41:34Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/335"
-    },
-    {
       "author": "galuis116",
       "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
       "gpu_required": false,
@@ -49,7 +34,7 @@
       "title": "fix(strategy): nystrom uses 3 landmark spaces, not 4 (drop redundant col(B))",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:41:39Z",
+      "updated_at": "2026-07-24T09:46:10Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/270"
     },
     {
@@ -64,7 +49,7 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-24T09:41:48Z",
+      "updated_at": "2026-07-24T09:46:19Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
     },
     {
@@ -79,7 +64,7 @@
       "title": "fix(docs): list dashboard/ among README's maintainer-owned paths",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:41:49Z",
+      "updated_at": "2026-07-24T09:46:20Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/311"
     },
     {
@@ -94,7 +79,7 @@
       "title": "fix(strategy): correct Config.transform docstring \u2014 nystrom is also a built-in",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:41:54Z",
+      "updated_at": "2026-07-24T09:46:25Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/313"
     },
     {
@@ -109,7 +94,7 @@
       "title": "fix(landing): drop malformed stray path in the Tier-3 evaluation icon",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:41:59Z",
+      "updated_at": "2026-07-24T09:46:30Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/314"
     },
     {
@@ -124,7 +109,7 @@
       "title": "fix(strategy): remove nystrom basis concatenate VRAM spike (Fixes #315)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:42:04Z",
+      "updated_at": "2026-07-24T09:46:35Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/316"
     },
     {
@@ -139,7 +124,7 @@
       "title": "fix(attention): cap automatic local query blocks to prevent wide-window OOM (Fixes #317)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:42:09Z",
+      "updated_at": "2026-07-24T09:46:40Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/318"
     },
     {
@@ -154,7 +139,7 @@
       "title": "fix(config): validate vram_fraction and workdir at construction",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:42:14Z",
+      "updated_at": "2026-07-24T09:46:45Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/322"
     },
     {
@@ -169,7 +154,7 @@
       "title": "fix(docs): list the zeros fill in matmul/README storage.py blurb",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:42:19Z",
+      "updated_at": "2026-07-24T09:46:50Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/323"
     },
     {
@@ -184,8 +169,23 @@
       "title": "fix(strategy): split nystrom landmarks across 3 spaces, drop col(B)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:42:24Z",
+      "updated_at": "2026-07-24T09:46:55Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/336"
+    },
+    {
+      "author": "marktech0813",
+      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
+      "gpu_required": false,
+      "head_sha": "949ec38332d06f07823f2c1ae78336dd4ea8e479",
+      "kind": "fix",
+      "label": "status:ready-non-gpu",
+      "pr": 337,
+      "state": "non_gpu_review",
+      "title": "fix(strategy): raise RuntimeError for unknown transforms and bad rank_m",
+      "track": null,
+      "transform": null,
+      "updated_at": "2026-07-24T09:57:25Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/337"
     }
   ],
   "queue": [
@@ -202,9 +202,9 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-24T09:41:48Z",
+      "updated_at": "2026-07-24T09:46:19Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
     }
   ],
-  "updated": "2026-07-24T09:46:58+00:00"
+  "updated": "2026-07-24T11:50:19+00:00"
 }
