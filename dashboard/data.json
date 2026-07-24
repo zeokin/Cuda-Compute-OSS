@@ -23,6 +23,21 @@
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/226"
     },
     {
+      "author": "marktech0813",
+      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
+      "gpu_required": false,
+      "head_sha": "0fc680619b1ddd93e560ebda2629f7c5a30173ef",
+      "kind": "fix",
+      "label": "status:ready-non-gpu",
+      "pr": 335,
+      "state": "non_gpu_review",
+      "title": "fix(attention): cap default local query block independent of window",
+      "track": null,
+      "transform": null,
+      "updated_at": "2026-07-24T09:36:49Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/335"
+    },
+    {
       "author": "galuis116",
       "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
       "gpu_required": false,
@@ -34,7 +49,7 @@
       "title": "fix(strategy): nystrom uses 3 landmark spaces, not 4 (drop redundant col(B))",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:25:34Z",
+      "updated_at": "2026-07-24T09:36:58Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/270"
     },
     {
@@ -49,7 +64,7 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-24T09:25:47Z",
+      "updated_at": "2026-07-24T09:37:11Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
     },
     {
@@ -64,7 +79,7 @@
       "title": "fix(docs): list dashboard/ among README's maintainer-owned paths",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:25:49Z",
+      "updated_at": "2026-07-24T09:37:14Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/311"
     },
     {
@@ -79,7 +94,7 @@
       "title": "fix(strategy): correct Config.transform docstring \u2014 nystrom is also a built-in",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:25:57Z",
+      "updated_at": "2026-07-24T09:37:21Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/313"
     },
     {
@@ -94,7 +109,7 @@
       "title": "fix(landing): drop malformed stray path in the Tier-3 evaluation icon",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:26:04Z",
+      "updated_at": "2026-07-24T09:37:28Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/314"
     },
     {
@@ -109,7 +124,7 @@
       "title": "fix(strategy): remove nystrom basis concatenate VRAM spike (Fixes #315)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:26:12Z",
+      "updated_at": "2026-07-24T09:37:36Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/316"
     },
     {
@@ -124,7 +139,7 @@
       "title": "fix(attention): cap automatic local query blocks to prevent wide-window OOM (Fixes #317)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:26:19Z",
+      "updated_at": "2026-07-24T09:37:43Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/318"
     },
     {
@@ -139,7 +154,7 @@
       "title": "fix(config): validate vram_fraction and workdir at construction",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:26:27Z",
+      "updated_at": "2026-07-24T09:37:51Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/322"
     },
     {
@@ -154,36 +169,23 @@
       "title": "fix(docs): list the zeros fill in matmul/README storage.py blurb",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:26:34Z",
+      "updated_at": "2026-07-24T09:37:58Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/323"
     },
     {
       "author": "marktech0813",
-      "detail": "PR touches maintainer-owned files: eval/cli.py. Miner PRs cannot modify maintainer-owned files. Open a fresh PR that only changes allowed miner-owned files.",
+      "detail": "CPU-safe CI only; no GPU scorecard or queue entry required.",
       "gpu_required": false,
-      "head_sha": "cbaa02bb3add5383782652bd16b5389433f1f00e",
-      "kind": null,
-      "pr": 333,
-      "state": "close_protected_path",
-      "title": "fix(eval): catch ValueError/KeyError/MemoryError in CLI like sibling tools",
+      "head_sha": "b174a6b59cf709873753e25a85cba46cd7e04524",
+      "kind": "fix",
+      "label": "status:ready-non-gpu",
+      "pr": 336,
+      "state": "non_gpu_review",
+      "title": "fix(strategy): split nystrom landmarks across 3 spaces, drop col(B)",
       "track": null,
       "transform": null,
-      "updated_at": "2026-07-24T09:32:18Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/333"
-    },
-    {
-      "author": "marktech0813",
-      "detail": "PR touches maintainer-owned files: eval/evaluator.py. Miner PRs cannot modify maintainer-owned files. Open a fresh PR that only changes allowed miner-owned files.",
-      "gpu_required": false,
-      "head_sha": "9adda3e69878acc863d2eb3ee02c0314df4de25d",
-      "kind": null,
-      "pr": 334,
-      "state": "close_protected_path",
-      "title": "fix(eval): do not crown a best strategy when every score is zero",
-      "track": null,
-      "transform": null,
-      "updated_at": "2026-07-24T09:32:35Z",
-      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/334"
+      "updated_at": "2026-07-24T09:38:00Z",
+      "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/336"
     }
   ],
   "queue": [
@@ -200,9 +202,9 @@
       "title": "feat(strategy): pinned device->host bounce buffer -- 26% lower latency at held accuracy",
       "track": "low-rank",
       "transform": "nystrom",
-      "updated_at": "2026-07-24T09:25:47Z",
+      "updated_at": "2026-07-24T09:37:11Z",
       "url": "https://github.com/zeokin/Cuda-Compute-OSS/pull/303"
     }
   ],
-  "updated": "2026-07-24T09:38:07+00:00"
+  "updated": "2026-07-24T09:42:27+00:00"
 }
