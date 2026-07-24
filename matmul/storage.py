@@ -11,14 +11,23 @@ import numpy as np
 
 def _fill_random(mat: np.ndarray, seed: int, scale: float = 1.0) -> None:
     """Fill a (possibly memmapped) n x n matrix with N(0, scale^2) values,
-    one row-block at a time so we never materialise the whole thing in RAM."""
+    one row-block at a time so we never materialise the whole thing in RAM.
+
+    ``chunk`` is scaled in place: ``standard_normal`` already returns float64, so
+    an out-of-place ``* scale`` keeps the raw draw alive alongside the scaled
+    copy and costs TWO full row-blocks, doubling the ~256 MiB this loop budgets
+    for one. ``*=`` is bit-identical to ``*``, and this is the DEFAULT fill --
+    the out-of-core (128k x 128k) regime this module exists for is exactly where
+    host RAM is tightest.
+    """
     n = mat.shape[0]
     rng = np.random.default_rng(seed)
     # Keep each generated block near ~256 MiB of fp64 temporaries.
     block = max(1, min(n, (256 * 1024**2) // (n * 8)))
     for r0 in range(0, n, block):
         r1 = min(n, r0 + block)
-        chunk = rng.standard_normal((r1 - r0, n)) * scale
+        chunk = rng.standard_normal((r1 - r0, n))
+        chunk *= scale
         mat[r0:r1, :] = chunk.astype(mat.dtype, copy=False)
     if isinstance(mat, np.memmap):
         mat.flush()
@@ -35,7 +44,12 @@ def _fill_iota(mat: np.ndarray, seed: int = 0) -> None:
     successive couples were trivial offsets of one another, and eval effectively
     benchmarked ``A @ A`` on one repeated input (issue #104). Per-row/column
     shifts make distinct seeds statistically independent while staying O(n) cheap
-    and deterministic per seed."""
+    and deterministic per seed.
+
+    The modulo is taken in place for the same reason ``_fill_random`` scales in
+    place: ``(rows + cols) % 97`` keeps the int64 sum alive alongside its
+    remainder, so one row-block costs two, doubling the ~256 MiB budgeted below.
+    ``%=`` gives the identical result."""
     n = mat.shape[0]
     rng = np.random.default_rng(seed)
     row_shift = rng.integers(0, 97, size=n)
@@ -45,7 +59,9 @@ def _fill_iota(mat: np.ndarray, seed: int = 0) -> None:
     for r0 in range(0, n, block):
         r1 = min(n, r0 + block)
         rows = (np.arange(r0, r1) + row_shift[r0:r1])[:, None]
-        mat[r0:r1, :] = ((rows + cols) % 97).astype(mat.dtype, copy=False)
+        values = rows + cols
+        values %= 97
+        mat[r0:r1, :] = values.astype(mat.dtype, copy=False)
     if isinstance(mat, np.memmap):
         mat.flush()
 
