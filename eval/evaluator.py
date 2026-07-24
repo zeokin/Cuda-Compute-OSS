@@ -205,8 +205,15 @@ def evaluate(ev: EvalConfig) -> dict:
             latency, peak_vram, flop_ratio, exact_latency, exact_peak_vram
         )
         improvement = (not gated) and cost_dominant
+        # Transparency field: never gate by accuracy_floor (#93). Ranking score
+        # still collapses to 0 when the strategy is not an improvement.
         perf_score = metrics.score(
-            acc, peak_vram, latency, ev.accuracy_floor, ev.vram_unit
+            acc, peak_vram, latency, 0.0, ev.vram_unit
+        )
+        ranking_score = (
+            metrics.score(acc, peak_vram, latency, ev.accuracy_floor, ev.vram_unit)
+            if improvement
+            else 0.0
         )
         results[name] = {
             "accuracy": acc,
@@ -221,7 +228,7 @@ def evaluate(ev: EvalConfig) -> dict:
             "gated": gated,
             "improvement": improvement,
             "perf_score": perf_score,
-            "score": perf_score if improvement else 0.0,
+            "score": ranking_score,
         }
 
     ranking = sorted(results.items(), key=lambda kv: kv[1]["score"], reverse=True)
