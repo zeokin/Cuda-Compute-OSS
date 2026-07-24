@@ -55,8 +55,11 @@ score = accuracy × (1 / Peak_VRAM) × (1 / Latency)
 Reproduce the reference comparison on your GPU with:
 
 ```bash
-python -m eval --n 8192 --pairs 3 --transforms rsvd \
-               --rank-m 128 --sweep 512,1024,2048
+# the reference regime itself: default M = N//8 = 1024 (what the scorer runs)
+python -m eval --n 8192 --pairs 3 --transforms rsvd
+
+# fit the empirical exponent N^p with M held fixed so it does not grow with N
+python -m eval --transforms rsvd --rank-m 128 --sweep 512,1024,2048
 ```
 
 ---
@@ -158,9 +161,11 @@ they are not asserted here.
 All of this runs on a GPU (CUDA/MPS) via PyTorch.
 
 ```bash
-# the reference comparison on this page (8192, full-rank)
-python -m eval --n 8192 --pairs 3 --transforms rsvd \
-               --rank-m 128 --sweep 512,1024,2048
+# the reference comparison on this page (8192, full-rank, default M = N//8 = 1024)
+python -m eval --n 8192 --pairs 3 --transforms rsvd
+
+# fit the empirical exponent N^p with M held fixed so it does not grow with N
+python -m eval --transforms rsvd --rank-m 128 --sweep 512,1024,2048
 
 # machine-readable numbers (for a PR scorecard)
 python -m eval --n 8192 --pairs 3 --transforms rsvd --json
