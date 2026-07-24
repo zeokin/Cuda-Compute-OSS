@@ -176,7 +176,7 @@ def evaluate(ev: EvalConfig) -> dict:
     results = {}
     for name in names:
         cfg = _strategy_config(ev, name)
-        accs, errs, lats, vrams, flop_ratio = [], [], [], [], None
+        accs, errs, lats, vrams, flop_ratios = [], [], [], [], []
         for (A, B), Ce in zip(pairs, exact_products):
             Cs = np.empty((ev.n, ev.n), dtype=dt)
             sec, peak, info = _timed_with_mem(
@@ -188,12 +188,13 @@ def evaluate(ev: EvalConfig) -> dict:
             accs.append(max(0.0, 1.0 - err))
             lats.append(sec)
             vrams.append(peak)
-            flop_ratio = info["flop_exact"] / info["flop_actual"]
+            flop_ratios.append(info["flop_exact"] / info["flop_actual"])
 
         acc = float(np.mean(accs))
         rel_err = float(np.mean(errs))
         latency = float(np.mean(lats))
         peak_vram = float(np.max(vrams))          # worst-case memory pick
+        flop_ratio = float(np.mean(flop_ratios)) if flop_ratios else None
 
         # The improvement rule (BENCHMARKS.md): a strategy is admitted only if
         # accuracy clears the floor AND it dominates the exact baseline on every
