@@ -178,10 +178,24 @@ class Backend:
         if self.dev.type == "cuda":
             free, _total = self.torch.cuda.mem_get_info(self.device_id)
             return int(free)
+        # MPS has no mem_get_info. ``recommended_max_memory()`` is Metal's
+        # ``recommendedMaxWorkingSetSize`` -- a per-device CONSTANT, i.e. the
+        # TOTAL budget, not the free part -- so returning it verbatim reported
+        # the same "free" bytes however much was already resident. Every caller
+        # (_row_block, _exact_tile, matmul's auto_tile/_fits_in_core) then
+        # re-spent the whole vram_fraction budget on each call, and two
+        # concurrently live sized allocations overshot the device. That static
+        # ceiling is the root cause the per-call-site ``fixed_bytes`` /
+        # ``extra_fixed_bytes`` charges in subspace.py were compensating for
+        # (#216, #220, #234, #236, #304, #307). Subtract what live tensors
+        # already hold to get the CUDA branch's semantics -- bytes still
+        # available. MPSAllocator pool blocks are excluded on purpose: they are
+        # cached, already-freed memory that the next allocation can reuse.
         rec = getattr(self.torch.mps, "recommended_max_memory", None)
         if rec is not None:
             try:
-                return int(rec())
+                used = getattr(self.torch.mps, "current_allocated_memory", None)
+                return max(0, int(rec()) - (int(used()) if used is not None else 0))
             except Exception:  # noqa: BLE001
                 pass
         return self.host_available_bytes()
