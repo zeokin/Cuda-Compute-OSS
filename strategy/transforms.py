@@ -214,7 +214,10 @@ def get_transform(name_or_instance, seed: int = 0) -> Transform:
     if isinstance(name_or_instance, Transform):
         return name_or_instance
     if name_or_instance not in _REGISTRY:
-        raise KeyError(
+        # Surface as RuntimeError: eval/cli (maintainer-owned) only catches
+        # RuntimeError today (#258). KeyError escaped as a raw traceback.
+        # strategy/cli already handles RuntimeError the same way.
+        raise RuntimeError(
             f"unknown transform {name_or_instance!r}; available: {sorted(_REGISTRY)}"
         )
     return _REGISTRY[name_or_instance](seed=seed)

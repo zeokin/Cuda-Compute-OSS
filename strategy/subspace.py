@@ -242,7 +242,7 @@ def default_rank_m(n: int) -> int:
 
 
 def validate_rank_m(rank_m, n: int) -> None:
-    """Raise ValueError unless ``rank_m`` is a usable subspace dimension for ``n``.
+    """Raise RuntimeError unless ``rank_m`` is a usable subspace dimension for ``n``.
 
     The single source of truth for the ``1 <= M <= n`` bound. ``None`` means
     "use ``default_rank_m(n)``" and is always valid, so callers can pass an
@@ -256,7 +256,10 @@ def validate_rank_m(rank_m, n: int) -> None:
     if rank_m is None:
         return
     if not (1 <= rank_m <= n):
-        raise ValueError(f"rank_m must be in [1, n]; got {rank_m} for n={n}")
+        # RuntimeError (not ValueError): python -m eval only catches RuntimeError
+        # and eval/ is CODEOWNERS-protected, so the #258 CLI gap is closed here
+        # for --rank-m. strategy/cli already catches RuntimeError.
+        raise RuntimeError(f"rank_m must be in [1, n]; got {rank_m} for n={n}")
 
 
 def _flop_actual(n: int, m: int) -> float:
