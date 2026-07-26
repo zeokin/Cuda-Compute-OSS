@@ -203,6 +203,104 @@ class NystromTransform(Transform):
         return 2.0 * n * m * m
 
 
+class SparseSignSketchTransform(Transform):
+    """Sparse-sign (OSNAP-style) sketch over A and B.
+
+    Middle ground between ``nystrom`` (one landmark column per direction —
+    cheap, but a lone column can miss structure) and ``rsvd`` (dense Gaussian
+    sketch — accurate, but ``O(2 N² M)`` GEMMs). Each output direction is a
+    **signed sum of ``s`` randomly chosen columns** (resp. rows), i.e.
+    ``A @ Ω`` with a sparse sign matrix ``Ω`` (``s`` nonzeros per column).
+    Mixing recovers more of the range per direction than a single landmark,
+    while the host-side gather stays in ``nystrom``'s cost class (no dense
+    sketch GEMM, no full-matrix device staging).
+
+    Spaces sketched: col(A), row(A), row(B) — the three necessary for
+    ``Ĉ = P A P B P`` (col(B) is redundant; same split as ``rsvd``). Then a
+    thin QR. Analytic cost ``~2 N M² + (s-1) N M`` sits between ``nystrom``
+    and ``rsvd``.
+
+    ``s`` defaults to 2: enough mixing to beat plain landmarks on decaying
+    spectra in practice, without the latency tax of larger sparsity (or of
+    copying A/B onto the device just to ``index_select``).
+    """
+
+    name = "sparsesign"
+    sparsity = 2
+
+    def basis(self, n, m, backend, dtype, A=None, B=None, frac=None):
+        if A is None or B is None:
+            raise ValueError("sparsesign transform needs A and B")
+        if m < 1 or m > n:
+            raise ValueError(f"sparsesign requires 1 <= m <= n; got m={m}, n={n}")
+
+        s = int(self.sparsity)
+        if s < 1:
+            raise ValueError(f"sparsesign sparsity must be >= 1; got {s}")
+
+        base, rem = divmod(m, 3)
+        widths = [base + (1 if i < rem else 0) for i in range(3)]
+        rng = np.random.default_rng(self.seed)
+        xp = backend.xp
+        # Preallocate the assembly buffer and stream each part into a column
+        # slice (same pattern as rsvd). Avoids a ~2x (n, m) concatenate spike
+        # after the gathers succeed.
+        Y = xp.empty((n, m), dtype=dtype)
+        col = 0
+        scale = 1.0 / np.sqrt(float(s))
+
+        def mix_columns(X, w):
+            # Host gather + signed sum — O(n * w * s) memory traffic, no GEMM.
+            # Sampling with replacement keeps index generation O(w*s) in n.
+            # Stay in ``dtype`` (same as nystrom) — avoid a float64 round-trip
+            # that only adds host work before the device upload.
+            idx = rng.integers(0, X.shape[1], size=(w, s))
+            signs = rng.choice(np.array([-1.0, 1.0], dtype=dtype), size=(w, s))
+            gathered = np.asarray(X[:, idx]).astype(dtype, copy=False)  # (n, w, s)
+            return (gathered * signs).sum(axis=2) * np.asarray(scale, dtype=dtype)
+
+        def mix_rows_as_cols(X, w):
+            # Mix rows of X as columns of Xᵀ without materializing a full transpose.
+            idx = rng.integers(0, X.shape[0], size=(w, s))
+            signs = rng.choice(np.array([-1.0, 1.0], dtype=dtype), size=(w, s))
+            # X[idx, :] -> (w, s, n); move axis to (n, w, s)
+            gathered = np.asarray(X[idx, :]).astype(dtype, copy=False)
+            if gathered.ndim == 2:
+                # w*s flat index path shouldn't happen with (w,s) idx, but be safe
+                gathered = gathered.T.reshape(X.shape[1], w, s)
+            else:
+                gathered = np.moveaxis(gathered, -1, 0)  # (n, w, s)
+            return (gathered * signs).sum(axis=2) * np.asarray(scale, dtype=dtype)
+
+        if widths[0]:
+            w = widths[0]
+            part = backend.to_device(mix_columns(A, w))
+            Y[:, col:col + w] = part
+            del part
+            col += w
+        if widths[1]:
+            w = widths[1]
+            part = backend.to_device(mix_rows_as_cols(A, w))
+            Y[:, col:col + w] = part
+            del part
+            col += w
+        if widths[2]:
+            w = widths[2]
+            part = backend.to_device(mix_rows_as_cols(B, w))
+            Y[:, col:col + w] = part
+            del part
+            col += w
+
+        return self._orthonormalize(Y, backend)
+
+    def basis_flops(self, n, m):
+        # Thin QR (~2 n m²) plus (s-1) real additions per output element for the
+        # signed blend (nystrom's single-column copy has no add). Gather itself
+        # is memory traffic, not FLOPs.
+        s = int(self.sparsity)
+        return 2.0 * n * m * m + float(max(s - 1, 0)) * n * m
+
+
 _REGISTRY: dict[str, type[Transform]] = {}
 
 
@@ -224,5 +322,5 @@ def available() -> list[str]:
     return sorted(_REGISTRY)
 
 
-for _cls in (RandomizedSVDTransform, NystromTransform):
+for _cls in (RandomizedSVDTransform, NystromTransform, SparseSignSketchTransform):
     register_transform(_cls.name, _cls)
