@@ -117,7 +117,7 @@ print(info["gflops"], "GFLOP/s")
 matmul/
   config.py     Config dataclass — dtype, tile, device, storage, ...
   backend.py    PyTorch GPU backend (CUDA/MPS); NumPy-compat shim, transfers
-  storage.py    memmap vs RAM allocation; block-wise random/iota fill (host)
+  storage.py    memmap vs RAM allocation; random/iota/zeros fill (host)
   gemm.py       exact engine: in-core / tiled-sync + auto tiling (torch.bmm)
   runner.py     generate A,B, run, time, verify, report GFLOP/s
   cli.py        python -m matmul
