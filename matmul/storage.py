@@ -18,7 +18,8 @@ def _fill_random(mat: np.ndarray, seed: int, scale: float = 1.0) -> None:
     block = max(1, min(n, (256 * 1024**2) // (n * 8)))
     for r0 in range(0, n, block):
         r1 = min(n, r0 + block)
-        chunk = rng.standard_normal((r1 - r0, n)) * scale
+        chunk = rng.standard_normal((r1 - r0, n))
+        chunk *= scale
         mat[r0:r1, :] = chunk.astype(mat.dtype, copy=False)
     if isinstance(mat, np.memmap):
         mat.flush()
@@ -45,7 +46,9 @@ def _fill_iota(mat: np.ndarray, seed: int = 0) -> None:
     for r0 in range(0, n, block):
         r1 = min(n, r0 + block)
         rows = (np.arange(r0, r1) + row_shift[r0:r1])[:, None]
-        mat[r0:r1, :] = ((rows + cols) % 97).astype(mat.dtype, copy=False)
+        values = rows + cols
+        values %= 97
+        mat[r0:r1, :] = values.astype(mat.dtype, copy=False)
     if isinstance(mat, np.memmap):
         mat.flush()
 
