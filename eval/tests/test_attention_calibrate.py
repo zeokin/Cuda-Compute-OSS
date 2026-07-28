@@ -19,6 +19,7 @@ def _artifact(manifest, *, factor: float = 1.0, commit: str = "main"):
     return {
         "benchmark": manifest.id,
         "manifest_sha256": manifest.sha256,
+        "benchmark_contract_sha256": manifest.benchmark_contract_sha256,
         "commit": commit,
         "candidate": manifest.raw["candidate"],
         "dirty": False,
@@ -72,7 +73,7 @@ def test_mismatched_commit_is_blocked():
 def test_stale_manifest_hash_is_blocked():
     manifest = load_manifest()
     stale = _artifact(manifest)
-    stale["manifest_sha256"] = "0" * 64
+    stale["benchmark_contract_sha256"] = "0" * 64
     report = calibrate([stale, stale, stale], manifest)
     assert not report["ready"]
-    assert all("manifest hash" in reason for reason in report["reasons"])
+    assert all("benchmark contract hash" in reason for reason in report["reasons"])

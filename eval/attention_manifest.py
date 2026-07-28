@@ -35,6 +35,7 @@ class AttentionWorkload:
 class AttentionManifest:
     path: Path
     sha256: str
+    benchmark_contract_sha256: str
     raw: dict
     workloads: tuple[AttentionWorkload, ...]
 
@@ -163,6 +164,30 @@ def manifest_sha256(raw: dict) -> str:
     return hashlib.sha256(canonical).hexdigest()
 
 
+def benchmark_contract_sha256(raw: dict) -> str:
+    """Hash only inputs that define generated workloads and measurements.
+
+    Lifecycle state and decision thresholds are deliberately excluded so a
+    calibration remains attributable when the same benchmark is frozen.
+    """
+    correctness = {
+        key: value
+        for key, value in raw["correctness"].items()
+        if key != "calibration_required"
+    }
+    contract = {
+        "schema_version": raw["schema_version"],
+        "id": raw["id"],
+        "phase": raw.get("phase"),
+        "candidate": raw["candidate"],
+        "era": raw["era"],
+        "measurement": raw["measurement"],
+        "correctness": correctness,
+        "workloads": raw["workloads"],
+    }
+    return manifest_sha256(contract)
+
+
 def load_manifest(path: str | Path = DEFAULT_MANIFEST) -> AttentionManifest:
     manifest_path = Path(path).resolve()
     raw = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -170,6 +195,7 @@ def load_manifest(path: str | Path = DEFAULT_MANIFEST) -> AttentionManifest:
     return AttentionManifest(
         path=manifest_path,
         sha256=manifest_sha256(raw),
+        benchmark_contract_sha256=benchmark_contract_sha256(raw),
         raw=raw,
         workloads=workloads,
     )
@@ -188,6 +214,7 @@ __all__ = [
     "AttentionManifest",
     "AttentionWorkload",
     "DEFAULT_MANIFEST",
+    "benchmark_contract_sha256",
     "load_candidate",
     "load_manifest",
     "manifest_sha256",

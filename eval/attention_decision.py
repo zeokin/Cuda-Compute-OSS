@@ -51,6 +51,8 @@ def compare_artifacts(
             reasons.append(f"{name} artifact benchmark does not match manifest")
         if artifact.get("manifest_sha256") != manifest.sha256:
             reasons.append(f"{name} artifact manifest hash does not match")
+        if artifact.get("benchmark_contract_sha256") != manifest.benchmark_contract_sha256:
+            reasons.append(f"{name} artifact benchmark contract hash does not match")
         if artifact.get("dirty"):
             reasons.append(f"{name} checkout was dirty")
         if manifest.is_active and not artifact.get("merge_eligible"):
@@ -112,6 +114,7 @@ def compare_artifacts(
         "schema_version": 1,
         "benchmark": manifest.id,
         "manifest_sha256": manifest.sha256,
+        "benchmark_contract_sha256": manifest.benchmark_contract_sha256,
         "main_commit": main.get("commit"),
         "candidate_commit": candidate.get("commit"),
         "benchmark_status": manifest.status,

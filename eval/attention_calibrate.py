@@ -32,13 +32,13 @@ def calibrate(artifacts: list[dict], manifest: AttentionManifest) -> dict:
     if len(artifacts) < 3:
         raise ValueError("calibration requires at least three clean session artifacts")
     reasons = []
-    identity_keys = ("benchmark", "manifest_sha256", "commit", "candidate")
+    identity_keys = ("benchmark", "benchmark_contract_sha256", "commit", "candidate")
     first = artifacts[0]
     for index, artifact in enumerate(artifacts):
         if artifact.get("benchmark") != manifest.id:
             reasons.append(f"session {index + 1} benchmark does not match the manifest")
-        if artifact.get("manifest_sha256") != manifest.sha256:
-            reasons.append(f"session {index + 1} manifest hash does not match the manifest")
+        if artifact.get("benchmark_contract_sha256") != manifest.benchmark_contract_sha256:
+            reasons.append(f"session {index + 1} benchmark contract hash does not match")
         if any(artifact.get(key) != first.get(key) for key in identity_keys):
             reasons.append(f"session {index + 1} identity does not match session 1")
         if artifact.get("dirty"):
@@ -108,6 +108,7 @@ def calibrate(artifacts: list[dict], manifest: AttentionManifest) -> dict:
         "schema_version": 1,
         "benchmark": manifest.id,
         "manifest_sha256": manifest.sha256,
+        "benchmark_contract_sha256": manifest.benchmark_contract_sha256,
         "commit": first.get("commit"),
         "sessions": len(artifacts),
         "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),

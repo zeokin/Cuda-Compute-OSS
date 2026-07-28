@@ -3,11 +3,12 @@
   "$id": "https://github.com/zeokin/Cuda-Compute-OSS/benchmarks/attention-foundation-result-schema-v1.json",
   "title": "CCO attention foundation benchmark result",
   "type": "object",
-  "required": ["schema_version", "benchmark", "manifest_sha256", "commit", "environment", "workloads"],
+  "required": ["schema_version", "benchmark", "manifest_sha256", "benchmark_contract_sha256", "commit", "environment", "workloads"],
   "properties": {
     "schema_version": {"const": 1},
     "benchmark": {"type": "string"},
     "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "benchmark_contract_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "commit": {"type": "string"},
     "environment": {"type": "object"},
     "workloads": {"type": "array", "minItems": 1}

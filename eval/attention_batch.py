@@ -150,6 +150,7 @@ def _blocked_decision(
         "schema_version": 1,
         "benchmark": manifest.id,
         "manifest_sha256": manifest.sha256,
+        "benchmark_contract_sha256": manifest.benchmark_contract_sha256,
         "pr": item.pr,
         "candidate_commit": item.head_sha,
         "verdict": "BLOCKED",

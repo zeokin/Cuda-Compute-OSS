@@ -32,6 +32,7 @@ def test_merge_artifact_shards_combines_raw_samples_and_peak():
         "schema_version": 1,
         "benchmark": "bench",
         "manifest_sha256": "a" * 64,
+        "benchmark_contract_sha256": "b" * 64,
         "candidate": "module:callable",
         "commit": "abc",
         "dirty": False,

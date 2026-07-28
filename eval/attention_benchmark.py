@@ -145,8 +145,8 @@ def merge_artifact_shards(shards: list[dict]) -> dict:
         raise ValueError("at least one benchmark shard is required")
     first = shards[0]
     identity = (
-        "schema_version", "benchmark", "manifest_sha256", "candidate", "commit",
-        "dirty", "seed",
+        "schema_version", "benchmark", "manifest_sha256",
+        "benchmark_contract_sha256", "candidate", "commit", "dirty", "seed",
     )
     for shard in shards[1:]:
         if any(shard.get(key) != first.get(key) for key in identity):
@@ -442,6 +442,7 @@ def run_benchmark(
         "benchmark": manifest.id,
         "benchmark_status": manifest.status,
         "manifest_sha256": manifest.sha256,
+        "benchmark_contract_sha256": manifest.benchmark_contract_sha256,
         "candidate": candidate_spec,
         "commit": commit,
         "dirty": dirty,

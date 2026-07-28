@@ -53,6 +53,7 @@ def test_decision_entry_records_source_and_evaluated_commits(tmp_path):
     entry = decision_entry({
         "benchmark": "bench",
         "manifest_sha256": "manifest",
+        "benchmark_contract_sha256": "contract",
         "pr": 4,
         "main_commit": "main",
         "candidate_commit": "source-head",
@@ -62,6 +63,7 @@ def test_decision_entry_records_source_and_evaluated_commits(tmp_path):
         "candidate_artifact": str(candidate),
     })
     assert entry["candidate_commit"] == "source-head"
+    assert entry["benchmark_contract_sha256"] == "contract"
     assert entry["evaluated_candidate_commit"] == "source-head-plus-main"
     assert entry["main_artifact_sha256"] == file_sha256(main)
     assert entry["candidate_artifact_sha256"] == file_sha256(candidate)

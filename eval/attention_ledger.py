@@ -27,6 +27,7 @@ def decision_entry(decision: dict) -> dict:
     return {
         "benchmark": decision["benchmark"],
         "manifest_sha256": decision["manifest_sha256"],
+        "benchmark_contract_sha256": decision.get("benchmark_contract_sha256"),
         "pr": int(decision["pr"]),
         "title": decision.get("title", ""),
         "author": decision.get("author", ""),

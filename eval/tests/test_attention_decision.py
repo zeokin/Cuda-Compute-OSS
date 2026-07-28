@@ -30,6 +30,7 @@ def _artifact(manifest, *, commit: str, factor: float = 1.0, correct: bool = Tru
         "schema_version": 1,
         "benchmark": manifest.id,
         "manifest_sha256": manifest.sha256,
+        "benchmark_contract_sha256": manifest.benchmark_contract_sha256,
         "commit": commit,
         "dirty": False,
         "merge_eligible": manifest.is_active,

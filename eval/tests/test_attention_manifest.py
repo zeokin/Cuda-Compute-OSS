@@ -8,6 +8,7 @@ import pytest
 
 from eval.attention_manifest import (
     DEFAULT_MANIFEST,
+    benchmark_contract_sha256,
     load_manifest,
     manifest_sha256,
     validate_manifest,
@@ -36,6 +37,23 @@ def test_manifest_hash_is_independent_of_line_endings_and_formatting(tmp_path):
     compact.write_text(json.dumps(raw, separators=(",", ":")), encoding="utf-8")
     windows.write_bytes((json.dumps(raw, indent=4) + "\n").replace("\n", "\r\n").encode("utf-8"))
     assert load_manifest(compact).sha256 == load_manifest(windows).sha256
+
+
+def test_benchmark_contract_hash_survives_lifecycle_and_threshold_changes():
+    raw = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+    expected = benchmark_contract_sha256(raw)
+    raw["status"] = "frozen"
+    raw["description"] = "frozen after calibration"
+    raw["correctness"]["calibration_required"] = False
+    raw["decision"] = {
+        "calibration_required": False,
+        "minimum_speedup_percent": 7.0,
+        "maximum_per_workload_regression_percent": 7.0,
+        "maximum_vram_regression_percent": 2.0,
+        "tiers_percent": {"S": 7.0, "M": 14.0, "L": 28.0},
+        "merge_enabled": True,
+    }
+    assert benchmark_contract_sha256(raw) == expected
 
 
 def test_duplicate_workload_id_is_rejected():
