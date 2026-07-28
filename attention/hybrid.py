@@ -45,6 +45,9 @@ def _position_mask(q0: int, q1: int, k0: int, k1: int, *, window: int, causal: b
     return allowed
 
 
+_DEFAULT_LOCAL_QUERY_BLOCK = 64
+
+
 def local_window_attention(q, k, v, *, window: int, causal: bool = False, block_size: int | None = None):
     """Exact local-window attention computed blockwise.
 
@@ -59,7 +62,11 @@ def local_window_attention(q, k, v, *, window: int, causal: bool = False, block_
         _require_integer("block_size", block_size, minimum=1)
 
     batch, heads, seq, dim = q.shape
-    block = block_size if block_size is not None else min(max(64, window or 1), seq)
+    block = (
+        block_size
+        if block_size is not None
+        else min(_DEFAULT_LOCAL_QUERY_BLOCK, seq)
+    )
     out = torch.empty_like(v)
 
     for q0 in range(0, seq, block):
