@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -139,10 +140,22 @@ def validate_manifest(raw: dict) -> tuple[AttentionWorkload, ...]:
             "maximum_per_workload_regression_percent",
             "maximum_vram_regression_percent",
         )
-        if decision.get("calibration_required"):
+        if decision.get("calibration_required") is not False:
             raise ValueError("a frozen manifest cannot require calibration")
+        if raw["correctness"].get("calibration_required") is not False:
+            raise ValueError("frozen correctness tolerances must be calibrated")
+        if not isinstance(decision.get("merge_enabled"), bool):
+            raise ValueError("decision.merge_enabled must be boolean")
         if any(decision.get(name) is None for name in needed):
             raise ValueError("a frozen manifest must contain calibrated decision thresholds")
+        if not all(
+            isinstance(decision[name], (int, float))
+            and not isinstance(decision[name], bool)
+            and math.isfinite(decision[name])
+            and decision[name] >= 0
+            for name in needed
+        ):
+            raise ValueError("calibrated decision thresholds must be finite non-negative numbers")
         tiers = decision.get("tiers_percent")
         if not isinstance(tiers, dict) or set(tiers) != {"S", "M", "L"}:
             raise ValueError("a frozen manifest must define S/M/L tier thresholds")
@@ -192,10 +205,20 @@ def load_manifest(path: str | Path = DEFAULT_MANIFEST) -> AttentionManifest:
     manifest_path = Path(path).resolve()
     raw = json.loads(manifest_path.read_text(encoding="utf-8"))
     workloads = validate_manifest(raw)
+    contract_sha256 = benchmark_contract_sha256(raw)
+    if raw["status"] == "frozen":
+        calibration = raw.get("calibration")
+        if not isinstance(calibration, dict):
+            raise ValueError("a frozen manifest must record calibration provenance")
+        if calibration.get("benchmark_contract_sha256") != contract_sha256:
+            raise ValueError("frozen calibration does not match the benchmark contract")
+        sessions = calibration.get("sessions")
+        if isinstance(sessions, bool) or not isinstance(sessions, int) or sessions < 3:
+            raise ValueError("frozen calibration must record at least three sessions")
     return AttentionManifest(
         path=manifest_path,
         sha256=manifest_sha256(raw),
-        benchmark_contract_sha256=benchmark_contract_sha256(raw),
+        benchmark_contract_sha256=contract_sha256,
         raw=raw,
         workloads=workloads,
     )

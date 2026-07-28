@@ -60,7 +60,7 @@ jobs:
               /^\s*(fix|bug|docs?|chore|refactor)(\([^)]+\))?:/i.test(title) ||
               /^\s*-\s*\[[xX]\]\s*(fix|bug|docs?|cleanup)\b/im.test(body);
             const benchmarkMatch = /\*\*Benchmark:\*\*\s*`?\s*([A-Za-z0-9_.-]+)\s*`?/i.exec(body);
-            const closesIssue = /^\s*(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#\d+\b/im.test(body);
+            const closesMatch = /^\s*(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)\b/im.exec(body);
             const errors = [];
 
             if (!explicitFeature || forbiddenLane) {
@@ -72,8 +72,27 @@ jobs:
             if (!benchmarkMatch || benchmarkMatch[1] !== manifest.id) {
               errors.push(`Declare **Benchmark:** \`${manifest.id}\` exactly.`);
             }
-            if (!closesIssue) {
+            if (!closesMatch) {
               errors.push("The PR must close an approved current-phase issue using `Closes #NUMBER`.");
+            } else {
+              const issueNumber = Number(closesMatch[1]);
+              try {
+                const linked = await github.rest.issues.get({
+                  owner, repo, issue_number: issueNumber,
+                });
+                const labels = new Set(
+                  linked.data.labels.map(label => typeof label === "string" ? label : label.name)
+                );
+                if (
+                  linked.data.state !== "open" ||
+                  linked.data.pull_request ||
+                  !labels.has("status:phase-approved")
+                ) {
+                  errors.push(`Issue #${issueNumber} is not an open maintainer-approved current-phase issue.`);
+                }
+              } catch (error) {
+                errors.push(`Issue #${issueNumber} could not be verified as an approved current-phase issue.`);
+              }
             }
 
             await github.rest.issues.addLabels({

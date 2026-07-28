@@ -55,8 +55,18 @@ def _frozen_manifest(tmp_path):
     return load_manifest(path)
 
 
-def test_draft_manifest_can_never_authorize_merge():
-    manifest = load_manifest()
+def _draft_manifest(tmp_path):
+    raw = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+    raw["status"] = "draft"
+    raw["decision"]["calibration_required"] = True
+    raw["decision"]["merge_enabled"] = False
+    path = tmp_path / "draft.json"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    return load_manifest(path)
+
+
+def test_draft_manifest_can_never_authorize_merge(tmp_path):
+    manifest = _draft_manifest(tmp_path)
     result = compare_artifacts(
         _artifact(manifest, commit="main"),
         _artifact(manifest, commit="candidate", factor=0.5),

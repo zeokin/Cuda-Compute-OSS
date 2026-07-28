@@ -14,22 +14,21 @@ attention or improves an LLM.
 |---|---|
 | Phase | Attention foundation |
 | Benchmark ID | `attention-foundation-v1-rtx5070ti` |
-| Status | **DRAFT — miner PRs closed** |
+| Status | **ACTIVE — frozen and calibrated** |
 | Reference GPU | NVIDIA GeForce RTX 5070 Ti |
-| Goal | Build and certify exact attention evaluation before opening mining |
-| Merge automation | Hard-disabled until calibration and certification pass |
+| Goal | Improve exact attention latency or memory without correctness loss |
+| Merge automation | Enabled only for approved issues and protected RTX 5070 Ti results |
 
 The protected manifest is
 [`benchmarks/attention-foundation-v1-rtx5070ti.json`](benchmarks/attention-foundation-v1-rtx5070ti.json).
-The name identifies a proposed benchmark era; it becomes official only after
-its status changes from `draft` to `frozen` with calibrated thresholds.
+The manifest is the frozen benchmark contract for this competition era.
 
 ## What exists
 
 - `matmul/`: exact in-core and tiled GEMM with bounded-memory paths.
 - `strategy/`: retained legacy research on synthetic square matrices.
 - `attention/`: exact, local, spectral, correlation, and landmark prototypes.
-- `eval/`: the legacy square evaluator plus the protected draft attention
+- `eval/`: the legacy square evaluator plus the protected attention
   evaluator and PR policy.
 
 Legacy square-GEMM results remain historical evidence. They are not evidence
@@ -41,7 +40,7 @@ The attention-foundation phase keeps output exact and asks whether a candidate
 can reduce attention latency or memory. Correctness is a hard gate, not a
 weighted score.
 
-The draft contains nine GPU workload configurations:
+The frozen benchmark contains nine GPU workload configurations:
 
 - four causal prefill workloads at sequence lengths 1K, 2K, 4K, and 8K;
 - three one-token decode workloads with 1K, 4K, and 8K KV contexts;
@@ -61,11 +60,9 @@ The references are:
 
 ## Contribution policy
 
-Mining is closed while the benchmark is `draft`. Opening the lane early would
-let contributors optimize moving rules and would make automatic merges unsafe.
-
-Once the manifest is frozen and activated, CCO will accept only measurable
-feature PRs for an approved current-phase issue. The initial implementation
+Mining is open only for measurable feature PRs implementing an open issue with
+the maintainer-applied `status:phase-approved` label. Miner-created issues begin
+in triage and do not authorize implementation by themselves. The initial implementation
 scope is:
 
 - rectangular and batched attention-shaped multiplication;
@@ -83,7 +80,7 @@ An active-phase PR must:
 
 1. use the feature template;
 2. declare the exact active benchmark ID;
-3. close a maintainer-approved issue;
+3. close an open issue carrying `status:phase-approved`;
 4. touch only current-phase implementation/test paths;
 5. pass normal CI and protected GPU correctness;
 6. beat current `main` beyond calibrated noise without a protected regression.
@@ -115,8 +112,8 @@ correctness, latency, VRAM, and significance decision
                               re-evaluate next PR
 ```
 
-Automatic processing is impossible while the manifest is `draft`, requires an
-explicit benchmark-ID confirmation, verifies the queued head SHA, and halts if
+Automatic processing requires an explicit benchmark-ID confirmation, verifies
+the queued head SHA and current `main`, and halts if
 post-merge validation fails. After admitting one PR, later candidates are
 locally merged with the new `main` for evaluation; conflicts are blocked, and
 neither the contributor branch nor its recorded head SHA is rewritten.
@@ -147,7 +144,7 @@ uv run --extra gpu python -m attention.benchmark \
 
 This prototype command is not an official scorecard.
 
-Protected draft benchmark in one clean RTX 5070 Ti checkout:
+Protected benchmark in one clean RTX 5070 Ti checkout:
 
 ```bash
 python -m eval.attention_benchmark --official --json
@@ -159,8 +156,8 @@ Manual queue preview on the Windows CUDA environment:
 python -m eval.attention_batch --limit 0 --active-python
 ```
 
-Draft calibration can run with `--run`, but `--process` is intentionally
-rejected until the benchmark is frozen and merge-enabled.
+The first command previews the queue. Maintainer processing additionally uses
+`--run --process --clean --confirm-benchmark attention-foundation-v1-rtx5070ti`.
 
 ## Repository trust boundary
 

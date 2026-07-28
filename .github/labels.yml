@@ -86,6 +86,9 @@
 - name: "status:triage"
   color: "C5DEF5"
   description: "Newly opened, not yet triaged"
+- name: "status:phase-approved"
+  color: "0E8A16"
+  description: "Maintainer-approved implementation issue for the active benchmark phase"
 
 # ── eval: deterministic verdict tiers ───────────────────────────────────────
 - name: "eval:L"

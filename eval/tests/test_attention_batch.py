@@ -13,7 +13,7 @@ from eval.attention_batch import (
     load_queue,
     select_batch,
 )
-from eval.attention_manifest import load_manifest
+from eval.attention_manifest import DEFAULT_MANIFEST, load_manifest
 
 
 def test_queue_only_selects_current_attention_benchmark(tmp_path):
@@ -33,8 +33,14 @@ def test_select_batch_zero_means_all():
     assert select_batch([], 0) == []
 
 
-def test_draft_manifest_cannot_process_prs():
-    manifest = load_manifest()
+def test_draft_manifest_cannot_process_prs(tmp_path):
+    raw = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+    raw["status"] = "draft"
+    raw["decision"]["calibration_required"] = True
+    raw["decision"]["merge_enabled"] = False
+    path = tmp_path / "draft.json"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    manifest = load_manifest(path)
     with pytest.raises(RuntimeError, match="cannot process"):
         ensure_processing_allowed(manifest, manifest.id)
 

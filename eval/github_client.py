@@ -152,6 +152,14 @@ class GitHubClient:
             for d in data
         ]
 
+    def is_phase_approved_issue(self, issue_number: int, label: str) -> bool:
+        out = self._run(
+            "issue", "view", str(issue_number), "--json", "state,labels"
+        )
+        data = json.loads(out)
+        labels = {item["name"] for item in data.get("labels", [])}
+        return data.get("state") == "OPEN" and label in labels
+
     def post_comment(self, pr_number: int, body: str) -> None:
         self._exec(["pr", "comment", str(pr_number), "--body", body])
 

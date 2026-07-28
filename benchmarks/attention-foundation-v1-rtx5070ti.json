@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "id": "attention-foundation-v1-rtx5070ti",
-  "status": "draft",
+  "status": "frozen",
   "phase": "attention-foundation",
-  "description": "Exact attention foundation on the maintainer RTX 5070 Ti. Draft until calibration and certification pass.",
+  "description": "Frozen exact-attention foundation benchmark calibrated on the maintainer RTX 5070 Ti.",
   "candidate": "attention.foundation:attention_forward",
   "era": {
     "gpu_name": "NVIDIA GeForce RTX 5070 Ti",
@@ -28,15 +28,23 @@
     "max_relative_frobenius_error": 0.005,
     "max_absolute_error": 0.05,
     "finite_output_required": true,
-    "calibration_required": true
+    "calibration_required": false
+  },
+  "calibration": {
+    "source_commit": "29da25ef2ef6fcc52d3c1d31b6bec48ed0760fba",
+    "created_at": "2026-07-28T05:18:05+00:00",
+    "sessions": 3,
+    "benchmark_contract_sha256": "13df1f029b9e6eb79ab4ab12d4a48b4c2d2ba309a904fdbed6dd74ca7d16da8c",
+    "maximum_pairwise_latency_delta_percent": 2.4313818717357827,
+    "maximum_pairwise_vram_delta_percent": 0.0
   },
   "decision": {
-    "calibration_required": true,
-    "minimum_speedup_percent": null,
-    "maximum_per_workload_regression_percent": null,
-    "maximum_vram_regression_percent": null,
-    "tiers_percent": null,
-    "merge_enabled": false
+    "calibration_required": false,
+    "minimum_speedup_percent": 5.0,
+    "maximum_per_workload_regression_percent": 5.0,
+    "maximum_vram_regression_percent": 2.0,
+    "tiers_percent": {"S": 5.0, "M": 10.0, "L": 20.0},
+    "merge_enabled": true
   },
   "workloads": [
     {"id": "prefill-b1-h8-n1024-d64-causal", "mode": "prefill", "batch": 1, "heads": 8, "q_len": 1024, "kv_len": 1024, "dim": 64, "dtype": "fp16", "causal": true, "scored": true, "oracle": true},

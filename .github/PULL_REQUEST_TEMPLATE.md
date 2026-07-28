@@ -14,7 +14,7 @@ lanes.
 
 Closes #____
 
-<!-- The issue must be an approved current-phase issue opened before this PR. -->
+<!-- The open issue must carry the maintainer-applied status:phase-approved label. -->
 
 ## Measurable improvement
 

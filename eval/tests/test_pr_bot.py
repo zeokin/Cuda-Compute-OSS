@@ -26,6 +26,7 @@ from eval.pr_bot import (
     already_queued,
     build_queue_dashboard,
     changed_files,
+    closed_issue_number,
     excess_open_prs,
     has_coding_agent_coauthor,
     has_scorecard,
@@ -109,6 +110,16 @@ def _active_manifest(tmp_path):
         "merge_enabled": True,
     })
     path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    return load_manifest(path)
+
+
+def _draft_attention_manifest(tmp_path):
+    raw = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+    raw["status"] = "draft"
+    raw["decision"]["calibration_required"] = True
+    raw["decision"]["merge_enabled"] = False
+    path = tmp_path / "draft.json"
     path.write_text(json.dumps(raw), encoding="utf-8")
     return load_manifest(path)
 
@@ -244,8 +255,8 @@ def test_live_attention_policy_closes_fix_prs():
     assert out.action == "close_out_of_scope"
 
 
-def test_draft_attention_phase_closes_feature_prs():
-    manifest = load_manifest()
+def test_draft_attention_phase_closes_feature_prs(tmp_path):
+    manifest = _draft_attention_manifest(tmp_path)
     out = process_pr(_pr(), ATTENTION_DIFF, [], frozenset(), [], attention_manifest=manifest)
     assert out.action == "close_phase_inactive"
 
@@ -254,7 +265,9 @@ def test_active_attention_phase_queues_declared_feature_without_self_scorecard(t
     manifest = _active_manifest(tmp_path)
     body = f"**Benchmark:** `{manifest.id}`\n\nCloses #123\n"
     out = process_pr(
-        _pr(body=body), ATTENTION_DIFF, [], frozenset(), [], attention_manifest=manifest
+        _pr(body=body), ATTENTION_DIFF, [], frozenset(), [],
+        attention_manifest=manifest,
+        approved_issue_numbers=frozenset({123}),
     )
     assert out.action == "attention_eval_pending"
     assert out.benchmark == manifest.id
@@ -264,9 +277,27 @@ def test_active_attention_phase_rejects_out_of_phase_strategy_change(tmp_path):
     manifest = _active_manifest(tmp_path)
     body = f"**Benchmark:** `{manifest.id}`\n\nCloses #123\n"
     out = process_pr(
-        _pr(body=body), SOME_DIFF, [], frozenset(), [], attention_manifest=manifest
+        _pr(body=body), SOME_DIFF, [], frozenset(), [],
+        attention_manifest=manifest,
+        approved_issue_numbers=frozenset({123}),
     )
     assert out.action == "close_out_of_phase_paths"
+
+
+def test_active_attention_phase_rejects_unapproved_issue(tmp_path):
+    manifest = _active_manifest(tmp_path)
+    body = f"**Benchmark:** `{manifest.id}`\n\nCloses #123\n"
+    out = process_pr(
+        _pr(body=body), ATTENTION_DIFF, [], frozenset(), [],
+        attention_manifest=manifest,
+    )
+    assert out.action == "close_unapproved_issue"
+    assert "status:phase-approved" in out.detail
+
+
+def test_closed_issue_number_parses_the_declared_closing_reference():
+    assert closed_issue_number("Summary\n\nCloses #123\n") == 123
+    assert closed_issue_number("Mentions #123") is None
 
 
 def test_copycat_block_beats_scorecard_check():

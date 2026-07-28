@@ -43,6 +43,7 @@ MERGE_CONFLICT_MARKER_RE = re.compile(
 )
 RESULT_MARKER_PREFIX = "<!-- cco-result:{pr}:"
 GPU_QUEUE_LABEL = "status:queued-gpu"
+PHASE_APPROVED_ISSUE_LABEL = "status:phase-approved"
 GPU_QUEUE_READY_ACTIONS = frozenset({"eval_pending", "attention_eval_pending"})
 READY_NON_GPU_LABEL = "status:ready-non-gpu"
 NEEDS_PR_KIND_LABEL = "status:needs-pr-kind"
@@ -107,7 +108,9 @@ BENCHMARK_DECL_RE = re.compile(
     r"\*\*Benchmark:\*\*\s*`?\s*([A-Za-z0-9_.\-]+)\s*`?",
     re.IGNORECASE,
 )
-ISSUE_CLOSE_RE = re.compile(r"(?im)^\s*(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#\d+\b")
+ISSUE_CLOSE_RE = re.compile(
+    r"(?im)^\s*(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(?P<number>\d+)\b"
+)
 CODING_AGENT_COAUTHOR_RE = re.compile(
     r"(?im)^co-authored-by:\s*.*"
     r"(cursor|codex|claude|copilot|openai|anthropic|aider|windsurf|devin|"
@@ -260,6 +263,11 @@ def closes_issue(body: str) -> bool:
     return bool(ISSUE_CLOSE_RE.search(body or ""))
 
 
+def closed_issue_number(body: str) -> int | None:
+    match = ISSUE_CLOSE_RE.search(body or "")
+    return int(match.group("number")) if match else None
+
+
 def _attention_paths_in_scope(files: frozenset[str]) -> bool:
     return bool(files) and all(
         path.startswith(("attention/", "matmul/", "tests/"))
@@ -395,6 +403,7 @@ def process_pr(
     run_eval=None,
     reviews: list[ReviewInfo] | None = None,
     attention_manifest: AttentionManifest | None = None,
+    approved_issue_numbers: frozenset[int] = frozenset(),
 ) -> GateOutcome:
     """Decide the gate-chain outcome for one PR. Pure: takes already-fetched
     data, performs no GitHub I/O, so it's fully unit-testable.
@@ -552,11 +561,23 @@ def process_pr(
                 kind=kind,
                 benchmark=attention_manifest.id,
             )
-        if not closes_issue(pr.body):
+        issue_number = closed_issue_number(pr.body)
+        if issue_number is None:
             return GateOutcome(
                 pr.number,
                 "close_missing_issue",
                 detail="Feature PR must close an approved current-phase issue using `Closes #NUMBER`.",
+                kind=kind,
+                benchmark=attention_manifest.id,
+            )
+        if issue_number not in approved_issue_numbers:
+            return GateOutcome(
+                pr.number,
+                "close_unapproved_issue",
+                detail=(
+                    f"Issue #{issue_number} is not an open current-phase issue carrying "
+                    f"the maintainer-applied {PHASE_APPROVED_ISSUE_LABEL} label."
+                ),
                 kind=kind,
                 benchmark=attention_manifest.id,
             )
@@ -804,6 +825,7 @@ def run_once(
     fp_by_pr = {}
     commit_messages_by_pr = {}
     reviews_by_pr = {}
+    approved_issue_numbers: set[int] = set()
     for p in all_prs:
         diff_by_pr[p.number] = client.get_diff(p.number)
         fp_by_pr[p.number] = copycat_guard.fingerprint(diff_by_pr[p.number])
@@ -811,6 +833,16 @@ def run_once(
 
     for p in open_prs:
         reviews_by_pr[p.number] = client.get_reviews(p.number)
+        if attention_manifest is not None and attention_manifest.is_active:
+            issue_number = closed_issue_number(p.body)
+            if issue_number is not None:
+                try:
+                    if client.is_phase_approved_issue(
+                        issue_number, PHASE_APPROVED_ISSUE_LABEL
+                    ):
+                        approved_issue_numbers.add(issue_number)
+                except Exception as exc:  # noqa: BLE001
+                    print(f"Issue #{issue_number}: approval lookup failed -- {exc}")
 
     outcomes = []
     for pr in open_prs:
@@ -835,6 +867,7 @@ def run_once(
                 run_eval,
                 reviews=reviews_by_pr.get(pr.number, []),
                 attention_manifest=attention_manifest,
+                approved_issue_numbers=frozenset(approved_issue_numbers),
             )
         except Exception as exc:  # noqa: BLE001 -- resilience: never abort the batch
             print(f"PR #{pr.number}: skipped this sweep -- {exc}")

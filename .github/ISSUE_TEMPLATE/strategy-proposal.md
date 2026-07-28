@@ -36,4 +36,4 @@ assignees: ""
 
 Expected implementation paths: `attention/`, `matmul/`, and focused `tests/`.
 Do not implement until a maintainer confirms that the benchmark phase is ACTIVE
-and approves this issue for mining.
+and applies `status:phase-approved` to this issue.
