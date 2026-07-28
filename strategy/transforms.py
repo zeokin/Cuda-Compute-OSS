@@ -154,9 +154,10 @@ class RandomizedSVDTransform(Transform):
 class NystromTransform(Transform):
     """Landmark / Nyström column sampling over A and B.
 
-    Splits the M-column budget across col(A), row(A), col(B), and row(B) —
-    the same four spaces ``rsvd`` sketches — but forms each block by gathering
-    random landmark columns (or rows-as-columns) instead of random projections.
+    Splits the M-column budget across col(A), row(A), and row(B), forming each
+    block by gathering random landmark columns (or rows-as-columns) instead of
+    random projections. col(B) is redundant for ``P A P B P`` once those three
+    spaces are captured, just as it is for ``rsvd``.
     On genuine low-rank couples the landmarks span those spaces once enough
     columns are drawn, so the thin QR that follows is enough; basis cost is
     essentially the QR (``~2 N M²``), not ``rsvd``'s ``~2 N² M`` sketches.
@@ -164,14 +165,14 @@ class NystromTransform(Transform):
 
     name = "nystrom"
 
-    def basis(self, n, m, backend, dtype, A=None, B=None):
+    def basis(self, n, m, backend, dtype, A=None, B=None, frac=None):
         if A is None or B is None:
             raise ValueError("nystrom transform needs A and B")
         if m < 1 or m > n:
             raise ValueError(f"nystrom requires 1 <= m <= n; got m={m}, n={n}")
 
-        base, rem = divmod(m, 4)
-        widths = [base + (1 if i < rem else 0) for i in range(4)]
+        base, rem = divmod(m, 3)
+        widths = [base + (1 if i < rem else 0) for i in range(3)]
         rng = np.random.default_rng(self.seed)
 
         def landmark_cols(X, w):
@@ -184,17 +185,22 @@ class NystromTransform(Transform):
             idx = rng.choice(n, size=w, replace=False)
             return np.asarray(X[idx, :]).T.astype(dtype, copy=False)
 
-        parts = []
-        if widths[0]:
-            parts.append(backend.to_device(landmark_cols(A, widths[0])))
-        if widths[1]:
-            parts.append(backend.to_device(landmark_rows_as_cols(A, widths[1])))
-        if widths[2]:
-            parts.append(backend.to_device(landmark_cols(B, widths[2])))
-        if widths[3]:
-            parts.append(backend.to_device(landmark_rows_as_cols(B, widths[3])))
+        # Fill one preallocated assembly buffer. Keeping every part alive and
+        # concatenating them created a second full (n, m) allocation at peak.
+        Y = backend.xp.empty((n, m), dtype=dtype)
+        builders = (
+            lambda w: landmark_cols(A, w),
+            lambda w: landmark_rows_as_cols(A, w),
+            lambda w: landmark_rows_as_cols(B, w),
+        )
+        col = 0
+        for width, build in zip(widths, builders):
+            if width:
+                part = backend.to_device(build(width))
+                Y[:, col:col + width] = part
+                del part
+                col += width
 
-        Y = backend.xp.concatenate(parts, axis=1)  # (n, m)
         return self._orthonormalize(Y, backend)
 
     def basis_flops(self, n, m):
