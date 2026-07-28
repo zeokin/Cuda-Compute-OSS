@@ -26,12 +26,12 @@
     {
       "author": "statxc",
       "benchmark": null,
-      "detail": "This PR still has merge conflicts with the base branch. Resolve them within 12 hours of the bot reminder to keep it open.",
+      "detail": "Closing this PR because the reported merge conflict was not resolved within 12 hours of the bot reminder.",
       "gpu_required": false,
       "head_sha": "e08cb57ab924a550f6768010573e8cc2c43a487b",
       "kind": null,
       "pr": 311,
-      "state": "needs_merge_conflict_resolution",
+      "state": "close_stale_merge_conflict",
       "title": "fix(docs): list dashboard/ among README's maintainer-owned paths",
       "track": null,
       "transform": null,
@@ -41,12 +41,12 @@
     {
       "author": "lourincedaging0-commits",
       "benchmark": null,
-      "detail": "This PR still has merge conflicts with the base branch. Resolve them within 12 hours of the bot reminder to keep it open.",
+      "detail": "Closing this PR because the reported merge conflict was not resolved within 12 hours of the bot reminder.",
       "gpu_required": false,
       "head_sha": "0a5fccab500c4aa2fb7ebac18065f5a035e6b115",
       "kind": null,
       "pr": 314,
-      "state": "needs_merge_conflict_resolution",
+      "state": "close_stale_merge_conflict",
       "title": "fix(landing): drop malformed stray path in the Tier-3 evaluation icon",
       "track": null,
       "transform": null,
@@ -55,5 +55,5 @@
     }
   ],
   "queue": [],
-  "updated": "2026-07-28T08:10:15+00:00"
+  "updated": "2026-07-28T18:26:26+00:00"
 }
