@@ -105,9 +105,9 @@ diff --git a/README.md b/README.md
 """
 
 DOCS_SUBTREE_DIFF = """\
-diff --git a/docs/testing-strategy.md b/docs/testing-strategy.md
---- a/docs/testing-strategy.md
-+++ b/docs/testing-strategy.md
+diff --git a/docs/evaluation.md b/docs/evaluation.md
+--- a/docs/evaluation.md
++++ b/docs/evaluation.md
 @@ -1,0 +2,2 @@
 +Explain the maintainer GPU window.
 +Explain the public queue semantics.

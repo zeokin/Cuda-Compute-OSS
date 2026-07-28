@@ -3,13 +3,13 @@
 # HARD-FAILS a non-maintainer PR that edits them (this file alone only
 # requests review -- the workflow is the real enforcement).
 #
-# Why these specific paths (see docs/sn74-emission-strategy.md,
-# docs/testing-strategy.md): the scoring harness, the governance/CI
-# machinery that protects it, the strategy docs defining the rollout, and
-# the dashboard's bot-written data feed are the parts a miner PR must never
-# be able to quietly rewrite in the course of "just adding a transform".
+# The scorer, benchmark contract, public policy, governance/CI, and bot state
+# must never be modified by the candidate being scored.
 
 /eval/                    @zeokin
+/benchmarks/              @zeokin
 /docs/                    @zeokin
 /.github/                 @zeokin
 /dashboard/               @zeokin
+/README.md                @zeokin
+/pyproject.toml           @zeokin

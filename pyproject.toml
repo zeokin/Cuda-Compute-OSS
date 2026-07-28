@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cco"
 version = "0.2.0"
-description = "CCO (Cuda-Compute-OSS) -- an open arena for cheaper matrix multiplication."
+description = "CCO -- evidence-first efficient long-context attention research."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"

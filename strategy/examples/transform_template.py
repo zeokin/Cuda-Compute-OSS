@@ -2,10 +2,11 @@
 `name`, fill in `basis()`, then:
 
     1. Local smoke test (no GPU needed):  python -m strategy.smoke
-    2. Real scorecard (needs a GPU):      python -m eval --transforms mine
+    2. Legacy reproduction (needs GPU):   python -m eval --transforms mine
 
 See strategy/transforms.py for the full interface contract and
-CONTRIBUTING.md for exactly what does and doesn't earn a score.
+The square-transform API is retained for legacy research; it is not the active
+attention mining lane. See the root README for current contribution scope.
 """
 from __future__ import annotations
 

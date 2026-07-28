@@ -1,8 +1,7 @@
 name: Sensitive paths guard
 
 # Hard-fails a non-maintainer PR that touches the scoring harness, docs, CI
-# config, or the bot-owned dashboard data feed (see .github/CODEOWNERS,
-# docs/sn74-emission-strategy.md). Mirrors sparkinfer's
+# config, or the bot-owned dashboard data feed (see .github/CODEOWNERS).
 # sensitive-paths-guard.yml: pull_request_target so the guard itself (read
 # from protected main) cannot be weakened by the very PR it's checking, and
 # it only ever reads a changed-file list -- it never checks out PR code.
@@ -38,13 +37,13 @@ jobs:
           echo "Changed files:"
           echo "$changed"
 
-          protected_regex='^(eval/|docs/|\.github/|dashboard/)'
+          protected_regex='^(eval/|benchmarks/|docs/|\.github/|dashboard/|README\.md$|pyproject\.toml$)'
           hit="$(echo "$changed" | grep -E "$protected_regex" || true)"
 
           if [ -n "$hit" ]; then
             echo "::error::This PR touches maintainer-owned paths (see .github/CODEOWNERS):"
             echo "$hit"
-            echo "::error::These paths are protected because they define or verify scoring itself (docs/sn74-emission-strategy.md). If your change genuinely belongs here, ask a maintainer to review/merge it directly."
+            echo "::error::These paths define scoring or repository policy. Ask a maintainer to implement an agreed infrastructure change separately."
             exit 1
           fi
           echo "No protected paths touched."

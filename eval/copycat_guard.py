@@ -20,7 +20,7 @@ mirrors sparkinfer's copycat-guard.yml). It only labels/comments/closes;
 the periodic full gate chain (draft/blocked/scorecard/copycat together) is
 eval.pr_bot's job, run separately (Phase 3).
 
-NOTE (flagged in docs/sn74-emission-strategy.md and the update plan): these
+NOTE: these
 thresholds were tuned on sparkinfer's multi-file CUDA kernel diffs. A CCO
 ``Transform`` subclass is often 10-30 lines, where independent-but-similar
 ``rsvd`` variants can legitimately overlap heavily -- expect to retune
@@ -42,7 +42,7 @@ CONTAINMENT_WARN = 0.70
 STRUCTURAL_FLOOR = 0.40      # below this containment, don't bother checking structural similarity
 LEVENSHTEIN_THRESHOLD = 0.70
 BIGRAM_COSINE_THRESHOLD = 0.60
-DOC_ONLY_EXACT = frozenset({"README.md", "CONTRIBUTING.md", "BENCHMARKS.md", "LICENSE"})
+DOC_ONLY_EXACT = frozenset({"README.md", "LICENSE"})
 DOC_ONLY_PREFIXES = ("docs/",)
 
 _COMMENT_RE = re.compile(r"^\s*#")

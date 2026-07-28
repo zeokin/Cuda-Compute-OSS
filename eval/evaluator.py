@@ -195,7 +195,7 @@ def evaluate(ev: EvalConfig) -> dict:
         latency = float(np.mean(lats))
         peak_vram = float(np.max(vrams))          # worst-case memory pick
 
-        # The improvement rule (BENCHMARKS.md): a strategy is admitted only if
+        # The legacy improvement rule: a strategy is admitted only if
         # accuracy clears the floor AND it dominates the exact baseline on every
         # cost axis. The raw performance figure is kept for transparency, but the
         # ranking ``score`` is zero for anything that is not an improvement — an

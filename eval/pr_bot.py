@@ -1,12 +1,14 @@
 """PR evaluation gate chain -- oldest-PR-first, adapted from sparkinfer's
-``eval/pr_eval_bot.py`` (see docs/sn74-emission-strategy.md,
-docs/testing-strategy.md).
+``eval/pr_eval_bot.py``. The active attention policy is loaded from the
+protected benchmark manifest.
 
 Gate chain per open PR, in order:
     draft skip -> blocked-contributor check -> protected-path check
     -> copycat check (eval.copycat_guard) -> PR-lane classification
-    -> fix/docs lane: CPU-only review
-    -> feat/strategy lane: scorecard check -> GPU queue
+    -> current-phase feature policy -> protected GPU queue
+
+The legacy no-manifest branch remains only for historical unit-tested tooling.
+The live CLI always loads the protected attention manifest.
 
 The DECISION (:func:`process_pr`) is a pure function of already-fetched data
 -- no GitHub I/O happens inside it, so the whole gate chain is unit-testable
@@ -30,6 +32,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from . import copycat_guard
+from .attention_manifest import DEFAULT_MANIFEST, AttentionManifest, load_manifest
 from .github_client import GitHubClient, PRInfo, ReviewInfo
 
 REPO_DEFAULT = "zeokin/Cuda-Compute-OSS"
@@ -40,7 +43,7 @@ MERGE_CONFLICT_MARKER_RE = re.compile(
 )
 RESULT_MARKER_PREFIX = "<!-- cco-result:{pr}:"
 GPU_QUEUE_LABEL = "status:queued-gpu"
-GPU_QUEUE_READY_ACTIONS = frozenset({"eval_pending"})
+GPU_QUEUE_READY_ACTIONS = frozenset({"eval_pending", "attention_eval_pending"})
 READY_NON_GPU_LABEL = "status:ready-non-gpu"
 NEEDS_PR_KIND_LABEL = "status:needs-pr-kind"
 CHANGES_REQUESTED_LABEL = "status:changes-requested"
@@ -54,8 +57,8 @@ MAINTAINER_HOLD_LABELS = frozenset({
     "hold",
     "do-not-close",
 })
-PROTECTED_PATH_PREFIXES = ("eval/", "docs/", ".github/", "dashboard/")
-PROTECTED_PATH_EXACT = frozenset()
+PROTECTED_PATH_PREFIXES = ("eval/", "docs/", ".github/", "dashboard/", "benchmarks/")
+PROTECTED_PATH_EXACT = frozenset({"README.md", "pyproject.toml"})
 FEATURE_KIND_LABELS = frozenset({"type:feature", "type:strategy", "type:enhancement"})
 NON_GPU_KIND_LABELS = frozenset({"type:bug", "type:docs"})
 DOCS_ONLY_SUFFIXES = (".md", ".rst", ".txt")
@@ -100,6 +103,11 @@ TRANSFORM_DECL_RE = re.compile(
     r"\*\*Transform:\*\*\s*`?\s*([A-Za-z0-9_.\-]+)\s*`?",
     re.IGNORECASE,
 )
+BENCHMARK_DECL_RE = re.compile(
+    r"\*\*Benchmark:\*\*\s*`?\s*([A-Za-z0-9_.\-]+)\s*`?",
+    re.IGNORECASE,
+)
+ISSUE_CLOSE_RE = re.compile(r"(?im)^\s*(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#\d+\b")
 CODING_AGENT_COAUTHOR_RE = re.compile(
     r"(?im)^co-authored-by:\s*.*"
     r"(cursor|codex|claude|copilot|openai|anthropic|aider|windsurf|devin|"
@@ -118,6 +126,7 @@ class GateOutcome:
     detail: str = ""
     label: str | None = None
     kind: str | None = None
+    benchmark: str | None = None
 
 
 def load_blocked_contributors(path: str = BLOCKED_CONTRIBUTORS_PATH) -> frozenset:
@@ -237,6 +246,25 @@ def declared_transform(body: str) -> str | None:
     if not name or set(name) <= {"_"}:      # unfilled `____` placeholder
         return None
     return name
+
+
+def declared_benchmark(body: str) -> str | None:
+    match = BENCHMARK_DECL_RE.search(body or "")
+    name = match.group(1) if match else None
+    if not name or set(name) <= {"_"}:
+        return None
+    return name
+
+
+def closes_issue(body: str) -> bool:
+    return bool(ISSUE_CLOSE_RE.search(body or ""))
+
+
+def _attention_paths_in_scope(files: frozenset[str]) -> bool:
+    return bool(files) and all(
+        path.startswith(("attention/", "matmul/", "tests/"))
+        for path in files
+    )
 
 
 def has_coding_agent_coauthor(commit_messages: str) -> bool:
@@ -366,6 +394,7 @@ def process_pr(
     now: datetime | None = None,
     run_eval=None,
     reviews: list[ReviewInfo] | None = None,
+    attention_manifest: AttentionManifest | None = None,
 ) -> GateOutcome:
     """Decide the gate-chain outcome for one PR. Pure: takes already-fetched
     data, performs no GitHub I/O, so it's fully unit-testable.
@@ -491,6 +520,65 @@ def process_pr(
             kind=kind,
         )
 
+    # Attention-first policy.  The legacy branch above remains available to
+    # unit tests and historical tooling, but the live bot passes the protected
+    # manifest here.  Draft means closed: miners must not race against an
+    # evaluator whose thresholds and workload are still moving.
+    if attention_manifest is not None:
+        if kind != "feat":
+            return GateOutcome(
+                pr.number,
+                "close_out_of_scope",
+                detail="Only current-phase measurable feature PRs are accepted; bug/docs/cleanup PRs are not a mining lane.",
+                kind=kind,
+                benchmark=attention_manifest.id,
+            )
+        if not attention_manifest.is_active:
+            return GateOutcome(
+                pr.number,
+                "close_phase_inactive",
+                detail=(
+                    f"Benchmark {attention_manifest.id} is {attention_manifest.status}; "
+                    "the miner phase opens only after calibration and certification."
+                ),
+                kind=kind,
+                benchmark=attention_manifest.id,
+            )
+        if declared_benchmark(pr.body) != attention_manifest.id:
+            return GateOutcome(
+                pr.number,
+                "close_missing_benchmark",
+                detail=f"Feature PR must declare **Benchmark:** `{attention_manifest.id}`.",
+                kind=kind,
+                benchmark=attention_manifest.id,
+            )
+        if not closes_issue(pr.body):
+            return GateOutcome(
+                pr.number,
+                "close_missing_issue",
+                detail="Feature PR must close an approved current-phase issue using `Closes #NUMBER`.",
+                kind=kind,
+                benchmark=attention_manifest.id,
+            )
+        if not _attention_paths_in_scope(changed_files(diff_text)):
+            return GateOutcome(
+                pr.number,
+                "close_out_of_phase_paths",
+                detail="This phase accepts focused changes under attention/, matmul/, and tests/ only.",
+                kind=kind,
+                benchmark=attention_manifest.id,
+            )
+        if already_evaluated(pr.number, comments):
+            return GateOutcome(pr.number, "already_evaluated", kind=kind, benchmark=attention_manifest.id)
+        return GateOutcome(
+            pr.number,
+            "attention_eval_pending",
+            detail=f"gate chain passed; queued for {attention_manifest.id}",
+            label=GPU_QUEUE_LABEL,
+            kind=kind,
+            benchmark=attention_manifest.id,
+        )
+
     if already_evaluated(pr.number, comments):
         return GateOutcome(pr.number, "already_evaluated", kind=kind)
 
@@ -569,6 +657,11 @@ def _apply(client: GitHubClient, pr: PRInfo, outcome: GateOutcome, comments: lis
         client.close_pr(pr.number, outcome.detail)
     elif outcome.action == "close_missing_evaluation_declaration":
         client.close_pr(pr.number, outcome.detail)
+    elif outcome.action in {
+        "close_out_of_scope", "close_phase_inactive", "close_missing_benchmark",
+        "close_missing_issue", "close_out_of_phase_paths",
+    }:
+        client.close_pr(pr.number, outcome.detail)
     elif outcome.action == "close_stale_maintainer_changes":
         client.close_pr(pr.number, outcome.detail)
     elif outcome.action == "maintainer_changes_requested":
@@ -590,7 +683,7 @@ def _apply(client: GitHubClient, pr: PRInfo, outcome: GateOutcome, comments: lis
         client.remove_label(pr.number, "status:needs-scorecard")
         client.remove_label(pr.number, GPU_QUEUE_LABEL)
         client.remove_label(pr.number, CHANGES_REQUESTED_LABEL)
-    elif outcome.action == "eval_pending":
+    elif outcome.action in {"eval_pending", "attention_eval_pending"}:
         client.remove_label(pr.number, "status:needs-scorecard")
         client.remove_label(pr.number, NEEDS_PR_KIND_LABEL)
         client.remove_label(pr.number, READY_NON_GPU_LABEL)
@@ -626,6 +719,7 @@ def _queue_record(pr: PRInfo, outcome: GateOutcome, position: int | None = None)
         "gpu_required": outcome.kind == "feat",
         "track": declared_track(pr.body),
         "transform": declared_transform(pr.body),
+        "benchmark": outcome.benchmark,
         "state": outcome.action,
         "detail": outcome.detail,
     }
@@ -696,6 +790,7 @@ def run_once(
     dry_run: bool = True,
     run_eval=None,
     dashboard_data: str | None = None,
+    attention_manifest: AttentionManifest | None = None,
 ) -> list:
     """Fetch state via ``client``, decide via :func:`process_pr` for every
     open PR (oldest first), then apply the outcome unless ``dry_run``."""
@@ -739,6 +834,7 @@ def run_once(
                 now,
                 run_eval,
                 reviews=reviews_by_pr.get(pr.number, []),
+                attention_manifest=attention_manifest,
             )
         except Exception as exc:  # noqa: BLE001 -- resilience: never abort the batch
             print(f"PR #{pr.number}: skipped this sweep -- {exc}")
@@ -777,11 +873,18 @@ def main(argv=None) -> int:
                         "default until Phase 3 wires up a live bot identity.")
     p.add_argument("--dashboard-data",
                    help="optional path to write the live PR GPU queue feed")
+    p.add_argument("--attention-manifest", default=str(DEFAULT_MANIFEST),
+                   help="protected current-phase manifest; the live bot always enforces it")
     args = p.parse_args(argv)
 
     client = GitHubClient(args.repo)
+    try:
+        attention_manifest = load_manifest(args.attention_manifest)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        p.error(f"cannot load attention manifest: {exc}")
     outcomes = run_once(client, dry_run=not args.write,
-                        dashboard_data=args.dashboard_data)
+                        dashboard_data=args.dashboard_data,
+                        attention_manifest=attention_manifest)
     for o in outcomes:
         line = f"PR #{o.pr}: {o.action}"
         if o.detail:

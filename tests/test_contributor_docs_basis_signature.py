@@ -9,8 +9,6 @@ instead of Config.vram_fraction (the bug #211 fixed for rsvd).
 The template was brought in line already; these tests cover every other copy a
 contributor actually reads:
 
-  * CONTRIBUTING.md's "What you actually change" snippet -- the canonical
-    "that is enough to be scored" example.
   * strategy/README.md's "Register your own (the updatable hook)" -- the copy a
     contributor meets first, and the one this file used to leave uncovered, which
     is how it stayed on the old signature (#274).
@@ -34,13 +32,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from strategy.transforms import Transform
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_CONTRIBUTING = os.path.join(_ROOT, "CONTRIBUTING.md")
 _README = os.path.join(_ROOT, "strategy", "README.md")
 _RUN_EXAMPLE = os.path.join(_ROOT, "strategy", "examples", "run_example.py")
 
 # Every prose copy of the hook. Driven through one table so a new doc cannot be
 # added -- or an existing one silently rolled back -- without being checked.
-_MARKDOWN_SNIPPETS = ((_CONTRIBUTING, "CONTRIBUTING.md"), (_README, "strategy/README.md"))
+_MARKDOWN_SNIPPETS = ((_README, "strategy/README.md"),)
 
 
 def _read(path: str) -> str:

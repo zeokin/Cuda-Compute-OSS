@@ -1,7 +1,7 @@
 """Tier-1 (local, informational, never binding) smoke test for every
-registered Transform -- see docs/testing-strategy.md. Tiny N, CPU-friendly,
+registered Transform. Tiny N, CPU-friendly,
 finishes in seconds: checks shape, orthonormality, and no NaN/Inf. This is a
-sanity pre-flight, not a score -- the real scorecard is `python -m eval` on
+sanity pre-flight, not a score. Historical square results use `python -m eval` on
 a real GPU, which is what actually decides a PR's verdict.
 
     python -m strategy.smoke

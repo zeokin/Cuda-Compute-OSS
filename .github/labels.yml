@@ -8,8 +8,8 @@
 #   type:*   what kind of contribution it is (auto-applied from title/template)
 #   status:* review/triage state (applied by maintainers or the eval bot)
 #   eval:*   deterministic PR verdict from eval.label / eval.pr_bot -- the
-#            tier a merged PR is paid on (docs/sn74-emission-strategy.md's
-#            target Gittensor label_multipliers use these exact names)
+#            tier emitted by the protected evaluator; Gittensor registry
+#            multipliers use these exact names when the phase is activated
 #   (ungrouped) copycat enforcement + governance labels (eval.copycat_guard)
 
 # ── area: subsystems ────────────────────────────────────────────────────────
@@ -19,9 +19,12 @@
 - name: "area:matmul"
   color: "006B75"
   description: "Exact engine and tile schedules (matmul/)"
+- name: "area:attention"
+  color: "0E8A16"
+  description: "Exact and experimental attention implementations (attention/)"
 - name: "area:eval"
   color: "0052CC"
-  description: "Scorer, metrics, and the scorecard (eval/)"
+  description: "Protected evaluator, metrics, artifacts, and policy (eval/, benchmarks/)"
 - name: "area:tests"
   color: "C2E0C6"
   description: "Correctness gates and test suites (tests/)"
@@ -41,16 +44,16 @@
   description: "New smart strategy / transform proposal"
 - name: "type:feature"
   color: "1D76DB"
-  description: "Feature / improvement PR that must carry a GPU scorecard"
+  description: "Measurable feature for the currently active benchmark phase"
 - name: "type:bug"
   color: "B60205"
-  description: "Something is incorrect or broken"
+  description: "Bug report/fix; not an accepted miner PR lane"
 - name: "type:enhancement"
   color: "1D76DB"
   description: "Legacy improvement label kept for backward compatibility"
 - name: "type:docs"
   color: "FBCA04"
-  description: "Documentation-only change"
+  description: "Documentation-only change; not an accepted miner PR lane"
 - name: "type:question"
   color: "D876E3"
   description: "A question or discussion, not a change"
@@ -58,7 +61,7 @@
 # ── status: triage / review state ───────────────────────────────────────────
 - name: "status:needs-scorecard"
   color: "E99695"
-  description: "Feature / strategy PR is missing the reproducible eval scorecard"
+  description: "Legacy square-evaluator compatibility label; not used by the attention phase"
 - name: "status:needs-pr-kind"
   color: "F9D0C4"
   description: "PR must declare whether it is a fix/bug PR or a feat/strategy PR"
@@ -76,7 +79,7 @@
   description: "Fix/docs PR cleared non-GPU triage; maintainer review only"
 - name: "status:queued-gpu"
   color: "C2E0C6"
-  description: "Feat/strategy PR passed non-GPU gates and is queued for the next batched GPU evaluation"
+  description: "Current-phase feature passed admission and awaits protected RTX 5070 Ti evaluation"
 - name: "status:protected-path"
   color: "B60205"
   description: "PR touches maintainer-owned files and is not eligible for the GPU queue"
@@ -87,22 +90,25 @@
 # ── eval: deterministic verdict tiers ───────────────────────────────────────
 - name: "eval:L"
   color: "1B998B"
-  description: "Verified frontier improvement, large tier (>=25%)"
+  description: "Verified current-benchmark improvement, calibrated large tier"
 - name: "eval:M"
   color: "2D9CDB"
-  description: "Verified frontier improvement, medium tier (>=10%)"
+  description: "Verified current-benchmark improvement, calibrated medium tier"
 - name: "eval:S"
   color: "56CCF2"
-  description: "Verified frontier improvement, small tier (>=2%, the significance floor)"
+  description: "Verified current-benchmark improvement, calibrated small tier"
 - name: "eval:BASELINE"
   color: "6C63FF"
-  description: "First admitted strategy on this track"
+  description: "Legacy square-track baseline label"
 - name: "eval:none"
   color: "D9D9D9"
   description: "Correct, but does not dominate exact on every cost axis (or gain too small to count)"
 - name: "eval:REJECT"
   color: "B60205"
-  description: "Accuracy below the floor -- fast and wrong is not an improvement"
+  description: "Failed correctness, protected regression, or active benchmark requirements"
+- name: "eval:attention-draft"
+  color: "BFD4F2"
+  description: "Calibration-only attention result; cannot authorize merge or reward"
 
 # ── copycat enforcement (eval.copycat_guard, eval.pr_bot) ──────────────────
 - name: "copycat"

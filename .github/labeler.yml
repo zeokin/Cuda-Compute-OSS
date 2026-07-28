@@ -10,9 +10,15 @@
   - changed-files:
       - any-glob-to-any-file: "matmul/**"
 
+"area:attention":
+  - changed-files:
+      - any-glob-to-any-file: "attention/**"
+
 "area:eval":
   - changed-files:
-      - any-glob-to-any-file: "eval/**"
+      - any-glob-to-any-file:
+          - "eval/**"
+          - "benchmarks/**"
 
 "area:tests":
   - changed-files:

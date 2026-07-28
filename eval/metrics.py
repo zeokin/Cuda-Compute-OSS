@@ -13,7 +13,7 @@ The final score rewards accurate, memory-light, low-latency strategies:
     score = Accuracy × (1 / Peak_VRAM) × (1 / Latency)
 
 and is hard-gated to zero unless the strategy is admitted as an **improvement**
-over the exact baseline. Admission (the dominance rule in BENCHMARKS.md) requires
+over the exact baseline. Legacy admission requires
 accuracy at/above the floor AND every cost axis — latency, peak VRAM, and FLOP
 count — strictly below the exact baseline. A strategy that is fast and tiny but
 wrong, or accurate but slower / heavier than exact, therefore cannot win.
@@ -73,7 +73,7 @@ def dominates_exact(
     exact_latency_s: float,
     exact_peak_vram_bytes: float,
 ) -> bool:
-    """The dominance gate (BENCHMARKS.md): does the strategy reduce *every* cost
+    """The legacy dominance gate: does the strategy reduce *every* cost
     axis versus the exact baseline?
 
     Returns True only if wall-clock latency, peak VRAM, and FLOP count are all

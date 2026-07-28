@@ -2,7 +2,7 @@
 
 The ledger (``ledger.jsonl``) is the single source of truth: one JSON line
 per sealed evaluation, in landing order, never edited or reordered after the
-fact (docs/whitepaper.md Sec 6.3). ``dashboard/data.json`` is a pure,
+fact. ``dashboard/data.json`` is a pure,
 disposable PROJECTION of the ledger -- always fully rebuilt from it, never
 hand-patched, so the two can never drift out of sync.
 
@@ -49,7 +49,7 @@ def read_ledger(ledger_path: str | os.PathLike) -> list[dict]:
 def is_append_only(old_lines: list[str], new_lines: list[str]) -> bool:
     """True iff ``new_lines`` is ``old_lines`` with zero or more lines
     appended -- never edited, reordered, or removed. Intended for a CI check
-    (docs/sn74-emission-strategy.md's ledger-integrity requirement) comparing
+    (the ledger-integrity requirement) comparing
     the ledger before/after a PR that touches it."""
     return new_lines[: len(old_lines)] == old_lines
 

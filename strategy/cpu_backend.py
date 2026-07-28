@@ -2,7 +2,7 @@
 
 Satisfies the same surface (xp / to_device / to_host / matmul / synchronize /
 free_compute_bytes / host_available_bytes / name) so a Transform's basis()
-can be exercised with zero GPU/torch dependency, for docs/testing-strategy.md's
+can be exercised with zero GPU/torch dependency, for the CPU-safe
 Tier-1 local check (strategy/smoke.py). Never used to produce a scored
 result -- eval/evaluator.py always requires the real GPU backend and will
 refuse to run without one.

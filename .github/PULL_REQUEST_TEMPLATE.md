@@ -1,94 +1,47 @@
 <!--
-CCO has two PR lanes:
-  - fix/bug PRs: CPU-safe validation only, no GPU scorecard required
-  - feat/strategy PRs: score-bearing, GPU scorecard required
-
-Read CONTRIBUTING.md and BENCHMARKS.md before filling this in.
-The one rule: an improvement reduces every cost axis WITHOUT losing accuracy.
+CCO accepts only measurable feature PRs for the phase currently marked ACTIVE
+in README.md and the protected benchmark manifest. If the phase is BUILDING or
+CALIBRATING, ordinary miner PRs are closed because their evaluator is not yet
+frozen. Bug-fix, docs, cleanup, and legacy square-transform PRs are not mining
+lanes.
 -->
 
-## PR kind
+## Current-phase declaration
 
-- [ ] fix
-- [ ] feat
+- [ ] feature
 
-<!-- Check exactly one box. The bot and CI use this to route the PR. -->
+**Benchmark:** `attention-foundation-v1-rtx5070ti`
 
-## Summary
+Closes #____
 
-<!--
-For fix PRs: explain the bug and the behavior you corrected.
-For feat PRs: explain what the strategy/feature does, why it is cheaper, and
-the regime it targets.
--->
+<!-- The issue must be an approved current-phase issue opened before this PR. -->
 
-## Validation
+## Measurable improvement
 
-<!--
-List the CPU-safe validation you ran.
-Example:
-- uv run python -m strategy.smoke
-- uv run --extra test python -m pytest tests/ strategy/tests/ eval/tests/ -v
--->
+<!-- Explain the implementation change and why it should improve an official workload. -->
 
-## Target track (feat PRs — declare exactly one)
+## Scope
 
-- [ ] full-rank — random data, the hard general case (accuracy floor 0.80)
-- [ ] low-rank — rank ≪ N (accuracy floor 0.95)
-- [ ] decaying-spectrum — polynomially decaying singular values (accuracy floor 0.90)
+- [ ] prefill
+- [ ] decode
+- [ ] both
 
-<!--
-The GPU bot re-scores your PR at this track's PINNED regime (fixed rank / M /
-data), on FRESH unseen seeds, rebased onto current `main`, and computes the tier
-against the ledger's recorded frontier. So the numbers you paste below are
-context, not the verdict — you cannot pick the rank/M that flatters your method,
-and the baseline is always the current frontier, never the rsvd on your branch.
--->
+<!-- One focused implementation change under attention/, matmul/, and tests/. -->
 
-**Transform:** `____`
+## Correctness and validation
 
-<!--
-The transform your PR adds or changes (the name in `register_transform("…")`),
-e.g. `nystrom`. The bot scores THIS transform, and verifies your diff actually
-adds or modifies it — you cannot claim credit for a transform you did not write.
--->
+<!-- List exact commands and results. Do not paste a legacy square-GEMM score. -->
 
-## GPU Result (required for feat PRs only)
+## Risks and non-goals
 
-| metric          | value          |
-|-----------------|----------------|
-| accuracy        |                |
-| time complexity |                |
-| latency         |                |
-| VRAM usage      |                |
-
-<!--
-accuracy        — bounded Frobenius accuracy in [0,1] from `python -m eval`
-time complexity — analytic O(·) and the fitted N^p from `--sweep`
-latency         — mean wall-clock ms of the smart multiply, GPU-synchronized
-VRAM usage      — peak incremental GPU memory during the multiply
--->
-
-**Regime measured:** N=8192, dtype=fp32, fill=full-rank, rank M=____, device=RTX 5090
-
-<details>
-<summary>Raw scorecard (paste <code>python -m eval …</code> output or <code>--json</code>)</summary>
-
-```
-<paste here>
-```
-</details>
+<!-- State unsupported shapes, layouts, dtypes, or performance trade-offs. -->
 
 ## Checklist
 
-- [ ] CPU-safe validation passed (`strategy.smoke` if relevant, plus `pytest tests/ strategy/tests/ eval/tests/`).
-- [ ] My commits do not include `Co-authored-by` footers for coding agents such as Cursor, Codex, Claude, Copilot, or similar tools.
-- [ ] If this is a feat PR, I ran the scorer on **unseen** couples — no hardcoding of seeds/matrices.
-- [ ] If this is a feat PR, accuracy and latency come from the **same run** at the **same dtype**.
-- [ ] If this is a feat PR, this is an **improvement** (every cost axis down, accuracy held) **or** I
-      state honestly which axis it trades — see the one rule in CONTRIBUTING.md.
-- [ ] Correctness gates pass:
-      `python eval/tests/test_eval.py`,
-      `python strategy/tests/test_subspace.py`,
-      `python tests/test_correctness.py`.
-- [ ] If this is a feat PR, I named the device and dtype so a reviewer can reproduce the numbers.
+- [ ] This PR implements an approved current-phase issue.
+- [ ] This is a measurable feature, not a fix, documentation, cleanup, or refactor-only PR.
+- [ ] It does not modify `eval/`, `benchmarks/`, `.github/`, `dashboard/`, public policy, or scoring rules.
+- [ ] Exact output, dtype, shape, causal, finite-output, and relevant edge-case tests pass.
+- [ ] The full CPU-safe test suite passes.
+- [ ] My commits do not credit a coding agent in `Co-authored-by` footers.
+- [ ] I understand that contributor measurements are diagnostic; the protected RTX 5070 Ti evaluator decides the result.

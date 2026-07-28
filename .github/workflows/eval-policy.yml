@@ -36,7 +36,7 @@ jobs:
         run: python -m pip install --upgrade uv
 
       - name: Syntax check every module
-        run: uv run --extra test python -m py_compile $(find matmul strategy eval tests examples -name '*.py')
+        run: uv run --extra test python -m py_compile $(find matmul strategy eval attention tests examples -name '*.py')
 
       - name: Run the CPU-safe test suite
         run: uv run --extra test python -m pytest tests/ strategy/tests/ eval/tests/ -v

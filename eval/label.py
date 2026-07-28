@@ -15,7 +15,7 @@ from __future__ import annotations
 
 # Significance floor: a gain must clear this fraction of the CURRENT frontier
 # score to count as verified at all. Sub-floor gains are labeled "none" --
-# never aggregated across runs to manufacture a headline (BENCHMARKS.md).
+# never aggregated across runs to manufacture a headline.
 SIGNIFICANCE = 0.02
 
 # Tier thresholds -- fraction of gain over a FIXED reference anchor, not the

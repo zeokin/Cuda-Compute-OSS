@@ -1,127 +1,85 @@
-name: Windows GPU batch evaluation (device-specific)
+name: Attention GPU batch (optional Windows runner)
 
-# Manual only. This is deliberately artifact-only: the official frontier and
-# ledger currently compare scores without partitioning by GPU model, so RTX
-# 5070 Ti measurements must not alter RTX 5090 reference labels or results.
+# The maintainer normally runs the same command manually on the borrowed RTX
+# 5070 Ti. This workflow is optional for a future self-hosted Windows runner;
+# installing a runner is not required by the repository.
 
 on:
   workflow_dispatch:
     inputs:
       limit:
-        description: "Number of queued PRs to evaluate; 0 means all"
+        description: "PR count; 0 means all queued attention PRs"
         required: true
-        default: "1"
-      n:
-        description: "Matrix edge N"
-        required: true
-        default: "8192"
-      pairs:
-        description: "Random couples per PR"
-        required: true
-        default: "3"
+        default: "0"
       python_executable:
-        description: "CUDA-enabled Python command or absolute path on the runner"
+        description: "Existing CUDA Python interpreter"
         required: true
-        default: "python"
-      transforms:
-        description: "Optional comma-separated transform names"
-        required: false
-        default: ""
-      seed:
-        description: "Optional reproduction seed; leave empty for unseen inputs"
+        default: ".venv\\Scripts\\python.exe"
+      process:
+        description: "Apply verdicts and merge/close (active frozen benchmark only)"
+        type: boolean
+        required: true
+        default: false
+      confirm_benchmark:
+        description: "Exact benchmark ID required when process=true"
         required: false
         default: ""
 
 permissions:
-  contents: read
-  pull-requests: read
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: read
 
 concurrency:
-  group: windows-gpu-evaluation
+  group: attention-gpu-frontier
   cancel-in-progress: false
 
 jobs:
   evaluate:
-    # Register the GPU machine with all four labels. Do not label a 5070 Ti as
-    # rtx-5090: the official workflow intentionally reserves that label.
     runs-on: [self-hosted, windows, gpu, rtx-5070-ti]
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
 
-      - name: Verify supplied CUDA Python
+      - name: Verify pinned CUDA environment
         shell: pwsh
         env:
           PYTHON_EXECUTABLE: ${{ inputs.python_executable }}
         run: |
-          $ErrorActionPreference = "Stop"
-          & $env:PYTHON_EXECUTABLE -c "import sys, torch; assert torch.cuda.is_available(), 'CUDA is unavailable'; print('GPU OK:', torch.__version__, torch.cuda.get_device_name(0), '| Python:', sys.executable)"
+          & $env:PYTHON_EXECUTABLE -c "import sys,numpy,torch; assert torch.cuda.is_available(); assert torch.cuda.get_device_name(0) == 'NVIDIA GeForce RTX 5070 Ti'; print(sys.executable); print(numpy.__version__); print(torch.__version__); print(torch.cuda.get_device_name(0))"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          # uv-created virtual environments may intentionally omit pip.
-          & $env:PYTHON_EXECUTABLE -c "import pip"
-          if ($LASTEXITCODE -ne 0) {
-            & $env:PYTHON_EXECUTABLE -m ensurepip --upgrade
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-
-          # Do not request the project's gpu extra here: on Windows it can
-          # replace the CUDA wheel above with the CPU-only PyPI Torch wheel.
-          & $env:PYTHON_EXECUTABLE -m pip install --disable-pip-version-check -e ".[test]"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-          & $env:PYTHON_EXECUTABLE -c "import torch; assert torch.cuda.is_available(), 'CUDA disappeared after dependency install'; print('CUDA remains available')"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Restore queued PR data as UTF-8
+      - name: Restore protected queue state
         shell: pwsh
         env:
           PYTHON_EXECUTABLE: ${{ inputs.python_executable }}
         run: |
-          $ErrorActionPreference = "Stop"
-          git fetch --depth=1 origin bot/dashboard-state
-          & $env:PYTHON_EXECUTABLE -c 'from pathlib import Path; import subprocess; Path("dashboard/data.json").write_bytes(subprocess.check_output(["git", "show", "origin/bot/dashboard-state:dashboard/data.json"]))'
+          git fetch origin bot/dashboard-state
+          & $env:PYTHON_EXECUTABLE -c "from pathlib import Path; import subprocess; Path('dashboard/data.json').write_bytes(subprocess.check_output(['git','show','origin/bot/dashboard-state:dashboard/data.json']))"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Run queued PRs with the CUDA interpreter
+      - name: Evaluate sequential attention queue
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           PYTHON_EXECUTABLE: ${{ inputs.python_executable }}
           LIMIT: ${{ inputs.limit }}
-          N: ${{ inputs.n }}
-          PAIRS: ${{ inputs.pairs }}
-          TRANSFORMS: ${{ inputs.transforms }}
-          SEED: ${{ inputs.seed }}
+          PROCESS: ${{ inputs.process }}
+          CONFIRM: ${{ inputs.confirm_benchmark }}
         run: |
-          $ErrorActionPreference = "Stop"
-          $args = @(
-            "--repo", "${{ github.repository }}",
-            "--queue", "dashboard/data.json",
-            "--limit", $env:LIMIT,
-            "--n", $env:N,
-            "--pairs", $env:PAIRS,
-            "--runs", "5",
-            "--sweep", "2048,4096,8192",
-            "--run",
-            "--clean",
-            "--active-python"
-          )
-          if ($env:TRANSFORMS) { $args += @("--transforms", $env:TRANSFORMS) }
-          if ($env:SEED) { $args += @("--seed", $env:SEED) }
-          & $env:PYTHON_EXECUTABLE -m eval.gpu_batch @args
+          $args = @("--limit", $env:LIMIT, "--run", "--clean", "--active-python", "--repo", "${{ github.repository }}")
+          if ($env:PROCESS -eq "true") {
+            $args += @("--process", "--confirm-benchmark", $env:CONFIRM)
+          }
+          & $env:PYTHON_EXECUTABLE -m eval.attention_batch @args
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Upload device-specific GPU results
+      - name: Upload immutable raw artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-rtx-5070-ti-gpu-results
-          path: gpu-results/*.json
+          name: attention-foundation-rtx5070ti-results
+          path: attention-results/**
           if-no-files-found: error
-
-      - name: Explain result scope
-        shell: pwsh
-        run: |
-          "## Device-specific GPU results" >> $env:GITHUB_STEP_SUMMARY
-          "These RTX 5070 Ti artifacts are not applied to PR labels, the ledger, or the RTX 5090 frontier." >> $env:GITHUB_STEP_SUMMARY

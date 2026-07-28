@@ -1,32 +1,39 @@
 ---
-name: Strategy proposal
-about: Propose a new smart strategy / transform to lower matrix-multiply cost
-title: "[strategy] "
-labels: "type:strategy, status:triage"
+name: Current-phase feature proposal
+about: Propose one measurable implementation improvement for the active benchmark
+title: "[feature] "
+labels: "type:feature,status:triage"
+assignees: ""
 ---
 
-## Idea
+## Benchmark phase
 
-<!-- What subspace / transform / scheme, and why it should compress this data cheaply. -->
+`attention-foundation-v1-rtx5070ti`
 
-## Target regime
+## Workload affected
 
-- Matrix content: <!-- low-rank / smooth / structured / … -->
-- Expected `N`, `M`, dtype, device:
+- [ ] prefill
+- [ ] decode
+- [ ] both
 
-## Expected trade-off
+## Current limitation
 
-Against the exact baseline, on the target regime, which axes do you expect to
-move? (Per the one rule, an improvement reduces **all** cost axes with accuracy
-held — see [BENCHMARKS.md](../../BENCHMARKS.md).)
+<!-- Identify the measured implementation bottleneck or missing exact primitive. -->
 
-| aspect          | vs exact (expect) |
-|-----------------|-------------------|
-| accuracy        |                   |
-| time complexity |                   |
-| latency         |                   |
-| VRAM usage      |                   |
+## Proposed implementation
 
-## Notes
+<!-- Keep this to one independently measurable feature. -->
 
-<!-- References, prior art, or open questions. -->
+## Correctness risks
+
+<!-- Address shape, dtype, causality, finite outputs, layouts, and ragged inputs. -->
+
+## Expected measurement
+
+<!-- Explain what official workload should improve and what must not regress. -->
+
+## Scope
+
+Expected implementation paths: `attention/`, `matmul/`, and focused `tests/`.
+Do not implement until a maintainer confirms that the benchmark phase is ACTIVE
+and approves this issue for mining.

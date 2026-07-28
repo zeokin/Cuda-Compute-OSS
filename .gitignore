@@ -23,11 +23,9 @@ _matmul_data/
 _strategy_data/
 _gpu_batch_work/
 gpu-results/
+_attention_batch_work/
+attention-results/
 *.dat
-
-# Local-only planning / strategy notes
-docs/phase-3-4-plan.md
-docs/sn74-emission-strategy.md
 
 # Claude Code — local maintainer tooling, review heuristics, private notes
 .claude/

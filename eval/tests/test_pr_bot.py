@@ -9,11 +9,13 @@ orchestration layer with a fake in-memory GitHub, never real `gh` calls.
 import os
 import sys
 import tempfile
+import json
 from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from eval import copycat_guard
+from eval.attention_manifest import DEFAULT_MANIFEST, load_manifest
 from eval.pr_bot import (
     CHANGES_REQUESTED_LABEL,
     GPU_QUEUE_LABEL,
@@ -85,6 +87,30 @@ diff --git a/eval/evaluator.py b/eval/evaluator.py
 @@ -1,0 +2,1 @@
 +print("changed scoring")
 """
+
+ATTENTION_DIFF = """\
+diff --git a/attention/foundation.py b/attention/foundation.py
+--- a/attention/foundation.py
++++ b/attention/foundation.py
+@@ -1,0 +2,1 @@
++pass
+"""
+
+
+def _active_manifest(tmp_path):
+    raw = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+    raw["status"] = "frozen"
+    raw["decision"].update({
+        "calibration_required": False,
+        "minimum_speedup_percent": 5.0,
+        "maximum_per_workload_regression_percent": 3.0,
+        "maximum_vram_regression_percent": 2.0,
+        "tiers_percent": {"S": 5.0, "M": 10.0, "L": 20.0},
+        "merge_enabled": True,
+    })
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    return load_manifest(path)
 
 
 def _pr(
@@ -208,6 +234,39 @@ def test_fix_pr_does_not_require_gpu_scorecard():
     out = process_pr(pr, SOME_DIFF, [], frozenset(), [])
     assert out.action == "non_gpu_review"
     assert out.label == READY_NON_GPU_LABEL
+
+
+def test_live_attention_policy_closes_fix_prs():
+    manifest = load_manifest()
+    pr = PRInfo(number=1, title="fix: PR 1", author="alice", is_draft=False, head_sha="sha1",
+                body=NO_SCORECARD_BODY)
+    out = process_pr(pr, ATTENTION_DIFF, [], frozenset(), [], attention_manifest=manifest)
+    assert out.action == "close_out_of_scope"
+
+
+def test_draft_attention_phase_closes_feature_prs():
+    manifest = load_manifest()
+    out = process_pr(_pr(), ATTENTION_DIFF, [], frozenset(), [], attention_manifest=manifest)
+    assert out.action == "close_phase_inactive"
+
+
+def test_active_attention_phase_queues_declared_feature_without_self_scorecard(tmp_path):
+    manifest = _active_manifest(tmp_path)
+    body = f"**Benchmark:** `{manifest.id}`\n\nCloses #123\n"
+    out = process_pr(
+        _pr(body=body), ATTENTION_DIFF, [], frozenset(), [], attention_manifest=manifest
+    )
+    assert out.action == "attention_eval_pending"
+    assert out.benchmark == manifest.id
+
+
+def test_active_attention_phase_rejects_out_of_phase_strategy_change(tmp_path):
+    manifest = _active_manifest(tmp_path)
+    body = f"**Benchmark:** `{manifest.id}`\n\nCloses #123\n"
+    out = process_pr(
+        _pr(body=body), SOME_DIFF, [], frozenset(), [], attention_manifest=manifest
+    )
+    assert out.action == "close_out_of_phase_paths"
 
 
 def test_copycat_block_beats_scorecard_check():

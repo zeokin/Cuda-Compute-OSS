@@ -1,4 +1,7 @@
-# Smart (subspace) matrix multiply
+# Smart (subspace) matrix multiply — legacy
+
+> Retained for historical square-matrix research and reproducibility. This is
+> not the active attention mining lane; see the root README for current scope.
 
 An **approximate** matrix multiply that trades accuracy for speed by working in
 a small subspace. Standalone package — it does **not** import the sibling

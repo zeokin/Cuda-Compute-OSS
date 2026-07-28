@@ -37,7 +37,7 @@ which tunes them against multi-file CUDA kernel diffs. A CCO `Transform`
 subclass is often only 10-30 lines, where independent-but-similar `rsvd`
 variants can legitimately overlap heavily -- expect these numbers to need
 retuning empirically once real submissions start arriving (see
-`docs/sn74-emission-strategy.md`), not to hold as tuned truth from day one.
+the protected evaluator), not to hold as tuned truth from day one.
 
 ## History
 
