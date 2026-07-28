@@ -4,8 +4,9 @@ Standalone: this package does not import from the sibling `matmul` package.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
-from numbers import Integral
+from numbers import Integral, Real
 import numpy as np
 
 DTYPES = {
@@ -58,8 +59,11 @@ class Config:
             if (isinstance(value, bool) or not isinstance(value, Integral)
                     or value < 0):
                 raise ValueError(f"{name} must be a non-negative integer")
-        if not (0.0 < self.vram_fraction <= 0.95):
-            raise ValueError("vram_fraction must be in (0, 0.95]")
+        if (isinstance(self.vram_fraction, bool)
+                or not isinstance(self.vram_fraction, Real)
+                or not math.isfinite(self.vram_fraction)
+                or not (0.0 < self.vram_fraction <= 0.95)):
+            raise ValueError("vram_fraction must be a finite number in (0, 0.95]")
         if self.rank_m is not None and (
             isinstance(self.rank_m, bool) or not isinstance(self.rank_m, Integral)
         ):
@@ -69,6 +73,8 @@ class Config:
             raise ValueError("rank_m must be an integer or None")
         if self.storage not in ("ram", "disk", "auto"):
             raise ValueError("storage must be ram|disk|auto")
+        if not isinstance(self.workdir, str):
+            raise ValueError("workdir must be a string")
 
     @property
     def np_dtype(self) -> np.dtype:

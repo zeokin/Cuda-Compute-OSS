@@ -1,8 +1,9 @@
 """Configuration for the matrix-multiplication system."""
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
-from numbers import Integral
+from numbers import Integral, Real
 import numpy as np
 
 # Supported element types. NumPy has no native bf16, so we expose the three
@@ -56,8 +57,11 @@ class Config:
         for name in ("accumulate_fp32", "force_tiled"):
             if not isinstance(getattr(self, name), bool):
                 raise ValueError(f"{name} must be a bool")
-        if not (0.0 < self.vram_fraction <= 0.95):
-            raise ValueError("vram_fraction must be in (0, 0.95]")
+        if (isinstance(self.vram_fraction, bool)
+                or not isinstance(self.vram_fraction, Real)
+                or not math.isfinite(self.vram_fraction)
+                or not (0.0 < self.vram_fraction <= 0.95)):
+            raise ValueError("vram_fraction must be a finite number in (0, 0.95]")
         if self.tile is not None:
             # ``range`` requires an integer step. A float can pass a simple
             # positivity check here but then fails later in gemm._tiles, after
@@ -72,6 +76,8 @@ class Config:
                 raise ValueError("tile must be a positive integer or None")
         if self.storage not in ("ram", "disk", "auto"):
             raise ValueError("storage must be ram|disk|auto")
+        if not isinstance(self.workdir, str):
+            raise ValueError("workdir must be a string")
 
     @property
     def np_dtype(self) -> np.dtype:
