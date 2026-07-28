@@ -181,9 +181,16 @@ class Backend:
         rec = getattr(self.torch.mps, "recommended_max_memory", None)
         if rec is not None:
             try:
-                return int(rec())
+                ceiling = int(rec())
             except Exception:  # noqa: BLE001
-                pass
+                return self.host_available_bytes()
+            used = getattr(self.torch.mps, "current_allocated_memory", None)
+            if used is None:
+                return max(0, ceiling)
+            try:
+                return max(0, ceiling - int(used()))
+            except Exception:  # noqa: BLE001
+                return max(0, ceiling)
         return self.host_available_bytes()
 
     def host_available_bytes(self) -> int:
