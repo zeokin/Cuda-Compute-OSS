@@ -67,3 +67,12 @@ def test_mismatched_commit_is_blocked():
     ], manifest)
     assert not report["ready"]
     assert "identity" in report["reasons"][0]
+
+
+def test_stale_manifest_hash_is_blocked():
+    manifest = load_manifest()
+    stale = _artifact(manifest)
+    stale["manifest_sha256"] = "0" * 64
+    report = calibrate([stale, stale, stale], manifest)
+    assert not report["ready"]
+    assert all("manifest hash" in reason for reason in report["reasons"])

@@ -35,6 +35,10 @@ def calibrate(artifacts: list[dict], manifest: AttentionManifest) -> dict:
     identity_keys = ("benchmark", "manifest_sha256", "commit", "candidate")
     first = artifacts[0]
     for index, artifact in enumerate(artifacts):
+        if artifact.get("benchmark") != manifest.id:
+            reasons.append(f"session {index + 1} benchmark does not match the manifest")
+        if artifact.get("manifest_sha256") != manifest.sha256:
+            reasons.append(f"session {index + 1} manifest hash does not match the manifest")
         if any(artifact.get(key) != first.get(key) for key in identity_keys):
             reasons.append(f"session {index + 1} identity does not match session 1")
         if artifact.get("dirty"):

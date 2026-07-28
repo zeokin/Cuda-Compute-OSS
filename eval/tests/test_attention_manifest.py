@@ -6,7 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from eval.attention_manifest import DEFAULT_MANIFEST, load_manifest, validate_manifest
+from eval.attention_manifest import (
+    DEFAULT_MANIFEST,
+    load_manifest,
+    manifest_sha256,
+    validate_manifest,
+)
 
 
 def test_draft_manifest_defines_nine_workloads_and_seven_scored_cases():
@@ -19,11 +24,18 @@ def test_draft_manifest_defines_nine_workloads_and_seven_scored_cases():
     assert {workload.mode for workload in manifest.workloads} == {"prefill", "decode", "guard"}
 
 
-def test_manifest_hash_is_the_file_hash():
-    import hashlib
-
+def test_manifest_hash_is_the_canonical_json_hash():
     manifest = load_manifest()
-    assert manifest.sha256 == hashlib.sha256(DEFAULT_MANIFEST.read_bytes()).hexdigest()
+    assert manifest.sha256 == manifest_sha256(manifest.raw)
+
+
+def test_manifest_hash_is_independent_of_line_endings_and_formatting(tmp_path):
+    raw = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+    compact = tmp_path / "compact.json"
+    windows = tmp_path / "windows.json"
+    compact.write_text(json.dumps(raw, separators=(",", ":")), encoding="utf-8")
+    windows.write_bytes((json.dumps(raw, indent=4) + "\n").replace("\n", "\r\n").encode("utf-8"))
+    assert load_manifest(compact).sha256 == load_manifest(windows).sha256
 
 
 def test_duplicate_workload_id_is_rejected():

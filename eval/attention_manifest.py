@@ -152,14 +152,24 @@ def validate_manifest(raw: dict) -> tuple[AttentionWorkload, ...]:
     return workloads
 
 
+def manifest_sha256(raw: dict) -> str:
+    """Hash the JSON value, independent of checkout line endings/formatting."""
+    canonical = json.dumps(
+        raw,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
 def load_manifest(path: str | Path = DEFAULT_MANIFEST) -> AttentionManifest:
     manifest_path = Path(path).resolve()
-    data = manifest_path.read_bytes()
-    raw = json.loads(data.decode("utf-8"))
+    raw = json.loads(manifest_path.read_text(encoding="utf-8"))
     workloads = validate_manifest(raw)
     return AttentionManifest(
         path=manifest_path,
-        sha256=hashlib.sha256(data).hexdigest(),
+        sha256=manifest_sha256(raw),
         raw=raw,
         workloads=workloads,
     )
@@ -180,5 +190,6 @@ __all__ = [
     "DEFAULT_MANIFEST",
     "load_candidate",
     "load_manifest",
+    "manifest_sha256",
     "validate_manifest",
 ]
