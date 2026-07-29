@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from eval import copycat_guard
-from eval.attention_manifest import DEFAULT_MANIFEST, load_manifest
+from eval.attention_manifest import DEFAULT_MANIFEST, benchmark_contract_sha256, load_manifest
 from eval.pr_bot import (
     CHANGES_REQUESTED_LABEL,
     GPU_QUEUE_LABEL,
@@ -109,6 +109,11 @@ def _active_manifest(tmp_path):
         "tiers_percent": {"S": 5.0, "M": 10.0, "L": 20.0},
         "merge_enabled": True,
     })
+    raw["correctness"]["calibration_required"] = False
+    raw["calibration"] = {
+        "sessions": 3,
+        "benchmark_contract_sha256": benchmark_contract_sha256(raw),
+    }
     path = tmp_path / "manifest.json"
     path.write_text(json.dumps(raw), encoding="utf-8")
     return load_manifest(path)

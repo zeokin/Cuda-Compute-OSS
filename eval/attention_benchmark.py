@@ -9,6 +9,7 @@ import argparse
 import json
 import math
 import platform
+import secrets
 import statistics
 import subprocess
 import sys
@@ -144,6 +145,18 @@ def merge_artifact_shards(shards: list[dict]) -> dict:
     if not shards:
         raise ValueError("at least one benchmark shard is required")
     first = shards[0]
+    integrity_fields = (
+        "fresh_inputs_per_call",
+        "validate_timed_outputs",
+        "candidate_import_after_reference",
+        "runtime_state_guard",
+    )
+    for shard in shards:
+        measurement = shard.get("measurement") or {}
+        if measurement.get("seed_policy") != "os-random-per-call-published-after":
+            raise ValueError("benchmark shard has an unsupported seed policy")
+        if any(measurement.get(field) is not True for field in integrity_fields):
+            raise ValueError("benchmark shard is missing an integrity guarantee")
     identity = (
         "schema_version", "benchmark", "manifest_sha256",
         "benchmark_contract_sha256", "candidate", "commit", "dirty", "seed",
@@ -170,10 +183,50 @@ def merge_artifact_shards(shards: list[dict]) -> dict:
     for item in first["workloads"]:
         cells = [cells[item["id"]] for cells in by_shard]
         output = dict(item)
+        output["input_seeds"] = {
+            "correctness": [cell["input_seeds"]["correctness"] for cell in cells],
+            "production": {
+                "warmups": [
+                    seed
+                    for cell in cells
+                    for seed in cell["input_seeds"]["production"]["warmups"]
+                ],
+                "measured": [
+                    seed
+                    for cell in cells
+                    for seed in cell["input_seeds"]["production"]["measured"]
+                ],
+            },
+            "candidate": {
+                "warmups": [
+                    seed
+                    for cell in cells
+                    for seed in cell["input_seeds"]["candidate"]["warmups"]
+                ],
+                "measured": [
+                    seed
+                    for cell in cells
+                    for seed in cell["input_seeds"]["candidate"]["measured"]
+                ],
+            },
+        }
         output["correctness"] = dict(item["correctness"])
         output["correctness"]["passed"] = all(
             bool(cell["correctness"]["passed"]) for cell in cells
         )
+        timed = [cell["correctness"].get("timed_output_validation") for cell in cells]
+        if all(check is not None for check in timed):
+            output["correctness"]["timed_output_validation"] = {
+                "passed": all(bool(check["passed"]) for check in timed),
+                "repetitions": sum(int(check["repetitions"]) for check in timed),
+                "maximum_relative_frobenius_error": max(
+                    float(check["maximum_relative_frobenius_error"]) for check in timed
+                ),
+                "maximum_absolute_error": max(
+                    float(check["maximum_absolute_error"]) for check in timed
+                ),
+                "finite": all(bool(check["finite"]) for check in timed),
+            }
         for implementation in ("production", "candidate"):
             samples = []
             for cell in cells:
@@ -191,6 +244,11 @@ def merge_artifact_shards(shards: list[dict]) -> dict:
         "warmups_per_shard": first["measurement"]["warmups"],
         "repetitions": sum(int(shard["measurement"]["repetitions"]) for shard in shards),
         "shards": len(shards),
+        "seed_policy": "os-random-per-call-published-after",
+        "fresh_inputs_per_call": True,
+        "validate_timed_outputs": True,
+        "candidate_import_after_reference": True,
+        "runtime_state_guard": True,
     }
     merged.pop("shard", None)
     return merged
@@ -228,35 +286,136 @@ def _explicit_oracle(q, k, v, *, causal: bool):
     return torch.matmul(torch.softmax(scores, dim=-1), v32)
 
 
-def _production_attention(q, k, v, *, causal: bool):
-    torch = _torch()
-    return torch.nn.functional.scaled_dot_product_attention(
-        q, k, v, dropout_p=0.0, is_causal=causal
+def _runtime_state(torch) -> tuple:
+    """Snapshot process-wide state contributor code must restore before returning."""
+    return (
+        torch.nn.functional.scaled_dot_product_attention,
+        torch.cuda.Event,
+        torch.cuda.synchronize,
+        torch.cuda.memory_allocated,
+        torch.cuda.reset_peak_memory_stats,
+        torch.cuda.max_memory_allocated,
+        torch.nn.functional.cosine_similarity,
+        torch.linalg.vector_norm,
+        bool(torch.backends.cuda.matmul.allow_tf32),
+        bool(torch.are_deterministic_algorithms_enabled()),
+        bool(torch.backends.cudnn.benchmark),
+        bool(torch.backends.cudnn.deterministic),
+        bool(torch.backends.cuda.flash_sdp_enabled()),
+        bool(torch.backends.cuda.mem_efficient_sdp_enabled()),
+        bool(torch.backends.cuda.math_sdp_enabled()),
+        torch.get_default_dtype(),
     )
 
 
-def _time_callable(fn, *, device, warmups: int, repetitions: int) -> tuple[dict, int]:
-    torch = _torch()
-    for _ in range(warmups):
-        output = fn()
-    torch.cuda.synchronize(device)
-    del output
+def _assert_runtime_state(torch, expected: tuple) -> None:
+    if _runtime_state(torch) != expected:
+        raise RuntimeError(
+            "candidate modified protected PyTorch/CUDA runtime state without restoring it"
+        )
 
-    resident = int(torch.cuda.memory_allocated(device))
-    torch.cuda.reset_peak_memory_stats(device)
+
+def _timed_validation_summary(qualities: list[dict], tolerances: dict) -> dict:
+    if not qualities:
+        raise ValueError("timed output validation requires at least one result")
+    maximum_relative = max(float(item["relative_frobenius_error"]) for item in qualities)
+    maximum_absolute = max(float(item["maximum_absolute_error"]) for item in qualities)
+    finite = all(bool(item["finite"]) for item in qualities)
+    return {
+        "passed": bool(
+            finite
+            and maximum_relative <= tolerances["max_relative_frobenius_error"]
+            and maximum_absolute <= tolerances["max_absolute_error"]
+        ),
+        "repetitions": len(qualities),
+        "maximum_relative_frobenius_error": maximum_relative,
+        "maximum_absolute_error": maximum_absolute,
+        "finite": finite,
+    }
+
+
+def _time_fresh_inputs(
+    fn,
+    *,
+    workload,
+    seed_source,
+    input_factory,
+    quality_fn,
+    validation_summary_fn,
+    device,
+    warmups: int,
+    repetitions: int,
+    protected_reference=None,
+    tolerances: dict | None = None,
+    runtime_guard=None,
+) -> tuple[dict, int, dict | None, dict]:
+    """Time one call per fresh input and optionally validate every timed output.
+
+    Input creation and protected replay are outside CUDA events.  A candidate
+    therefore cannot win by caching the correctness output or one repeated
+    tensor pointer, while the measured value remains operator-only latency.
+    """
+    torch = _torch()
+    event_factory = torch.cuda.Event
+    synchronize = torch.cuda.synchronize
+    memory_allocated = torch.cuda.memory_allocated
+    reset_peak = torch.cuda.reset_peak_memory_stats
+    max_memory_allocated = torch.cuda.max_memory_allocated
+
+    warmup_seeds = []
+    measured_seeds = []
+    for _ in range(warmups):
+        seed = int(seed_source())
+        warmup_seeds.append(seed)
+        q, k, v = input_factory(workload, device=device, seed=seed)
+        output = fn(q, k, v, causal=workload.causal)
+        if runtime_guard is not None:
+            runtime_guard()
+        del q, k, v, output
+    synchronize(device)
+
     samples = []
+    peak_increments = []
+    timed_qualities = []
     for _ in range(repetitions):
-        start = torch.cuda.Event(enable_timing=True)
-        end = torch.cuda.Event(enable_timing=True)
+        seed = int(seed_source())
+        measured_seeds.append(seed)
+        q, k, v = input_factory(workload, device=device, seed=seed)
+        synchronize(device)
+        resident = int(memory_allocated(device))
+        reset_peak(device)
+        start = event_factory(enable_timing=True)
+        end = event_factory(enable_timing=True)
         start.record()
-        output = fn()
+        output = fn(q, k, v, causal=workload.causal)
         end.record()
         end.synchronize()
         samples.append(float(start.elapsed_time(end)))
-        del output
-    torch.cuda.synchronize(device)
-    incremental_peak = max(0, int(torch.cuda.max_memory_allocated(device)) - resident)
-    return _summary(samples), incremental_peak
+        peak_increments.append(max(0, int(max_memory_allocated(device)) - resident))
+        if runtime_guard is not None:
+            runtime_guard()
+        if protected_reference is not None:
+            reference_q, reference_k, reference_v = input_factory(
+                workload, device=device, seed=seed
+            )
+            reference_output = protected_reference(
+                reference_q, reference_k, reference_v, causal=workload.causal
+            )
+            timed_qualities.append(quality_fn(output, reference_output))
+            del reference_q, reference_k, reference_v, reference_output
+        del q, k, v, output
+    synchronize(device)
+    validation = None
+    if protected_reference is not None:
+        if tolerances is None:
+            raise ValueError("timed validation requires correctness tolerances")
+        validation = validation_summary_fn(timed_qualities, tolerances)
+    return (
+        _summary(samples),
+        max(peak_increments),
+        validation,
+        {"warmups": warmup_seeds, "measured": measured_seeds},
+    )
 
 
 def _inputs(workload, *, device, seed: int):
@@ -279,7 +438,7 @@ def run_benchmark(
     *,
     candidate_spec: str | None = None,
     device_index: int | None = None,
-    seed: int = 20260727,
+    seed: int | None = None,
     repetitions: int | None = None,
     warmups: int | None = None,
     official: bool = False,
@@ -297,6 +456,12 @@ def run_benchmark(
         bool(manifest.raw["era"].get("deterministic_algorithms", False))
     )
     torch.backends.cudnn.benchmark = bool(manifest.raw["era"].get("cudnn_benchmark", False))
+    torch.backends.cudnn.deterministic = False
+
+    if seed is None:
+        seed = secrets.randbits(63)
+    if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
+        raise ValueError("seed must be a non-negative integer")
 
     environment = _environment(device)
     mismatches = environment_mismatches(manifest, environment)
@@ -331,23 +496,76 @@ def run_benchmark(
         raise ValueError("warmups and repetitions must be positive")
 
     candidate_spec = candidate_spec or manifest.raw["candidate"]
-    candidate = load_candidate(candidate_spec)
     tolerances = manifest.raw["correctness"]
-    results = []
-    for index, workload in enumerate(manifest.workloads):
-        q, k, v = _inputs(workload, device=device, seed=seed + index)
+    protected_sdpa = torch.nn.functional.scaled_dot_product_attention
+    protected_inputs = _inputs
+    protected_quality = _quality
+    protected_validation_summary = _timed_validation_summary
+    protected_assert_runtime = _assert_runtime_state
+
+    def protected_reference(q, k, v, *, causal: bool):
+        return protected_sdpa(q, k, v, dropout_p=0.0, is_causal=causal)
+
+    expected_runtime = _runtime_state(torch)
+    protected_randbits = secrets.SystemRandom().getrandbits
+    production_records = {}
+
+    # Contributor code is deliberately not imported until every protected
+    # reference timing and affordable explicit-oracle output has been captured.
+    for workload in manifest.workloads:
+        correctness_seed = protected_randbits(63)
         with torch.inference_mode():
-            production_output = _production_attention(q, k, v, causal=workload.causal)
-            candidate_output = candidate(q, k, v, causal=workload.causal)
-            candidate_quality = _quality(candidate_output, production_output)
-            oracle_quality = None
+            q, k, v = protected_inputs(workload, device=device, seed=correctness_seed)
+            production_output = protected_reference(q, k, v, causal=workload.causal)
+            oracle_output = None
+            production_oracle_quality = None
             if workload.oracle:
                 oracle_output = _explicit_oracle(q, k, v, causal=workload.causal)
+                production_oracle_quality = protected_quality(production_output, oracle_output)
+            production_timing, production_peak, _, production_seeds = _time_fresh_inputs(
+                protected_reference,
+                workload=workload,
+                seed_source=lambda: protected_randbits(63),
+                input_factory=protected_inputs,
+                quality_fn=protected_quality,
+                validation_summary_fn=protected_validation_summary,
+                device=device,
+                warmups=warmups,
+                repetitions=repetitions,
+            )
+        production_records[workload.id] = {
+            "timing": production_timing,
+            "peak_incremental_vram_bytes": production_peak,
+            "oracle_output": oracle_output,
+            "oracle_quality": production_oracle_quality,
+            "correctness_seed": correctness_seed,
+            "timing_seeds": production_seeds,
+        }
+        del q, k, v, production_output
+        torch.cuda.empty_cache()
+
+    candidate = load_candidate(candidate_spec)
+    protected_assert_runtime(torch, expected_runtime)
+
+    def runtime_guard():
+        protected_assert_runtime(torch, expected_runtime)
+
+    results = []
+    for workload in manifest.workloads:
+        correctness_seed = production_records[workload.id]["correctness_seed"]
+        q, k, v = protected_inputs(workload, device=device, seed=correctness_seed)
+        with torch.inference_mode():
+            production_output = protected_reference(q, k, v, causal=workload.causal)
+            candidate_output = candidate(q, k, v, causal=workload.causal)
+            runtime_guard()
+            candidate_quality = protected_quality(candidate_output, production_output)
+            oracle_quality = None
+            if workload.oracle:
+                oracle_output = production_records[workload.id]["oracle_output"]
                 oracle_quality = {
-                    "production": _quality(production_output, oracle_output),
-                    "candidate": _quality(candidate_output, oracle_output),
+                    "production": production_records[workload.id]["oracle_quality"],
+                    "candidate": protected_quality(candidate_output, oracle_output),
                 }
-                del oracle_output
             oracle_candidate = (
                 oracle_quality["candidate"] if oracle_quality is not None else None
             )
@@ -359,7 +577,8 @@ def run_benchmark(
                 changed_k[..., split:, :] += 3.0
                 changed_v[..., split:, :] -= 3.0
                 changed_output = candidate(q, changed_k, changed_v, causal=True)
-                prefix_quality = _quality(
+                runtime_guard()
+                prefix_quality = protected_quality(
                     changed_output[..., :split, :],
                     candidate_output[..., :split, :],
                 )
@@ -372,6 +591,25 @@ def run_benchmark(
                     "quality": prefix_quality,
                 }
                 del changed_k, changed_v, changed_output
+            (
+                candidate_timing,
+                candidate_peak,
+                timed_validation,
+                candidate_seeds,
+            ) = _time_fresh_inputs(
+                candidate,
+                workload=workload,
+                seed_source=lambda: protected_randbits(63),
+                input_factory=protected_inputs,
+                quality_fn=protected_quality,
+                validation_summary_fn=protected_validation_summary,
+                device=device,
+                warmups=warmups,
+                repetitions=repetitions,
+                protected_reference=protected_reference,
+                tolerances=tolerances,
+                runtime_guard=runtime_guard,
+            )
             passed = (
                 candidate_quality["finite"]
                 and candidate_quality["relative_frobenius_error"]
@@ -389,19 +627,9 @@ def run_benchmark(
                     )
                 )
                 and (causal_prefix is None or causal_prefix["passed"])
+                and timed_validation["passed"]
             )
-            production_timing, production_peak = _time_callable(
-                lambda: _production_attention(q, k, v, causal=workload.causal),
-                device=device,
-                warmups=warmups,
-                repetitions=repetitions,
-            )
-            candidate_timing, candidate_peak = _time_callable(
-                lambda: candidate(q, k, v, causal=workload.causal),
-                device=device,
-                warmups=warmups,
-                repetitions=repetitions,
-            )
+        production_record = production_records[workload.id]
         results.append({
             "id": workload.id,
             "mode": workload.mode,
@@ -421,16 +649,24 @@ def run_benchmark(
                 "candidate_vs_production": candidate_quality,
                 "oracle": oracle_quality,
                 "causal_prefix_invariance": causal_prefix,
+                "timed_output_validation": timed_validation,
+            },
+            "input_seeds": {
+                "correctness": correctness_seed,
+                "production": production_record["timing_seeds"],
+                "candidate": candidate_seeds,
             },
             "production": {
-                "timing": production_timing,
-                "peak_incremental_vram_bytes": production_peak,
+                "timing": production_record["timing"],
+                "peak_incremental_vram_bytes": production_record["peak_incremental_vram_bytes"],
             },
             "candidate": {
                 "timing": candidate_timing,
                 "peak_incremental_vram_bytes": candidate_peak,
             },
         })
+        if production_record["oracle_output"] is not None:
+            del production_record["oracle_output"]
         del q, k, v, production_output, candidate_output
         torch.cuda.empty_cache()
 
@@ -438,7 +674,7 @@ def run_benchmark(
     dirty = bool(_git_value("status", "--porcelain", default=""))
     eligible_environment = not mismatches and not dirty
     result = {
-        "schema_version": 1,
+        "schema_version": int(manifest.raw.get("result_schema_version", 1)),
         "benchmark": manifest.id,
         "benchmark_status": manifest.status,
         "manifest_sha256": manifest.sha256,
@@ -453,7 +689,15 @@ def run_benchmark(
         "merge_eligible": bool(manifest.is_active and official and eligible_environment),
         "environment_mismatches": mismatches,
         "environment": environment,
-        "measurement": {"warmups": warmups, "repetitions": repetitions},
+        "measurement": {
+            "warmups": warmups,
+            "repetitions": repetitions,
+            "seed_policy": "os-random-per-call-published-after",
+            "fresh_inputs_per_call": True,
+            "validate_timed_outputs": True,
+            "candidate_import_after_reference": True,
+            "runtime_state_guard": True,
+        },
         "workloads": results,
     }
     if shard_count is not None:
@@ -469,7 +713,11 @@ def main(argv=None) -> int:
     parser.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
     parser.add_argument("--candidate")
     parser.add_argument("--device", type=int)
-    parser.add_argument("--seed", type=int, default=20260727)
+    parser.add_argument(
+        "--seed",
+        type=int,
+        help="run-correlation nonce; input seeds are generated independently per call",
+    )
     parser.add_argument("--repetitions", type=int)
     parser.add_argument("--warmups", type=int)
     parser.add_argument("--official", action="store_true")

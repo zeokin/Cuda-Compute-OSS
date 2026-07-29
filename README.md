@@ -13,15 +13,16 @@ attention or improves an LLM.
 | Field | Value |
 |---|---|
 | Phase | Attention foundation |
-| Benchmark ID | `attention-foundation-v1-rtx5070ti` |
-| Status | **ACTIVE — frozen and calibrated** |
+| Benchmark ID | `attention-foundation-v1.1-rtx5070ti` |
+| Status | **DRAFT — miner PRs closed** |
 | Reference GPU | NVIDIA GeForce RTX 5070 Ti |
 | Goal | Improve exact attention latency or memory without correctness loss |
-| Merge automation | Enabled only for approved issues and protected RTX 5070 Ti results |
+| Merge automation | Locked pending hardened-protocol calibration and certification |
 
 The protected manifest is
-[`benchmarks/attention-foundation-v1-rtx5070ti.json`](benchmarks/attention-foundation-v1-rtx5070ti.json).
-The manifest is the frozen benchmark contract for this competition era.
+[`benchmarks/attention-foundation-v1.1-rtx5070ti.json`](benchmarks/attention-foundation-v1.1-rtx5070ti.json).
+The previous calibrated v1 manifest remains historical evidence. Version 1.1
+changes the measurement protocol and must be recalibrated before mining reopens.
 
 ## What exists
 
@@ -40,17 +41,19 @@ The attention-foundation phase keeps output exact and asks whether a candidate
 can reduce attention latency or memory. Correctness is a hard gate, not a
 weighted score.
 
-The frozen benchmark contains nine GPU workload configurations:
+The draft benchmark contains nine GPU workload configurations:
 
 - four causal prefill workloads at sequence lengths 1K, 2K, 4K, and 8K;
 - three one-token decode workloads with 1K, 4K, and 8K KV contexts;
 - one ragged causal guard and one non-causal guard.
 
-Each official comparison will use the same RTX 5070 Ti environment, 10
-warm-ups, 30 measured repetitions, raw CUDA-event timings, peak incremental
-VRAM, and balanced `main → PR → PR → main` timing shards. Prefill and decode
-are decided separately. A gain on one cannot hide a protected regression on
-the other.
+Each official comparison uses the same RTX 5070 Ti environment, 10 warm-ups,
+30 measured repetitions, raw CUDA-event timings, peak incremental VRAM, and
+balanced `main → PR → PR → main` timing shards. Independent OS-random input
+seeds are generated immediately before each call and published afterward.
+Every warm-up and repetition uses fresh inputs, every timed output is checked,
+and contributor code is imported only after protected reference measurement.
+Prefill and decode are decided separately.
 
 The references are:
 
@@ -60,10 +63,9 @@ The references are:
 
 ## Contribution policy
 
-Mining is open only for measurable feature PRs implementing an open issue with
-the maintainer-applied `status:phase-approved` label. Miner-created issues begin
-in triage and do not authorize implementation by themselves. The initial implementation
-scope is:
+Mining is currently closed while v1.1 is calibrated and adversarially
+certified. Feature proposals may be opened, but maintainers will not apply
+`status:phase-approved` until activation. The planned implementation scope is:
 
 - rectangular and batched attention-shaped multiplication;
 - `QK^T` and `PV` paths used by attention;
@@ -76,7 +78,7 @@ Bug-fix, documentation, cleanup, refactor-only, legacy transform, evaluator,
 benchmark, workflow, and policy PRs are not miner contribution lanes. Changes
 to protected infrastructure are made separately by maintainers.
 
-An active-phase PR must:
+After activation, a current-phase PR must:
 
 1. use the feature template;
 2. declare the exact active benchmark ID;
@@ -156,15 +158,16 @@ Manual queue preview on the Windows CUDA environment:
 python -m eval.attention_batch --limit 0 --active-python
 ```
 
-The first command previews the queue. Maintainer processing additionally uses
-`--run --process --clean --confirm-benchmark attention-foundation-v1-rtx5070ti`.
+The first command previews the queue. Processing is intentionally unavailable
+while v1.1 is draft; `--process` refuses to run.
 
 ## Repository trust boundary
 
 Contributor PRs cannot modify `eval/`, `benchmarks/`, `.github/`, `dashboard/`,
 public policy, or package configuration. The evaluator records the manifest
-hash, commit, environment, raw samples, and workload results. A stale result or
-dirty checkout cannot authorize a merge.
+hash, commit, post-run seed, environment, raw samples, timed-output checks, and
+workload results. A stale result, dirty checkout, repeated-input cache, or
+un-restored runtime mutation cannot authorize a merge.
 
 Detailed roadmap, calibration procedure, held-out cases, Windows operations,
 and recovery instructions are maintainer material and are not published as a

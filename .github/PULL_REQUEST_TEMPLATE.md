@@ -10,7 +10,7 @@ lanes.
 
 - [ ] feature
 
-**Benchmark:** `attention-foundation-v1-rtx5070ti`
+**Benchmark:** `attention-foundation-v1.1-rtx5070ti`
 
 Closes #____
 

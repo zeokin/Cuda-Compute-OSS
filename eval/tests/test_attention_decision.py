@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from eval.attention_decision import compare_artifacts
-from eval.attention_manifest import DEFAULT_MANIFEST, load_manifest
+from eval.attention_manifest import DEFAULT_MANIFEST, benchmark_contract_sha256, load_manifest
 
 
 def _artifact(manifest, *, commit: str, factor: float = 1.0, correct: bool = True):
@@ -17,23 +17,51 @@ def _artifact(manifest, *, commit: str, factor: float = 1.0, correct: bool = Tru
     workloads = []
     for index, workload in enumerate(manifest.workloads):
         median = (1.0 + index) * factor
+        seed_base = index * 1000
         cell = {
             "timing": {"median_ms": median},
             "peak_incremental_vram_bytes": 1000,
         }
         workloads.append({
             "id": workload.id,
-            "correctness": {"passed": correct},
+            "input_seeds": {
+                "correctness": seed_base,
+                "production": {
+                    "warmups": [seed_base + 1],
+                    "measured": list(range(seed_base + 2, seed_base + 32)),
+                },
+                "candidate": {
+                    "warmups": [seed_base + 32],
+                    "measured": list(range(seed_base + 33, seed_base + 63)),
+                },
+            },
+            "correctness": {
+                "passed": correct,
+                "timed_output_validation": {
+                    "passed": correct,
+                    "repetitions": 30,
+                },
+            },
             "candidate": cell,
         })
     return {
-        "schema_version": 1,
+        "schema_version": manifest.raw.get("result_schema_version", 1),
         "benchmark": manifest.id,
         "manifest_sha256": manifest.sha256,
         "benchmark_contract_sha256": manifest.benchmark_contract_sha256,
+        "candidate": manifest.raw["candidate"],
         "commit": commit,
+        "seed": 1234,
         "dirty": False,
         "merge_eligible": manifest.is_active,
+        "measurement": {
+            "repetitions": 30,
+            "seed_policy": "os-random-per-call-published-after",
+            "fresh_inputs_per_call": True,
+            "validate_timed_outputs": True,
+            "candidate_import_after_reference": True,
+            "runtime_state_guard": True,
+        },
         "environment": environment,
         "workloads": workloads,
     }
@@ -50,6 +78,11 @@ def _frozen_manifest(tmp_path):
         "merge_enabled": True,
         "tiers_percent": {"L": 20.0, "M": 10.0, "S": 5.0},
     })
+    raw["correctness"]["calibration_required"] = False
+    raw["calibration"] = {
+        "sessions": 3,
+        "benchmark_contract_sha256": benchmark_contract_sha256(raw),
+    }
     path = tmp_path / "frozen.json"
     path.write_text(json.dumps(raw), encoding="utf-8")
     return load_manifest(path)
@@ -131,3 +164,13 @@ def test_candidate_commit_must_match_queue_head():
     )
     assert result["verdict"] == "BLOCKED"
     assert "queued PR head" in result["reasons"][0]
+
+
+def test_repeated_timing_input_seed_blocks_decision():
+    manifest = load_manifest()
+    main = _artifact(manifest, commit="main")
+    candidate = _artifact(manifest, commit="candidate")
+    candidate["workloads"][0]["input_seeds"]["candidate"]["measured"] = [7] * 30
+    result = compare_artifacts(main, candidate, manifest)
+    assert result["verdict"] == "BLOCKED"
+    assert any("not unique" in reason for reason in result["reasons"])

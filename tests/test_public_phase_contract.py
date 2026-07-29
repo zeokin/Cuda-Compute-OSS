@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST_PATH = ROOT / "benchmarks" / "attention-foundation-v1-rtx5070ti.json"
+MANIFEST_PATH = ROOT / "benchmarks" / "attention-foundation-v1.1-rtx5070ti.json"
 
 
 def _manifest() -> dict:
@@ -50,6 +50,13 @@ def test_manifest_contains_the_declared_nine_case_basket():
     assert [item["kv_len"] for item in workloads if item["mode"] == "decode"] == [
         1024, 4096, 8192,
     ]
+
+
+def test_hardened_manifest_names_an_existing_result_schema():
+    version = _manifest()["result_schema_version"]
+    schema_path = ROOT / "benchmarks" / f"attention-foundation-result-schema-v{version}.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    assert schema["properties"]["schema_version"]["const"] == version
 
 
 def test_removed_public_roadmap_is_not_linked():

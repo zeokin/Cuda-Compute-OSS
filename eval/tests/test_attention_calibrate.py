@@ -9,22 +9,48 @@ from eval.attention_manifest import load_manifest
 def _artifact(manifest, *, factor: float = 1.0, commit: str = "main"):
     workloads = []
     for index, workload in enumerate(manifest.workloads):
+        seed_base = index * 1000
         workloads.append({
             "id": workload.id,
+            "input_seeds": {
+                "correctness": seed_base,
+                "production": {
+                    "warmups": [seed_base + 1],
+                    "measured": list(range(seed_base + 2, seed_base + 32)),
+                },
+                "candidate": {
+                    "warmups": [seed_base + 32],
+                    "measured": list(range(seed_base + 33, seed_base + 63)),
+                },
+            },
+            "correctness": {
+                "passed": True,
+                "timed_output_validation": {"passed": True},
+            },
             "candidate": {
                 "timing": {"median_ms": (index + 1) * factor},
                 "peak_incremental_vram_bytes": 1000,
             },
         })
     return {
+        "schema_version": manifest.raw.get("result_schema_version", 1),
         "benchmark": manifest.id,
         "manifest_sha256": manifest.sha256,
         "benchmark_contract_sha256": manifest.benchmark_contract_sha256,
         "commit": commit,
         "candidate": manifest.raw["candidate"],
         "dirty": False,
+        "seed": 1000 + int(factor * 100),
         "official_requested": True,
         "official_environment": True,
+        "measurement": {
+            "repetitions": 30,
+            "seed_policy": "os-random-per-call-published-after",
+            "fresh_inputs_per_call": True,
+            "validate_timed_outputs": True,
+            "candidate_import_after_reference": True,
+            "runtime_state_guard": True,
+        },
         "environment": {"gpu": "5070ti"},
         "workloads": workloads,
     }

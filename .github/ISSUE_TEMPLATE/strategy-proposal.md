@@ -8,7 +8,7 @@ assignees: ""
 
 ## Benchmark phase
 
-`attention-foundation-v1-rtx5070ti`
+`attention-foundation-v1.1-rtx5070ti`
 
 ## Workload affected
 

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zeokin/Cuda-Compute-OSS/benchmarks/attention-foundation-result-schema-v2.json",
+  "title": "CCO hardened attention foundation benchmark result",
+  "type": "object",
+  "required": ["schema_version", "benchmark", "manifest_sha256", "benchmark_contract_sha256", "candidate", "commit", "seed", "measurement", "environment", "workloads"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "benchmark": {"type": "string"},
+    "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "benchmark_contract_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "candidate": {"type": "string"},
+    "commit": {"type": "string"},
+    "seed": {"type": "integer", "minimum": 0, "description": "Run-correlation nonce; not an input seed."},
+    "measurement": {
+      "type": "object",
+      "required": ["repetitions", "seed_policy", "fresh_inputs_per_call", "validate_timed_outputs", "candidate_import_after_reference", "runtime_state_guard"],
+      "properties": {
+        "repetitions": {"type": "integer", "minimum": 1},
+        "seed_policy": {"const": "os-random-per-call-published-after"},
+        "fresh_inputs_per_call": {"const": true},
+        "validate_timed_outputs": {"const": true},
+        "candidate_import_after_reference": {"const": true},
+        "runtime_state_guard": {"const": true}
+      },
+      "additionalProperties": true
+    },
+    "environment": {"type": "object"},
+    "workloads": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "correctness", "input_seeds", "production", "candidate"]
+      }
+    }
+  },
+  "additionalProperties": true
+}

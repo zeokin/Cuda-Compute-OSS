@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import secrets
 import shutil
 import stat
 import subprocess
@@ -67,6 +68,11 @@ def ensure_processing_allowed(manifest: AttentionManifest, confirmation: str | N
         raise RuntimeError(
             f"benchmark {manifest.id} is {manifest.status!r} and cannot process PRs"
         )
+    if manifest.path != DEFAULT_MANIFEST.resolve():
+        raise RuntimeError(
+            "only the repository default manifest may process PRs; "
+            "historical or custom manifests are evaluation-only"
+        )
     if confirmation != manifest.id:
         raise RuntimeError(
             "processing requires --confirm-benchmark with the exact active benchmark id"
@@ -115,7 +121,7 @@ def plan_item(item: AttentionQueueItem, *, repo: str, workdir: Path, results: Pa
 
 
 def _benchmark_command(
-    python: list[str], *, output: Path, shard_index: int, manifest_path: str
+    python: list[str], *, output: Path, shard_index: int, manifest_path: str, seed: int
 ) -> list[str]:
     return [
         *python,
@@ -124,6 +130,7 @@ def _benchmark_command(
         "--official",
         "--shard-index", str(shard_index),
         "--shard-count", "2",
+        "--seed", str(seed),
         "--output", str(output),
     ]
 
@@ -237,7 +244,8 @@ def run_item(
 
     python = _python(active_python)
     _preflight(candidate_checkout, python)
-    manifest_relative = "benchmarks/attention-foundation-v1-rtx5070ti.json"
+    manifest_relative = f"benchmarks/{manifest.path.name}"
+    evaluation_seed = secrets.randbits(63)
     main_shards = [item_dir / "main-0.json", item_dir / "main-1.json"]
     pr_shards = [item_dir / "candidate-0.json", item_dir / "candidate-1.json"]
     # Coarse balanced interleaving reduces monotonic clock/temperature drift.
@@ -254,6 +262,7 @@ def run_item(
                 output=output,
                 shard_index=shard_index,
                 manifest_path=manifest_relative,
+                seed=evaluation_seed,
             ),
             cwd=checkout,
         )

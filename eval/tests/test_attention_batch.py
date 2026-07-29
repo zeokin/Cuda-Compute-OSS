@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from eval.attention_batch import (
+    _benchmark_command,
     _merge_current_main,
     _process_decision,
     ensure_processing_allowed,
@@ -33,6 +34,18 @@ def test_select_batch_zero_means_all():
     assert select_batch([], 0) == []
 
 
+def test_benchmark_command_pins_one_protected_seed_across_shards(tmp_path):
+    command = _benchmark_command(
+        ["python"],
+        output=tmp_path / "result.json",
+        shard_index=1,
+        manifest_path="benchmarks/draft.json",
+        seed=987654321,
+    )
+    assert command[command.index("--seed") + 1] == "987654321"
+    assert command[command.index("--shard-index") + 1] == "1"
+
+
 def test_draft_manifest_cannot_process_prs(tmp_path):
     raw = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
     raw["status"] = "draft"
@@ -43,6 +56,15 @@ def test_draft_manifest_cannot_process_prs(tmp_path):
     manifest = load_manifest(path)
     with pytest.raises(RuntimeError, match="cannot process"):
         ensure_processing_allowed(manifest, manifest.id)
+
+
+def test_historical_active_manifest_cannot_process_prs():
+    historical = load_manifest(
+        DEFAULT_MANIFEST.with_name("attention-foundation-v1-rtx5070ti.json")
+    )
+    assert historical.is_active
+    with pytest.raises(RuntimeError, match="repository default manifest"):
+        ensure_processing_allowed(historical, historical.id)
 
 
 def _git(repo, *args):

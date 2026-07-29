@@ -11,7 +11,7 @@ from typing import Callable
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_MANIFEST = REPOSITORY_ROOT / "benchmarks" / "attention-foundation-v1-rtx5070ti.json"
+DEFAULT_MANIFEST = REPOSITORY_ROOT / "benchmarks" / "attention-foundation-v1.1-rtx5070ti.json"
 VALID_STATUSES = frozenset({"draft", "frozen", "retired"})
 VALID_MODES = frozenset({"prefill", "decode", "guard"})
 
@@ -110,6 +110,13 @@ def _validate_workload(raw: dict) -> AttentionWorkload:
 def validate_manifest(raw: dict) -> tuple[AttentionWorkload, ...]:
     if raw.get("schema_version") != 1:
         raise ValueError("attention manifest schema_version must be 1")
+    result_schema_version = raw.get("result_schema_version", 1)
+    if isinstance(result_schema_version, bool) or not isinstance(
+        result_schema_version, int
+    ):
+        raise ValueError("result_schema_version must be an integer")
+    if result_schema_version not in {1, 2}:
+        raise ValueError("unsupported result_schema_version")
     if not isinstance(raw.get("id"), str) or not raw["id"]:
         raise ValueError("attention manifest id must be a non-empty string")
     if raw.get("status") not in VALID_STATUSES:
@@ -125,6 +132,19 @@ def validate_manifest(raw: dict) -> tuple[AttentionWorkload, ...]:
             raise ValueError(f"measurement.{name} must be an integer")
         if measurement[name] <= 0:
             raise ValueError(f"measurement.{name} must be > 0")
+    seed_policy = measurement.get("seed_policy")
+    if seed_policy is not None and seed_policy != "os-random-per-call-published-after":
+        raise ValueError("unsupported measurement.seed_policy")
+    for name in (
+        "fresh_inputs_per_call",
+        "validate_timed_outputs",
+        "candidate_import_after_reference",
+        "runtime_state_guard",
+    ):
+        if name in measurement and not isinstance(measurement[name], bool):
+            raise ValueError(f"measurement.{name} must be boolean")
+        if seed_policy is not None and measurement.get(name) is not True:
+            raise ValueError(f"hardened measurement requires {name}=true")
     workloads = tuple(_validate_workload(item) for item in raw.get("workloads", []))
     if not workloads:
         raise ValueError("attention manifest must define workloads")
@@ -198,6 +218,8 @@ def benchmark_contract_sha256(raw: dict) -> str:
         "correctness": correctness,
         "workloads": raw["workloads"],
     }
+    if "result_schema_version" in raw:
+        contract["result_schema_version"] = raw["result_schema_version"]
     return manifest_sha256(contract)
 
 

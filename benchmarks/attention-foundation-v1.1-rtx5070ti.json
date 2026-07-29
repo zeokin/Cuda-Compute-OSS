@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "result_schema_version": 2,
+  "id": "attention-foundation-v1.1-rtx5070ti",
+  "status": "draft",
+  "phase": "attention-foundation",
+  "description": "Hardened exact-attention foundation benchmark awaiting RTX 5070 Ti recalibration.",
+  "candidate": "attention.foundation:attention_forward",
+  "era": {
+    "gpu_name": "NVIDIA GeForce RTX 5070 Ti",
+    "os": "Windows",
+    "python": "3.12",
+    "torch": "2.11.0+cu128",
+    "dtype": "fp16",
+    "device": 0,
+    "tf32": false,
+    "deterministic_algorithms": false,
+    "cudnn_benchmark": false,
+    "sdpa_backend": "auto"
+  },
+  "measurement": {
+    "warmups": 10,
+    "repetitions": 30,
+    "timing": "cuda-event",
+    "comparison": "interleaved-main-pr",
+    "raw_samples_required": true,
+    "seed_policy": "os-random-per-call-published-after",
+    "fresh_inputs_per_call": true,
+    "validate_timed_outputs": true,
+    "candidate_import_after_reference": true,
+    "runtime_state_guard": true
+  },
+  "correctness": {
+    "max_relative_frobenius_error": 0.005,
+    "max_absolute_error": 0.05,
+    "finite_output_required": true,
+    "calibration_required": true
+  },
+  "decision": {
+    "calibration_required": true,
+    "minimum_speedup_percent": null,
+    "maximum_per_workload_regression_percent": null,
+    "maximum_vram_regression_percent": null,
+    "tiers_percent": null,
+    "merge_enabled": false
+  },
+  "workloads": [
+    {"id": "prefill-b1-h8-n1024-d64-causal", "mode": "prefill", "batch": 1, "heads": 8, "q_len": 1024, "kv_len": 1024, "dim": 64, "dtype": "fp16", "causal": true, "scored": true, "oracle": true},
+    {"id": "prefill-b1-h16-n2048-d128-causal", "mode": "prefill", "batch": 1, "heads": 16, "q_len": 2048, "kv_len": 2048, "dim": 128, "dtype": "fp16", "causal": true, "scored": true, "oracle": false},
+    {"id": "prefill-b1-h16-n4096-d128-causal", "mode": "prefill", "batch": 1, "heads": 16, "q_len": 4096, "kv_len": 4096, "dim": 128, "dtype": "fp16", "causal": true, "scored": true, "oracle": false},
+    {"id": "prefill-b1-h16-n8192-d128-causal", "mode": "prefill", "batch": 1, "heads": 16, "q_len": 8192, "kv_len": 8192, "dim": 128, "dtype": "fp16", "causal": true, "scored": true, "oracle": false},
+    {"id": "decode-b1-h16-kv1024-d128", "mode": "decode", "batch": 1, "heads": 16, "q_len": 1, "kv_len": 1024, "dim": 128, "dtype": "fp16", "causal": false, "scored": true, "oracle": true},
+    {"id": "decode-b1-h16-kv4096-d128", "mode": "decode", "batch": 1, "heads": 16, "q_len": 1, "kv_len": 4096, "dim": 128, "dtype": "fp16", "causal": false, "scored": true, "oracle": false},
+    {"id": "decode-b1-h16-kv8192-d128", "mode": "decode", "batch": 1, "heads": 16, "q_len": 1, "kv_len": 8192, "dim": 128, "dtype": "fp16", "causal": false, "scored": true, "oracle": false},
+    {"id": "guard-b2-h8-n1537-d64-ragged-causal", "mode": "guard", "batch": 2, "heads": 8, "q_len": 1537, "kv_len": 1537, "dim": 64, "dtype": "fp16", "causal": true, "scored": false, "oracle": false, "layout": "contiguous"},
+    {"id": "guard-b1-h8-n2048-d64-noncausal-strided", "mode": "guard", "batch": 1, "heads": 8, "q_len": 2048, "kv_len": 2048, "dim": 64, "dtype": "fp16", "causal": false, "scored": false, "oracle": false, "layout": "noncontiguous"}
+  ]
+}

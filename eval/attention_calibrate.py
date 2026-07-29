@@ -14,7 +14,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .attention_decision import load_artifact
+from .attention_decision import load_artifact, validate_input_seeds
 from .attention_manifest import DEFAULT_MANIFEST, AttentionManifest, load_manifest
 
 
@@ -35,6 +35,8 @@ def calibrate(artifacts: list[dict], manifest: AttentionManifest) -> dict:
     identity_keys = ("benchmark", "benchmark_contract_sha256", "commit", "candidate")
     first = artifacts[0]
     for index, artifact in enumerate(artifacts):
+        if artifact.get("schema_version") != int(manifest.raw.get("result_schema_version", 1)):
+            reasons.append(f"session {index + 1} artifact schema does not match the manifest")
         if artifact.get("benchmark") != manifest.id:
             reasons.append(f"session {index + 1} benchmark does not match the manifest")
         if artifact.get("benchmark_contract_sha256") != manifest.benchmark_contract_sha256:
@@ -45,6 +47,20 @@ def calibrate(artifacts: list[dict], manifest: AttentionManifest) -> dict:
             reasons.append(f"session {index + 1} used a dirty checkout")
         if not artifact.get("official_requested") or not artifact.get("official_environment"):
             reasons.append(f"session {index + 1} is not an official-environment run")
+        seed = artifact.get("seed")
+        if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
+            reasons.append(f"session {index + 1} does not record a valid protected seed")
+        measurement = artifact.get("measurement") or {}
+        for field in (
+            "fresh_inputs_per_call",
+            "validate_timed_outputs",
+            "candidate_import_after_reference",
+            "runtime_state_guard",
+        ):
+            if measurement.get(field) is not True:
+                reasons.append(f"session {index + 1} is missing integrity guarantee: {field}")
+        if measurement.get("seed_policy") != "os-random-per-call-published-after":
+            reasons.append(f"session {index + 1} has an unsupported seed policy")
         invariant_environment = (
             "gpu_name", "torch", "cuda_runtime", "driver_version", "os", "python",
             "compute_capability", "tf32_matmul", "deterministic_algorithms",
@@ -60,6 +76,23 @@ def calibrate(artifacts: list[dict], manifest: AttentionManifest) -> dict:
     session_cells = [_cells(artifact) for artifact in artifacts]
     if any(set(cells) != expected_ids for cells in session_cells):
         reasons.append("one or more sessions do not contain the complete manifest workload")
+    if not reasons:
+        for session_index, cells in enumerate(session_cells, start=1):
+            for workload in manifest.workloads:
+                correctness = cells[workload.id].get("correctness") or {}
+                timed = correctness.get("timed_output_validation") or {}
+                if not correctness.get("passed") or not timed.get("passed"):
+                    reasons.append(
+                        f"session {session_index} failed correctness for {workload.id}"
+                    )
+                seed_error = validate_input_seeds(
+                    cells[workload.id],
+                    int(artifacts[session_index - 1]["measurement"]["repetitions"]),
+                )
+                if seed_error:
+                    reasons.append(
+                        f"session {session_index} {workload.id}: {seed_error}"
+                    )
     if reasons:
         return {
             "schema_version": 1,

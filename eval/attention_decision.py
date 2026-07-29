@@ -18,6 +18,31 @@ def _workloads(artifact: dict) -> dict[str, dict]:
     return {item["id"]: item for item in artifact.get("workloads", [])}
 
 
+def validate_input_seeds(cell: dict, repetitions: int) -> str | None:
+    record = cell.get("input_seeds") or {}
+    correctness = record.get("correctness")
+    correctness_values = correctness if isinstance(correctness, list) else [correctness]
+    values = list(correctness_values)
+    for implementation in ("production", "candidate"):
+        section = record.get(implementation) or {}
+        warmups = section.get("warmups")
+        measured = section.get("measured")
+        if not isinstance(warmups, list) or not warmups:
+            return f"{implementation} warm-up input seeds are missing"
+        if not isinstance(measured, list) or len(measured) != repetitions:
+            return f"{implementation} measured input seed count does not match repetitions"
+        values.extend(warmups)
+        values.extend(measured)
+    if any(
+        isinstance(value, bool) or not isinstance(value, int) or value < 0
+        for value in values
+    ):
+        return "input seeds must be non-negative integers"
+    if len(values) != len(set(values)):
+        return "input seeds are not unique within the workload"
+    return None
+
+
 def _geometric_mean(values: list[float]) -> float:
     if not values or any(value <= 0 or not math.isfinite(value) for value in values):
         raise ValueError("geometric mean requires finite positive values")
@@ -44,8 +69,9 @@ def compare_artifacts(
     expected_candidate_commit: str | None = None,
 ) -> dict:
     reasons = []
+    expected_schema = int(manifest.raw.get("result_schema_version", 1))
     for name, artifact in (("main", main), ("candidate", candidate)):
-        if artifact.get("schema_version") != 1:
+        if artifact.get("schema_version") != expected_schema:
             reasons.append(f"{name} artifact has unsupported schema")
         if artifact.get("benchmark") != manifest.id:
             reasons.append(f"{name} artifact benchmark does not match manifest")
@@ -57,8 +83,24 @@ def compare_artifacts(
             reasons.append(f"{name} checkout was dirty")
         if manifest.is_active and not artifact.get("merge_eligible"):
             reasons.append(f"{name} artifact is not official/merge-eligible")
+        seed = artifact.get("seed")
+        if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
+            reasons.append(f"{name} artifact does not record a valid protected seed")
+        measurement = artifact.get("measurement") or {}
+        for field in (
+            "fresh_inputs_per_call",
+            "validate_timed_outputs",
+            "candidate_import_after_reference",
+            "runtime_state_guard",
+        ):
+            if measurement.get(field) is not True:
+                reasons.append(f"{name} artifact is missing integrity guarantee: {field}")
+        if measurement.get("seed_policy") != "os-random-per-call-published-after":
+            reasons.append(f"{name} artifact has an unsupported seed policy")
     if expected_candidate_commit and candidate.get("commit") != expected_candidate_commit:
         reasons.append("candidate artifact commit does not match queued PR head")
+    if main.get("seed") != candidate.get("seed"):
+        reasons.append("main and candidate artifacts do not share the run nonce")
 
     environment_keys = (
         "gpu_name", "torch", "cuda_runtime", "driver_version", "os", "python",
@@ -76,6 +118,16 @@ def compare_artifacts(
         reasons.append("main artifact workload set does not match manifest")
     if set(candidate_by_id) != set(expected_ids):
         reasons.append("candidate artifact workload set does not match manifest")
+    if not reasons:
+        for name, artifact, cells in (
+            ("main", main, main_by_id),
+            ("candidate", candidate, candidate_by_id),
+        ):
+            repetitions = int(artifact["measurement"]["repetitions"])
+            for workload in manifest.workloads:
+                seed_error = validate_input_seeds(cells[workload.id], repetitions)
+                if seed_error:
+                    reasons.append(f"{name} artifact {workload.id}: {seed_error}")
 
     cases = []
     correctness_failed = False
@@ -83,7 +135,13 @@ def compare_artifacts(
         for workload in manifest.workloads:
             base = main_by_id[workload.id]
             pr = candidate_by_id[workload.id]
-            passed = bool(pr.get("correctness", {}).get("passed"))
+            timed_validation = pr.get("correctness", {}).get("timed_output_validation") or {}
+            passed = bool(
+                pr.get("correctness", {}).get("passed")
+                and timed_validation.get("passed")
+                and int(timed_validation.get("repetitions", 0))
+                == int(candidate["measurement"]["repetitions"])
+            )
             correctness_failed = correctness_failed or not passed
             base_ms = float(base["candidate"]["timing"]["median_ms"])
             pr_ms = float(pr["candidate"]["timing"]["median_ms"])
