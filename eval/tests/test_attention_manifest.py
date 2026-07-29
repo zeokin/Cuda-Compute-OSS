@@ -32,17 +32,23 @@ def _activate(raw):
     }
 
 
-def test_draft_manifest_defines_hardened_nine_case_contract():
+def test_active_manifest_defines_hardened_nine_case_contract():
     manifest = load_manifest()
     assert manifest.id == "attention-foundation-v1.1-rtx5070ti"
-    assert manifest.status == "draft"
-    assert not manifest.is_active
+    assert manifest.status == "frozen"
+    assert manifest.is_active
     assert manifest.raw["result_schema_version"] == 2
     assert len(manifest.workloads) == 9
     assert sum(workload.scored for workload in manifest.workloads) == 7
     assert {workload.mode for workload in manifest.workloads} == {"prefill", "decode", "guard"}
     assert manifest.raw["measurement"]["fresh_inputs_per_call"] is True
     assert manifest.raw["measurement"]["validate_timed_outputs"] is True
+    assert manifest.raw["calibration"]["source_commit"] == (
+        "14fa71afd422c46a27853d060d9ec81bdf2dfca3"
+    )
+    assert manifest.raw["calibration"]["benchmark_contract_sha256"] == (
+        manifest.benchmark_contract_sha256
+    )
 
 
 def test_manifest_hash_is_the_canonical_json_hash():

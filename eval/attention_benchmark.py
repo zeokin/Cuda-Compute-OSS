@@ -1,7 +1,7 @@
 """Protected RTX 5070 Ti attention-foundation benchmark.
 
-The manifest is deliberately ``draft`` at first.  Draft artifacts are useful
-for calibration, but they can never authorize a merge.
+Draft artifacts are useful for calibration but can never authorize a merge.
+Only a frozen, calibrated manifest can mark an official artifact merge-eligible.
 """
 from __future__ import annotations
 

@@ -2,16 +2,16 @@
 
 `eval/` contains two deliberately separate systems.
 
-## Attention foundation (current draft)
+## Attention foundation (active)
 
 - `attention_manifest.py`: validates and hashes the protected workload.
 - `attention_benchmark.py`: emits raw RTX 5070 Ti correctness/timing artifacts.
 - `attention_decision.py`: compares current main with one PR artifact.
-- `attention_batch.py`: previews, evaluates, and—only after activation—processes
-  the sequential PR queue.
+- `attention_batch.py`: previews, evaluates, and processes the sequential PR
+  queue under the frozen benchmark and explicit confirmation lock.
 
-The manifest is currently `draft`; processing and automatic merging are locked.
-Public status and contribution scope live in the root README.
+The v1.1 manifest is calibrated, certified, frozen, and active. Public status
+and contribution scope live in the root README.
 
 ## Square GEMM (legacy)
 

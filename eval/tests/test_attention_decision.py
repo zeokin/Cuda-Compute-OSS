@@ -143,6 +143,16 @@ def test_active_manifest_rejects_one_protected_regression(tmp_path):
     assert "protected workload regression" in result["reasons"][0]
 
 
+def test_active_manifest_rejects_one_protected_vram_regression(tmp_path):
+    manifest = _frozen_manifest(tmp_path)
+    main = _artifact(manifest, commit="main")
+    candidate = _artifact(manifest, commit="candidate", factor=0.8)
+    candidate["workloads"][0]["candidate"]["peak_incremental_vram_bytes"] = 2000
+    result = compare_artifacts(main, candidate, manifest)
+    assert result["verdict"] == "REJECT"
+    assert "protected workload regression" in result["reasons"][0]
+
+
 def test_active_manifest_returns_none_inside_noise_floor(tmp_path):
     manifest = _frozen_manifest(tmp_path)
     result = compare_artifacts(

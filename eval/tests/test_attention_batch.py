@@ -58,6 +58,16 @@ def test_draft_manifest_cannot_process_prs(tmp_path):
         ensure_processing_allowed(manifest, manifest.id)
 
 
+def test_active_default_manifest_requires_exact_processing_confirmation():
+    manifest = load_manifest()
+    assert manifest.is_active
+    ensure_processing_allowed(manifest, manifest.id)
+    with pytest.raises(RuntimeError, match="exact active benchmark id"):
+        ensure_processing_allowed(manifest, None)
+    with pytest.raises(RuntimeError, match="exact active benchmark id"):
+        ensure_processing_allowed(manifest, "attention-foundation-v1-rtx5070ti")
+
+
 def test_historical_active_manifest_cannot_process_prs():
     historical = load_manifest(
         DEFAULT_MANIFEST.with_name("attention-foundation-v1-rtx5070ti.json")
@@ -148,6 +158,35 @@ def test_processing_refuses_a_stale_pr_head_before_mutation(monkeypatch, tmp_pat
     assert calls[0][:3] == ["gh", "pr", "view"]
 
 
+def test_processing_refuses_stale_main_before_mutation(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append(args)
+        if args[:3] == ["gh", "pr", "view"]:
+            return SimpleNamespace(stdout="head\n")
+        if args[:2] == ["gh", "api"]:
+            return SimpleNamespace(stdout="new-main\n")
+        return SimpleNamespace(stdout="")
+
+    monkeypatch.setattr("eval.attention_batch._run", fake_run)
+    with pytest.raises(RuntimeError, match="main changed"):
+        _process_decision(
+            {
+                "pr": 9,
+                "candidate_commit": "head",
+                "main_commit": "old-main",
+                "verdict": "REJECT",
+                "merge": False,
+            },
+            repo="owner/repo",
+            python=["python"],
+            workdir=tmp_path,
+            state_branch="state",
+        )
+    assert len(calls) == 2
+
+
 def test_admit_checks_state_and_pins_head_before_merge(monkeypatch, tmp_path):
     calls = []
 
@@ -188,3 +227,50 @@ def test_admit_checks_state_and_pins_head_before_merge(monkeypatch, tmp_path):
     assert checks_index < comment_index
     merge = next(call for call in calls if call[:3] == ["gh", "pr", "merge"])
     assert merge[-2:] == ["--match-head-commit", "head"]
+
+
+def test_postmerge_failure_stops_before_publishing(monkeypatch, tmp_path):
+    calls = []
+    published = []
+
+    def fake_run(args, **kwargs):
+        calls.append(args)
+        if args[:3] == ["gh", "pr", "view"]:
+            return SimpleNamespace(stdout="head\n")
+        if args[:2] == ["gh", "api"]:
+            return SimpleNamespace(stdout="main\n")
+        return SimpleNamespace(stdout="")
+
+    def fail_preflight(*args, **kwargs):
+        raise RuntimeError("postmerge failed")
+
+    monkeypatch.setattr("eval.attention_batch._run", fake_run)
+    monkeypatch.setattr("eval.attention_batch._clone", lambda *args, **kwargs: None)
+    monkeypatch.setattr("eval.attention_batch._preflight", fail_preflight)
+    monkeypatch.setattr("eval.attention_batch._remove", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "eval.attention_batch._publish_decision",
+        lambda *args, **kwargs: published.append(True),
+    )
+    monkeypatch.setattr(
+        "eval.attention_batch.subprocess.run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout=""),
+    )
+    with pytest.raises(RuntimeError, match="postmerge failed"):
+        _process_decision(
+            {
+                "pr": 9,
+                "candidate_commit": "head",
+                "main_commit": "main",
+                "verdict": "ADMIT",
+                "label": "eval:S",
+                "merge": True,
+                "reasons": ["gain"],
+            },
+            repo="owner/repo",
+            python=["python"],
+            workdir=tmp_path,
+            state_branch="state",
+        )
+    assert any(call[:3] == ["gh", "pr", "merge"] for call in calls)
+    assert published == []

@@ -14,15 +14,15 @@ attention or improves an LLM.
 |---|---|
 | Phase | Attention foundation |
 | Benchmark ID | `attention-foundation-v1.1-rtx5070ti` |
-| Status | **DRAFT — miner PRs closed** |
+| Status | **ACTIVE** |
 | Reference GPU | NVIDIA GeForce RTX 5070 Ti |
 | Goal | Improve exact attention latency or memory without correctness loss |
-| Merge automation | Locked pending hardened-protocol calibration and certification |
+| Merge automation | Enabled for qualifying approved feature PRs |
 
 The protected manifest is
 [`benchmarks/attention-foundation-v1.1-rtx5070ti.json`](benchmarks/attention-foundation-v1.1-rtx5070ti.json).
 The previous calibrated v1 manifest remains historical evidence. Version 1.1
-changes the measurement protocol and must be recalibrated before mining reopens.
+is calibrated, adversarially certified, frozen, and active.
 
 ## What exists
 
@@ -41,7 +41,7 @@ The attention-foundation phase keeps output exact and asks whether a candidate
 can reduce attention latency or memory. Correctness is a hard gate, not a
 weighted score.
 
-The draft benchmark contains nine GPU workload configurations:
+The protected benchmark contains nine GPU workload configurations:
 
 - four causal prefill workloads at sequence lengths 1K, 2K, 4K, and 8K;
 - three one-token decode workloads with 1K, 4K, and 8K KV contexts;
@@ -63,9 +63,9 @@ The references are:
 
 ## Contribution policy
 
-Mining is currently closed while v1.1 is calibrated and adversarially
-certified. Feature proposals may be opened, but maintainers will not apply
-`status:phase-approved` until activation. The planned implementation scope is:
+The attention-foundation feature lane is active. Feature proposals may be
+opened, and maintainers may apply `status:phase-approved` to focused work in
+the following implementation scope:
 
 - rectangular and batched attention-shaped multiplication;
 - `QK^T` and `PV` paths used by attention;
@@ -78,7 +78,7 @@ Bug-fix, documentation, cleanup, refactor-only, legacy transform, evaluator,
 benchmark, workflow, and policy PRs are not miner contribution lanes. Changes
 to protected infrastructure are made separately by maintainers.
 
-After activation, a current-phase PR must:
+A current-phase PR must:
 
 1. use the feature template;
 2. declare the exact active benchmark ID;
@@ -158,8 +158,12 @@ Manual queue preview on the Windows CUDA environment:
 python -m eval.attention_batch --limit 0 --active-python
 ```
 
-The first command previews the queue. Processing is intentionally unavailable
-while v1.1 is draft; `--process` refuses to run.
+That command previews the queue. A maintainer can evaluate and process the
+active queue only with the exact benchmark confirmation:
+
+```bat
+python -m eval.attention_batch --limit 0 --run --clean --active-python --process --confirm-benchmark attention-foundation-v1.1-rtx5070ti
+```
 
 ## Repository trust boundary
 
